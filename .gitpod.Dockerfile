@@ -16,7 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-FROM gitpod/workspace-full
+FROM gitpod/workspace-full-vnc
 
 RUN bash -c ". /home/gitpod/.sdkman/bin/sdkman-init.sh \
-             && sdk install java 8.0.275.open-adpt"
+             && sdk install java 11.0.16.open-adpt"
