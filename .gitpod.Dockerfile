@@ -19,4 +19,5 @@
 FROM gitpod/workspace-full-vnc
 
 RUN bash -c ". /home/gitpod/.sdkman/bin/sdkman-init.sh \
-             && sdk install java 11.0.16.open-adpt"
+             && sdk install java 11.0.16.open-adpt \ 
+             && apt install libgtk-3-dev"
