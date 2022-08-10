@@ -18,4 +18,4 @@
 
 FROM gitpod/workspace-full-vnc
 
-RUN bash -c "sudo apt install libgtk-3-dev"
+RUN sudo apt install libgtk-3-dev
