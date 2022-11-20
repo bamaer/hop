@@ -18,13 +18,11 @@
 
 package org.apache.hop.vfs;
 
-import org.apache.commons.vfs2.FileName;
 import org.apache.commons.vfs2.FileType;
 import org.apache.commons.vfs2.provider.AbstractFileName;
 import org.apache.commons.vfs2.provider.AbstractFileObject;
 import org.apache.hop.core.logging.LogChannel;
 import software.amazon.awssdk.core.ResponseInputStream;
-import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.Bucket;
 import software.amazon.awssdk.services.s3.model.GetBucketLocationRequest;
@@ -37,7 +35,6 @@ import software.amazon.awssdk.services.s3.model.ListObjectsRequest;
 import software.amazon.awssdk.services.s3.model.ListObjectsResponse;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 import software.amazon.awssdk.services.s3.model.S3Object;
-import software.amazon.awssdk.services.s3.model.S3ResponseMetadata;
 import software.amazon.awssdk.utils.StringUtils;
 
 import java.io.InputStream;
@@ -57,10 +54,10 @@ public class AwsS3FileObject extends AbstractFileObject<AwsS3FileSystem> {
     private S3Object s3Object;
 
 
-    protected AwsS3FileObject(AbstractFileName name, AwsS3FileSystem fileSystem) {
+    protected AwsS3FileObject(final AbstractFileName name, final AwsS3FileSystem fileSystem) {
         super(name, fileSystem);
         this.fileSystem = fileSystem;
-        bucketName = getBucketName(getName()).trim();
+        bucketName = getBucketName();
         key = getBucketRelativeS3Path();
     }
 
@@ -126,27 +123,36 @@ public class AwsS3FileObject extends AbstractFileObject<AwsS3FileSystem> {
         // Getting files/folders in a folder/bucket
         String prefix = key.isEmpty() || key.endsWith(DELIMITER) ? key : key + DELIMITER;
 
+
         S3Client s3Client;
         GetBucketLocationRequest bucketLocationRequest = GetBucketLocationRequest.builder().bucket(bucketName).build();
         GetBucketLocationResponse bucketLocationResponse =  fileSystem.getS3Client().getBucketLocation(bucketLocationRequest);
         if(!StringUtils.isEmpty(bucketLocationResponse.locationConstraintAsString())){
-            s3Client = S3Client.builder().region(Region.of(bucketLocationResponse.locationConstraintAsString())).build();
+            s3Client = fileSystem.getS3Client(bucketLocationResponse.locationConstraintAsString());
         }else{
-            s3Client = S3Client.builder().build();
+            s3Client = fileSystem.getS3Client();
         }
-        ListObjectsRequest objectsRequest = ListObjectsRequest.builder().bucket(bucketName).build();
+
+        ListObjectsRequest objectsRequest;
+        if(!prefix.isEmpty()){
+            objectsRequest = ListObjectsRequest.builder().bucket(bucketName).prefix(prefix).delimiter(DELIMITER).build();
+        }else{
+            objectsRequest = ListObjectsRequest.builder().bucket(bucketName).build();
+        }
         ListObjectsResponse objectsResponse = s3Client.listObjects(objectsRequest);
         List<S3Object> objectList = objectsResponse.contents();
-        S3ResponseMetadata responseMetadata = objectsResponse.responseMetadata();
         for(S3Object object : objectList){
-            childrenList.add(object.key());
+            if(!objectsResponse.prefix().isEmpty()){
+                childrenList.add(objectsResponse.prefix() + DELIMITER + object.key());
+            }else{
+                childrenList.add(object.key());
+            }
         }
     }
 
     @Override
     protected void doAttach() throws Exception {
         if(isRootBucket()){
-            processChildren(key, bucketName);
             injectType(FileType.FOLDER);
             return;
         }
@@ -219,7 +225,7 @@ public class AwsS3FileObject extends AbstractFileObject<AwsS3FileSystem> {
         return s3Object;
     }
 
-    String getBucketName(FileName name){
+    String getBucketName(){
         String bucket = getName().getPath();
         if (bucket.indexOf(DELIMITER, 1) > 1) {
             // this file is a file, to get the bucket, remove the name from the path

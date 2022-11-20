@@ -31,7 +31,7 @@ public class AwsS3FileName extends AbstractFileName {
     private String bucketRelativePath;
 
     public AwsS3FileName(String scheme, String bucketId, String path, FileType type) {
-        super(scheme, path, type);
+        super("s3", path, type);
 
         this.bucketId = bucketId;
 
