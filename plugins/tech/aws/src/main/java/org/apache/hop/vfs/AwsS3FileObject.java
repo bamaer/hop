@@ -23,6 +23,7 @@ import org.apache.commons.vfs2.provider.AbstractFileName;
 import org.apache.commons.vfs2.provider.AbstractFileObject;
 import org.apache.hop.core.logging.LogChannel;
 import software.amazon.awssdk.core.ResponseInputStream;
+import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.Bucket;
 import software.amazon.awssdk.services.s3.model.GetBucketLocationRequest;
@@ -47,11 +48,13 @@ public class AwsS3FileObject extends AbstractFileObject<AwsS3FileSystem> {
 
     public static final String DELIMITER = "/";
     private AwsS3FileSystem fileSystem;
-    protected Map<String, String> s3ObjectMetadata;
+//    protected Map<String, String> s3ObjectMetadata;
     String bucketName, key;
     private Bucket bucket;
     private List<String> children = null;
     private S3Object s3Object;
+    private Region region;
+    private S3Client client;
 
 
     protected AwsS3FileObject(final AbstractFileName name, final AwsS3FileSystem fileSystem) {
@@ -59,6 +62,8 @@ public class AwsS3FileObject extends AbstractFileObject<AwsS3FileSystem> {
         this.fileSystem = fileSystem;
         bucketName = getBucketName();
         key = getBucketRelativeS3Path();
+        region = fileSystem.bucketRegionMap.get(bucketName);;
+        client = fileSystem.regionClientMap.get(region);
     }
 
     @Override
@@ -121,31 +126,47 @@ public class AwsS3FileObject extends AbstractFileObject<AwsS3FileSystem> {
 
     private void getObjectsFromNonRootFolder(String key, String bucketName, List<String> childrenList, String realKey){
         // Getting files/folders in a folder/bucket
-        String prefix = key.isEmpty() || key.endsWith(DELIMITER) ? key : key + DELIMITER;
 
-
-        S3Client s3Client;
-        GetBucketLocationRequest bucketLocationRequest = GetBucketLocationRequest.builder().bucket(bucketName).build();
-        GetBucketLocationResponse bucketLocationResponse =  fileSystem.getS3Client().getBucketLocation(bucketLocationRequest);
-        if(!StringUtils.isEmpty(bucketLocationResponse.locationConstraintAsString())){
-            s3Client = fileSystem.getS3Client(bucketLocationResponse.locationConstraintAsString());
-        }else{
-            s3Client = fileSystem.getS3Client();
-        }
-
-        ListObjectsRequest objectsRequest;
-        if(!prefix.isEmpty()){
-            objectsRequest = ListObjectsRequest.builder().bucket(bucketName).prefix(prefix).delimiter(DELIMITER).build();
-        }else{
-            objectsRequest = ListObjectsRequest.builder().bucket(bucketName).build();
-        }
-        ListObjectsResponse objectsResponse = s3Client.listObjects(objectsRequest);
-        List<S3Object> objectList = objectsResponse.contents();
-        for(S3Object object : objectList){
-            if(!objectsResponse.prefix().isEmpty()){
-                childrenList.add(objectsResponse.prefix() + DELIMITER + object.key());
+        // get the folders for this bucket
+        if(key.isEmpty()){
+            S3Client s3Client;
+            GetBucketLocationRequest bucketLocationRequest = GetBucketLocationRequest.builder().bucket(bucketName).build();
+            GetBucketLocationResponse bucketLocationResponse =  fileSystem.getS3Client().getBucketLocation(bucketLocationRequest);
+            Region region = Region.of(bucketLocationResponse.locationConstraintAsString());
+            fileSystem.bucketRegionMap.put(bucketName, region);
+            if(region != null){
+                s3Client = S3Client.builder().region(region).build();
+                fileSystem.regionClientMap.put(region, s3Client);
             }else{
-                childrenList.add(object.key());
+                s3Client = fileSystem.getS3Client();
+            }
+            ListObjectsRequest objectsRequest = ListObjectsRequest.builder().bucket(bucketName).build();
+            ListObjectsResponse objectsResponse = s3Client.listObjects(objectsRequest);
+            List<S3Object> objectList = objectsResponse.contents();
+
+            for(S3Object object : objectList){
+                if(object.key().endsWith("/")) {
+                    childrenList.add(object.key());
+                }
+            }
+        }else{
+            Region region = fileSystem.bucketRegionMap.get(bucketName);
+            S3Client client = fileSystem.regionClientMap.get(region);
+
+            if(key.endsWith(DELIMITER)){
+                ListObjectsRequest objectsRequest = ListObjectsRequest.builder().bucket(bucketName).prefix(key).build();
+                ListObjectsResponse objectsResponse = client.listObjects(objectsRequest);
+                List<S3Object> objectList = objectsResponse.contents();
+                for(S3Object object : objectList){
+                    if(!object.key().equals(key) && !(object.key()+DELIMITER).equals(key)){
+                        childrenList.add(object.key().replaceAll(objectsResponse.prefix(), ""));
+                    }
+                }
+            }else{
+                HeadObjectRequest objectRequest = HeadObjectRequest.builder().bucket(bucketName).key(key).build();
+                HeadObjectResponse objectResponse = client.headObject(objectRequest);
+                // safe to assume we can add this file?
+                childrenList.add(bucketName + DELIMITER + key);
             }
         }
     }
@@ -159,55 +180,42 @@ public class AwsS3FileObject extends AbstractFileObject<AwsS3FileSystem> {
 
         try{
             // is this an existing file?
-            HeadObjectRequest objectRequest =HeadObjectRequest.builder().bucket(bucketName).key(key).build();
-            s3ObjectMetadata = fileSystem.getS3Client().headObject(objectRequest).metadata();
-            injectType(getName().getType());
+            HeadObjectRequest objectRequest = HeadObjectRequest.builder().bucket(bucketName).key(key).build();
+            HeadObjectResponse objectResponse = client.headObject(objectRequest);
+            if(objectResponse.contentType().equals("application/x-directory")){
+                injectType(FileType.FOLDER);
+            }else{
+                injectType(FileType.FILE);
+            }
         }catch(S3Exception e){
-            // is this an existing folder?
+            // did AWS forget to pass the delimiter at the end of the key? Let's try again.
+            key = key + DELIMITER;
+            HeadObjectRequest objectRequest = HeadObjectRequest.builder().bucket(bucketName).key(key).build();
+            HeadObjectResponse objectResponse = client.headObject(objectRequest);
+            if(objectResponse.contentType().equals("application/x-directory")){
+                injectType(FileType.FOLDER);
+            }else{
+                injectType(FileType.FILE);
+            }
+
+/*
             String keyWidthDelimiter = key + DELIMITER;
             try {
-                HeadObjectRequest objectRequest =HeadObjectRequest.builder().bucket(bucketName).key(keyWidthDelimiter).build();
-                s3ObjectMetadata = fileSystem.getS3Client().headObject(objectRequest).metadata();
-                injectType(FileType.FOLDER);
-                this.key = keyWidthDelimiter;
-                try{
-                    objectRequest =HeadObjectRequest.builder().bucket(bucketName).key(keyWidthDelimiter).build();
-                    s3ObjectMetadata = fileSystem.getS3Client().headObject(objectRequest).metadata();
+                ListObjectsRequest listObjectRequest = ListObjectsRequest.builder().bucket(bucketName).prefix(keyWidthDelimiter).build();
+                ListObjectsResponse objectsResponse = client.listObjects(listObjectRequest);
+                if(!StringUtils.isEmpty(objectsResponse.prefix())){
                     injectType(FileType.FOLDER);
                     this.key = keyWidthDelimiter;
-                }catch(S3Exception e2){
-                    System.out.println("key " + key + " in bucket " + bucketName + " doesn't exist.");
                 }
-            }catch(S3Exception e3){
-                System.out.println("key " + key + " in bucket " + bucketName + " doesn't exist.");
+                // check objectResponse prefix to see if we're dealing with a folder?
+            }catch(S3Exception e2) {
+                System.out.println("key " + key + " is not a folder");
             }
-        }
-
-
-
-        if(bucketName.length() > 0){
-            if(this.bucket == null){
-                bucket = getBucket();
-            }
-            // we're in a bucket's root
-            if(!StringUtils.isEmpty(bucketName) && StringUtils.isEmpty(key)){
-                injectType(FileType.FOLDER);
-            }
-            // we have a file object, now check if it is a folder.
-            if(!StringUtils.isEmpty(key)){
-                if(key.endsWith(DELIMITER)){
-                    injectType(FileType.FOLDER);
-                }else{
-                    HeadObjectRequest objectRequest =HeadObjectRequest.builder().bucket(bucketName).key(key).build();
-                    s3ObjectMetadata = fileSystem.getS3Client().headObject(objectRequest).metadata();
-                }
-            }
-        }else{
-            bucketName = DELIMITER;
-            injectType(FileType.FOLDER);
+*/
         }
     }
 
+/*
     private S3Object getS3Object(String key, String bucketName){
         if(s3Object != null && s3Object.size() > 0){
             LogChannel.GENERAL.logDebug("Returning existing object {0} ", getQualifiedName());
@@ -224,6 +232,7 @@ public class AwsS3FileObject extends AbstractFileObject<AwsS3FileSystem> {
         }
         return s3Object;
     }
+*/
 
     String getBucketName(){
         String bucket = getName().getPath();
@@ -248,6 +257,7 @@ public class AwsS3FileObject extends AbstractFileObject<AwsS3FileSystem> {
         }
     }
 
+/*
     private Bucket getBucket(){
         List<Bucket> bucketList = fileSystem.getS3Client().listBuckets().buckets();
         for(Bucket bucket : bucketList){
@@ -257,6 +267,7 @@ public class AwsS3FileObject extends AbstractFileObject<AwsS3FileSystem> {
         }
         return null;
     }
+*/
 
     protected String getQualifiedName() {
         return getQualifiedName(this);
@@ -273,12 +284,22 @@ public class AwsS3FileObject extends AbstractFileObject<AwsS3FileSystem> {
     @Override
     public long doGetLastModifiedTime() {
         Long lastModified = 0L;
-        if(key.isEmpty()){
+        if(key.isEmpty() && !key.endsWith(DELIMITER)){
             return lastModified;
         }else{
-            HeadObjectRequest headObjectRequest = HeadObjectRequest.builder().bucket(bucketName).key(key).build();
-            HeadObjectResponse objectResponse = fileSystem.getS3Client().headObject(headObjectRequest);
-            lastModified = objectResponse.lastModified().toEpochMilli();
+            try {
+                if (key.endsWith(DELIMITER)){
+                    key = key.replaceAll(DELIMITER, "");
+                }
+                HeadObjectRequest headObjectRequest = HeadObjectRequest.builder().bucket(bucketName).key(key).build();
+                HeadObjectResponse objectResponse = client.headObject(headObjectRequest);
+                lastModified = objectResponse.lastModified().toEpochMilli();
+            }catch(S3Exception e){
+                if(e.statusCode() == 301){
+                    // folder
+                    return lastModified;
+                }
+            }
         }
         return lastModified;
     }
@@ -286,12 +307,18 @@ public class AwsS3FileObject extends AbstractFileObject<AwsS3FileSystem> {
     @Override
     protected long doGetContentSize() throws Exception {
         Long contentSize = 0L;
-        if(key.isEmpty()){
+        if(key.isEmpty() && !key.endsWith(DELIMITER)){
             return contentSize;
         }else{
-            HeadObjectRequest headObjectRequest = HeadObjectRequest.builder().bucket(bucketName).key(key).build();
-            HeadObjectResponse objectResponse = fileSystem.getS3Client().headObject(headObjectRequest);
-            contentSize=  objectResponse.contentLength();
+            try{
+                HeadObjectRequest headObjectRequest = HeadObjectRequest.builder().bucket(bucketName).key(key).build();
+                HeadObjectResponse objectResponse = fileSystem.getS3Client().headObject(headObjectRequest);
+                contentSize=  objectResponse.contentLength();
+            }catch(S3Exception e){
+                if(e.statusCode() == 301){
+                    return contentSize;
+                }
+            }
         }
         return contentSize;
     }
