@@ -37,6 +37,7 @@ public class AwsS3FileProvider extends AbstractOriginatingFileProvider {
             Set.of(
                     Capability.CREATE,
                     Capability.DELETE,
+                    Capability.RENAME,
                     Capability.GET_TYPE,
                     Capability.GET_LAST_MODIFIED,
                     Capability.SET_LAST_MODIFIED_FILE,
@@ -44,7 +45,8 @@ public class AwsS3FileProvider extends AbstractOriginatingFileProvider {
                     Capability.LIST_CHILDREN,
                     Capability.READ_CONTENT,
                     Capability.URI,
-                    Capability.WRITE_CONTENT);
+                    Capability.WRITE_CONTENT
+                    );
 
     public AwsS3FileProvider() {
         super();
