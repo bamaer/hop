@@ -26,6 +26,7 @@ import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.Bucket;
+import software.amazon.awssdk.services.s3.model.CommonPrefix;
 import software.amazon.awssdk.services.s3.model.GetBucketLocationRequest;
 import software.amazon.awssdk.services.s3.model.GetBucketLocationResponse;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
@@ -34,7 +35,7 @@ import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
 import software.amazon.awssdk.services.s3.model.ListBucketsResponse;
 import software.amazon.awssdk.services.s3.model.ListObjectsRequest;
 import software.amazon.awssdk.services.s3.model.ListObjectsResponse;
-import software.amazon.awssdk.services.s3.model.S3Exception;
+import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import software.amazon.awssdk.services.s3.model.S3Object;
 import software.amazon.awssdk.utils.StringUtils;
 
@@ -88,88 +89,112 @@ public class AwsS3FileObject extends AbstractFileObject<AwsS3FileSystem> {
     protected String[] doListChildren() throws Exception {
 
         List<String> childrenList = new ArrayList<>();
-        if(getType() == FileType.FOLDER || isRootBucket()){
-//            childrenList = processChildren(key, bucketName);
-            String realKey = key;
-            if(!realKey.endsWith(DELIMITER)){
-                realKey += DELIMITER;
-            }
 
-            if("".equals(key) && "".equals(bucketName)){
-                // getting buckets in root folder
-                ListBucketsResponse listBucketsResponse = fileSystem.getS3Client().listBuckets();
-                List<Bucket> bucketList = listBucketsResponse.buckets();
-                for(Bucket bucket : bucketList){
-                    childrenList.add(bucket.name() + DELIMITER);
-                }
-            }else{
-                getObjectsFromNonRootFolder(key, bucketName, childrenList, realKey);
+        if(StringUtils.isEmpty(key) && StringUtils.isEmpty(bucketName)) {
+            ListBucketsResponse listBucketsResponse = client.listBuckets();
+            List<Bucket> bucketList = listBucketsResponse.buckets();
+            for (Bucket bucket : bucketList) {
+                childrenList.add(bucket.name());
             }
+        }else{
+            getObjectsFromNonRootFolder(bucketName, key, childrenList);
         }
+
         String[] childrenArr = new String[childrenList.size()];
 
         return childrenList.toArray(childrenArr);
 
     }
 
-    private void getObjectsFromNonRootFolder(String key, String bucketName, List<String> childrenList, String realKey){
+    private void getObjectsFromNonRootFolder(String bucketName, String key, List<String> childrenList) {
 
-        // get the folders for this bucket
-        if(key.isEmpty()){
+        client = getClient(bucketName);
 
-            client = getClient(bucketName);
-            ListObjectsResponse objectsResponse = getListObjectsResponse(client, bucketName);
-            List<S3Object> objectList = objectsResponse.contents();
-
-            for(S3Object object : objectList){
-                if(object.key().endsWith(DELIMITER)) {
-                    childrenList.add(object.key());
-                }
-            }
-        }else{
-            if(key.endsWith(DELIMITER)){
-                ListObjectsResponse objectsResponse = getListObjectsResponseWithPrefix(client, bucketName, key);
-                List<S3Object> objectList = objectsResponse.contents();
-                for(S3Object object : objectList){
-                    if(!object.key().equals(key) && !(object.key()+DELIMITER).equals(key)){
-                        childrenList.add(object.key().replaceAll(objectsResponse.prefix(), ""));
+        // we didn't receive a key.
+        // check if we have any folders (prefixes) that need to be processed.
+        // after the prefixes/folders, add all files in this (root) folder to the list.
+        if(StringUtils.isEmpty(key)){
+            // even though "/" is the default delimiter, it needs to be explicitly added to this ListObjectsRequest
+            ListObjectsRequest listObjectsRequest = ListObjectsRequest.builder().bucket(bucketName).delimiter(DELIMITER).build();
+            ListObjectsResponse listObjectsResponse = client.listObjects(listObjectsRequest);
+            if(!StringUtils.isEmpty(listObjectsResponse.prefix()) || listObjectsResponse.commonPrefixes().size() > 0){
+                if(StringUtils.isEmpty(listObjectsResponse.prefix())){
+                    ListObjectsRequest prefixListRequest = ListObjectsRequest.builder().bucket(bucketName).prefix(listObjectsRequest.prefix()).build();
+                    ListObjectsResponse prefixResponse = client.listObjects(prefixListRequest);
+                    System.out.println("bucket " + bucketName + " contains folder " + prefixResponse.prefix());
+                    if(!StringUtils.isEmpty(prefixResponse.prefix())){
+                        childrenList.add(prefixResponse.prefix());
                     }
                 }
-            }else{
-                // safe to assume we can add this file if we can get a headObjectResponse
-                getHeadObjectResponse(client, bucketName, key);
-                childrenList.add(bucketName + DELIMITER + key);
+                if(listObjectsResponse.commonPrefixes().size() > 0){
+                    for(CommonPrefix prefix : listObjectsResponse.commonPrefixes()){
+                        System.out.println("bucket " + bucketName + " contains common prefix " + prefix.prefix());
+                        if(!StringUtils.isEmpty(prefix.prefix())){
+                            childrenList.add(prefix.prefix());
+                        }
+                    }
+                }
+            }
+            List<S3Object> objectList = listObjectsResponse.contents();
+            for(S3Object object : objectList){
+                childrenList.add(object.key());
+            }
+        // keys ending in the delimiter "?" are easy, just add their children to the list.
+        // TODO: run prefix check here as well?
+        }else if(key.endsWith(DELIMITER)){
+            ListObjectsResponse objectsResponse = getListObjectsResponseWithPrefix(client, bucketName, key);
+            List<S3Object> objectList = objectsResponse.contents();
+            for(S3Object object : objectList){
+                if(!object.key().equals(key) && !(object.key()+DELIMITER).equals(key)){
+                    childrenList.add(object.key().replaceAll(objectsResponse.prefix(), ""));
+                }
+            }
+        // we have a key that could be either a file or a folder, let's find out.
+        }else {
+            try{
+                // is it a folder? check if we can find a list of objects with the current key + DELIMITER
+                ListObjectsRequest listObjectsRequest = ListObjectsRequest.builder().bucket(bucketName).prefix(key + DELIMITER).delimiter(DELIMITER).build();
+                ListObjectsResponse listObjectsResponse = client.listObjects(listObjectsRequest);
+                List<S3Object> objectList = listObjectsResponse.contents();
+
+                // check if we have any subfolders to process and add them to the list.
+                for(CommonPrefix prefix : listObjectsResponse.commonPrefixes()){
+                    childrenList.add(prefix.prefix().replaceAll(key + DELIMITER, ""));
+                }
+                // now add the files we found at this level
+                for(S3Object object : objectList){
+                    if(!object.key().replaceAll(DELIMITER, "").equals(key)){
+                        childrenList.add(object.key().replaceAll(key + DELIMITER, ""));
+                    }
+                }
+            }catch(NoSuchKeyException e){
+                HeadObjectRequest headObjectRequest = HeadObjectRequest.builder().bucket(bucketName).key(bucketName).build();
+                HeadObjectResponse headObjectResponse = client.headObject(headObjectRequest);
             }
         }
     }
 
     @Override
     protected void doAttach() throws Exception {
-        if(isRootBucket() || key.endsWith(DELIMITER)){
+
+        if(StringUtils.isEmpty(bucketName) || StringUtils.isEmpty(key)){
             injectType(FileType.FOLDER);
-            return;
-        }
-
-        try{
-            client = getClient(bucketName);
-
-            // is this an existing file?
-            HeadObjectResponse objectResponse = getHeadObjectResponse(client, bucketName, key);
-            if(objectResponse.contentType().equals("application/x-directory")){
+        }else{
+            // keys ending with delimiters are folders
+            if(key.endsWith(DELIMITER)){
                 injectType(FileType.FOLDER);
             }else{
-                injectType(FileType.FILE);
-            }
-        }catch(S3Exception e){
-            // did we lose the trailing delimiter at the end of the key? Let's try again.
-            key = key + DELIMITER;
+                // if the key doesn't end with the delimiter, we need to check
+                ListObjectsRequest listObjectsRequest = ListObjectsRequest.builder().bucket(bucketName).prefix(key).build();
+                ListObjectsResponse listObjectsResponse = client.listObjects(listObjectsRequest);
 
-            HeadObjectRequest headObjectRequest = HeadObjectRequest.builder().bucket(bucketName).key(key).build();
-            HeadObjectResponse objectResponse = client.headObject(headObjectRequest);
-            if(objectResponse.contentType().equals("application/x-directory")) {
-                injectType(FileType.FOLDER);
-            }else{
-                injectType(FileType.FILE);
+                try{
+                    HeadObjectRequest headObjectRequest = HeadObjectRequest.builder().bucket(bucketName).key(key).build();
+                    HeadObjectResponse headObjectResponse = client.headObject(headObjectRequest);
+                    injectType(FileType.FILE);
+                }catch(NoSuchKeyException e){
+                    injectType(FileType.FOLDER);
+                }
             }
         }
     }
@@ -213,12 +238,27 @@ public class AwsS3FileObject extends AbstractFileObject<AwsS3FileSystem> {
     @Override
     public long doGetLastModifiedTime() {
         Long lastModified = 0L;
-        return getHeadObjectResponse(client, bucketName, key).lastModified().toEpochMilli();
+        if(!StringUtils.isEmpty(key)){
+            try{
+                lastModified = getHeadObjectResponse(client, bucketName, key).lastModified().toEpochMilli();
+            }catch(Exception e){
+                e.printStackTrace();
+            }
+        }
+        return lastModified;
     }
 
     @Override
     protected long doGetContentSize() throws Exception {
-        return getHeadObjectResponse(client, bucketName, key).contentLength();
+        Long contentLength = 0L;
+        if(!key.isEmpty()){
+            try{
+                contentLength = getHeadObjectResponse(client, bucketName, key).contentLength();
+            }catch(Exception e){
+                e.printStackTrace();
+            }
+        }
+        return contentLength;
     }
 
     private HeadObjectResponse getHeadObjectResponse(S3Client client, String bucket, String key){
@@ -239,9 +279,10 @@ public class AwsS3FileObject extends AbstractFileObject<AwsS3FileSystem> {
     private S3Client getClient(String bucket){
         GetBucketLocationRequest bucketLocationRequest = GetBucketLocationRequest.builder().bucket(bucket).build();
         GetBucketLocationResponse bucketLocationResponse =  fileSystem.getS3Client().getBucketLocation(bucketLocationRequest);
-        Region region = Region.of(bucketLocationResponse.locationConstraintAsString());
-        if(region != null){
-            client = S3Client.builder().region(region).build();
+
+        if(!StringUtils.isEmpty(bucketLocationResponse.locationConstraintAsString())){
+            Region region = Region.of(bucketLocationResponse.locationConstraintAsString());
+            client = fileSystem.getS3Client(region);
         }else{
             client = fileSystem.getS3Client();
         }

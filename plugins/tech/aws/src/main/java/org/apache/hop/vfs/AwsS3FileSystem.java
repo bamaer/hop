@@ -18,8 +18,6 @@
 
 package org.apache.hop.vfs;
 
-//import org.apache.commons.collections4.MultiValuedMap;
-//import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
 import org.apache.commons.vfs2.Capability;
 import org.apache.commons.vfs2.FileName;
 import org.apache.commons.vfs2.FileObject;
@@ -28,16 +26,15 @@ import org.apache.commons.vfs2.provider.AbstractFileName;
 import org.apache.commons.vfs2.provider.AbstractFileSystem;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.utils.StringUtils;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
 
 public class AwsS3FileSystem extends AbstractFileSystem {
 
     private S3Client s3Client;
-//    public Map<Region, S3Client> regionClientMap = new HashMap<>();
-//    public Map<String, Region> bucketRegionMap = new HashMap<>();
 
     protected AwsS3FileSystem(FileName rootName, FileObject parentLayer, FileSystemOptions fileSystemOptions) {
         super(rootName, parentLayer, fileSystemOptions);
@@ -54,12 +51,36 @@ public class AwsS3FileSystem extends AbstractFileSystem {
     }
 
     public S3Client getS3Client(){
-        s3Client = S3Client.builder().build();
+        URI endPointUri = getEndPointUri();
+
+        if(endPointUri != null){
+            s3Client = S3Client.builder().forcePathStyle(true).endpointOverride(endPointUri).build();
+        }else{
+            s3Client = S3Client.builder().forcePathStyle(true).build();
+        }
         return s3Client;
     }
 
-    public S3Client getS3Client(String regionName){
-        s3Client = S3Client.builder().region(Region.of(regionName)).build();
+    public S3Client getS3Client(Region region){
+        URI endPointUri = getEndPointUri();
+        if(endPointUri != null){
+            s3Client = S3Client.builder().forcePathStyle(true).region(region).endpointOverride(endPointUri).build();
+        }else{
+            s3Client = S3Client.builder().forcePathStyle(true).region(region).build();
+        }
         return s3Client;
+    }
+
+    private URI getEndPointUri(){
+        String endpointUrl = System.getenv("AWS_ENDPOINT_URL");
+        if(!StringUtils.isEmpty(endpointUrl)){
+            try{
+                URI endPointUri = new URI(endpointUrl);
+                return endPointUri;
+            }catch(URISyntaxException e){
+                e.printStackTrace();
+            }
+        }
+        return null;
     }
 }
