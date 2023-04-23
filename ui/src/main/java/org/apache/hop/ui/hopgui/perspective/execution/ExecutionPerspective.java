@@ -75,6 +75,8 @@ import org.eclipse.swt.layout.FormData;
 import org.eclipse.swt.layout.FormLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
+import org.eclipse.swt.widgets.Event;
+import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.ToolBar;
 import org.eclipse.swt.widgets.ToolItem;
@@ -127,6 +129,8 @@ public class ExecutionPerspective implements IHopPerspective, TabClosable {
   private List<IExecutionViewer> viewers = new ArrayList<>();
 
   private Map<String, ExecutionInfoLocation> locationMap;
+
+  private TreeItem dummyItem;
 
   public ExecutionPerspective() {
     instance = this;
@@ -529,52 +533,49 @@ public class ExecutionPerspective implements IHopPerspective, TabClosable {
           // Keep the location around to close at the next refresh.
           //
           locationMap.put(location.getName(), location);
+          List<String> ids = location.getExecutionInfoLocation().getExecutionIds(false, 100);
 
           TreeItem locationItem = new TreeItem(tree, SWT.NONE);
           locationItem.setText(0, Const.NVL(location.getName(), ""));
           locationItem.setImage(GuiResource.getInstance().getImageLocation());
-          TreeMemory.getInstance().storeExpanded(EXECUTION_PERSPECTIVE_TREE, locationItem, true);
+          TreeMemory.getInstance().storeExpanded(EXECUTION_PERSPECTIVE_TREE, locationItem, false);
           locationItem.setData(location);
-
-          try {
-
-            // Get the data in the location
-            //
-            List<String> ids = iLocation.getExecutionIds(false, 100);
-
-            // Display the executions
-            //
-            for (String id : ids) {
-              try {
-                Execution execution = iLocation.getExecution(id);
-                if (execution != null) {
-                  TreeItem executionItem = new TreeItem(locationItem, SWT.NONE);
-                  switch (execution.getExecutionType()) {
-                    case Pipeline:
-                      decoratePipelineTreeItem(executionItem, execution);
-                      break;
-                    case Workflow:
-                      decorateWorkflowTreeItem(executionItem, execution);
-                      break;
+          dummyItem = new TreeItem(locationItem, SWT.NONE);
+          tree.addListener(SWT.Expand, new Listener(){
+            public void handleEvent(final Event event){
+              final TreeItem thisLocationItem = (TreeItem)event.item;
+              thisLocationItem.removeAll();
+              ExecutionInfoLocation location = locationMap.get(thisLocationItem.getText());
+              try{
+                List<String> ids = location.getExecutionInfoLocation().getExecutionIds(false, 100);
+                for(String id : ids){
+                  try{
+                    Execution execution = location.getExecutionInfoLocation().getExecution(id);
+                    if (execution != null) {
+                      TreeItem executionItem = new TreeItem(thisLocationItem, SWT.NONE);
+                      switch (execution.getExecutionType()) {
+                        case Pipeline:
+                          decoratePipelineTreeItem(executionItem, execution);
+                          break;
+                        case Workflow:
+                          decorateWorkflowTreeItem(executionItem, execution);
+                          break;
+                      }
+                    }
+                  }catch(Exception e){
+                    TreeItem errorItem = new TreeItem(locationItem, SWT.NONE);
+                    errorItem.setText("Error reading " + id + " (double click for details)");
+                    errorItem.setForeground(GuiResource.getInstance().getColorRed());
+                    errorItem.setData("error", e);
+                    errorItem.setImage(GuiResource.getInstance().getImageError());
                   }
                 }
-              } catch (Exception e) {
-                TreeItem errorItem = new TreeItem(locationItem, SWT.NONE);
-                errorItem.setText("Error reading " + id + " (double click for details)");
-                errorItem.setForeground(GuiResource.getInstance().getColorRed());
-                errorItem.setData("error", e);
-                errorItem.setImage(GuiResource.getInstance().getImageError());
+              }catch(Exception e) {
+                e.printStackTrace();
               }
             }
-          } catch (Exception e) {
-            // Error contacting location
-            //
-            TreeItem errorItem = new TreeItem(locationItem, SWT.NONE);
-            errorItem.setText("Not reachable (double click for details)");
-            errorItem.setForeground(GuiResource.getInstance().getColorRed());
-            errorItem.setData("error", e);
-            errorItem.setImage(GuiResource.getInstance().getImageError());
-          }
+          });
+
         } catch (Exception e) {
           // We couldn't initialize a location
           //
