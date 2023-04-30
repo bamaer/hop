@@ -54,7 +54,12 @@
                 <include>org.apache.atlas:atlas-client-common:jar</include>
                 <include>org.apache.atlas:atlas-common:jar</include>
                 <include>org.apache.atlas:atlas-client-v2:jar</include>
+                <include>org.apache.atlas:atlas-intg:jar</include>
                 <include>org.glassfish.jersey.core:jersey-client:jar</include>
+                <include>com.sun.jersey:jersey-client:jar</include>
+                <include>com.sun.jersey:jersey-bundle:jar</include>
+                <include>com.sun.jersey.contribs:jersey-multipart:jar</include>
+                <include>org.apache.hadoop:hadoop-auth:jar</include>
             </includes>
         </dependencySet>
     </dependencySets>

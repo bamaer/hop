@@ -1,7 +1,6 @@
-package org.apache.hop.atlas;
+package org.apache.hop.atlas.execution;
 
 import org.apache.atlas.AtlasClientV2;
-import org.apache.atlas.AtlasException;
 import org.apache.atlas.AtlasServiceException;
 import org.apache.atlas.model.SearchFilter;
 import org.apache.atlas.model.typedef.AtlasTypesDef;
