@@ -1,10 +1,10 @@
-package org.apache.hop.execution.atlas;
+package org.apache.hop.atlas;
 
-//import org.apache.atlas.AtlasClientV2;
-//import org.apache.atlas.AtlasException;
-//import org.apache.atlas.AtlasServiceException;
-//import org.apache.atlas.model.SearchFilter;
-//import org.apache.atlas.model.typedef.AtlasTypesDef;
+import org.apache.atlas.AtlasClientV2;
+import org.apache.atlas.AtlasException;
+import org.apache.atlas.AtlasServiceException;
+import org.apache.atlas.model.SearchFilter;
+import org.apache.atlas.model.typedef.AtlasTypesDef;
 import org.apache.hop.core.exception.HopException;
 import org.apache.hop.core.gui.plugin.GuiPlugin;
 import org.apache.hop.core.variables.IVariables;
@@ -18,15 +18,15 @@ import org.apache.hop.execution.plugin.ExecutionInfoLocationPlugin;
 import org.apache.hop.metadata.api.HopMetadataProperty;
 import org.apache.hop.metadata.api.IHopMetadataProvider;
 
-//import com.sun.jersey.core.util.MultivaluedMapImpl;
-import javax.ws.rs.core.MultivaluedMap;
+import com.sun.jersey.core.util.MultivaluedMapImpl;
 
+import javax.ws.rs.core.MultivaluedMap;
 import java.util.List;
 
 @GuiPlugin(description="Apache Atlas Execution Information GUI Elements")
 @ExecutionInfoLocationPlugin(
-        id="apache-atlas-exec-info",
-        name="Apache Atlas Execution Information",
+        id="apache-atlas-location",
+        name="Apache Atlas location",
         description="Logs metadata and execution information to Apache Atlas"
 )
 public class ApacheAtlasExecutionInfoLocation implements IExecutionInfoLocation {
@@ -36,7 +36,7 @@ public class ApacheAtlasExecutionInfoLocation implements IExecutionInfoLocation 
 
     private IVariables variables;
     private IHopMetadataProvider metadataProvider;
-//    private AtlasClientV2 atlasClient;
+    private AtlasClientV2 atlasClient;
 
     private static final String PIPELINE_TYPE = "hop_pipeline";
     private static final String TRANSFORM_TYPE = "hop_tansform";
@@ -88,13 +88,13 @@ public class ApacheAtlasExecutionInfoLocation implements IExecutionInfoLocation 
         // Initialize Apache Atlas client
         String[] baseUrl = {"http://0.0.0.0:21000"};
         String[] basicAuthUsernamePassword = {"admin", "admin"};
-//        atlasClient = new AtlasClientV2(baseUrl, basicAuthUsernamePassword);
+        atlasClient = new AtlasClientV2(baseUrl, basicAuthUsernamePassword);
 
-//        try{
-//            verifyTypes();
-//        }catch(AtlasServiceException e){
-//            e.printStackTrace();
-//        }
+        try{
+            verifyTypes();
+        }catch(AtlasServiceException e){
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -172,7 +172,6 @@ public class ApacheAtlasExecutionInfoLocation implements IExecutionInfoLocation 
         return null;
     }
 
-/*
     private void verifyTypes() throws AtlasServiceException {
         MultivaluedMap<String, String> searchParams = new MultivaluedMapImpl();
 
@@ -184,5 +183,4 @@ public class ApacheAtlasExecutionInfoLocation implements IExecutionInfoLocation 
             }
         }
     }
-*/
 }

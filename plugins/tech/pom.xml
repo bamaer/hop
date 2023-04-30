@@ -50,6 +50,7 @@
                 </property>
             </activation>
             <modules>
+                <module>atlas</module>
                 <module>aws</module>
                 <module>azure</module>
                 <module>avro</module>
