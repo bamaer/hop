@@ -8,6 +8,7 @@ import org.apache.hop.ui.core.dialog.ErrorDialog;
 import org.apache.hop.ui.core.dialog.MessageBox;
 import org.apache.hop.ui.core.metadata.MetadataEditor;
 import org.apache.hop.ui.core.metadata.MetadataManager;
+import org.apache.hop.ui.core.widget.CheckBoxVar;
 import org.apache.hop.ui.core.widget.PasswordTextVar;
 import org.apache.hop.ui.core.widget.TextVar;
 import org.apache.hop.ui.hopgui.HopGui;
@@ -24,7 +25,8 @@ import org.eclipse.swt.widgets.Text;
 public class AtlasConnectionEditor extends MetadataEditor<AtlasConnection> {
 
     private Text wName;
-    private TextVar wProtocol, wHostname, wPort, wUsername, wPassword;
+    private TextVar wHostname, wPort, wUsername, wPassword;
+    private CheckBoxVar wProtocol;
 
     private static final Class<?> PKG = AtlasConnectionEditor.class; // for Translator2
     public AtlasConnectionEditor(HopGui hopGui, MetadataManager<AtlasConnection> manager, AtlasConnection metadata) {
@@ -66,7 +68,7 @@ public class AtlasConnectionEditor extends MetadataEditor<AtlasConnection> {
         fdlProtocol.left = new FormAttachment(0, 0);
         fdlProtocol.right = new FormAttachment(middle, -margin);
         wlProtocol.setLayoutData(fdlProtocol);
-        wProtocol = new TextVar(variables, composite, SWT.SINGLE | SWT.LEFT | SWT.BORDER);
+        wProtocol = new CheckBoxVar(variables, composite, SWT.CHECK);
         wProtocol.setToolTipText(BaseMessages.getString(PKG, "AtlasConnectionEditor.Protocol.Tooltip"));
         PropsUi.setLook(wProtocol);
         FormData fdProtocol = new FormData();
@@ -168,7 +170,9 @@ public class AtlasConnectionEditor extends MetadataEditor<AtlasConnection> {
     @Override
     public void setWidgetsContent() {
         wName.setText(Const.NVL(metadata.getName(), ""));
-        wProtocol.setText(Const.NVL(metadata.getProtocol(), ""));
+        if(metadata.getProtocol().equals("https")){
+            wProtocol.setSelection(true);
+        }
         wHostname.setText(Const.NVL(metadata.getHostname(), ""));
         wPort.setText(Const.NVL(metadata.getPort(), ""));
         wUsername.setText(Const.NVL(metadata.getUsername(), ""));
@@ -178,7 +182,11 @@ public class AtlasConnectionEditor extends MetadataEditor<AtlasConnection> {
     @Override
     public void getWidgetsContent(AtlasConnection atlasConnection) {
         atlasConnection.setName(wName.getText());
-        atlasConnection.setProtocol(wProtocol.getText());
+        if(wProtocol.getSelection()){
+            atlasConnection.setProtocol("https");
+        }else{
+            atlasConnection.setProtocol("http");
+        }
         atlasConnection.setHostname(wHostname.getText());
         atlasConnection.setPort(wPort.getText());
         atlasConnection.setUsername(wUsername.getText());

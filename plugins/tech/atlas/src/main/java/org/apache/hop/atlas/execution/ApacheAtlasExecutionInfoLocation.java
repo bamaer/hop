@@ -4,6 +4,7 @@ import org.apache.atlas.AtlasClientV2;
 import org.apache.atlas.AtlasServiceException;
 import org.apache.atlas.model.SearchFilter;
 import org.apache.atlas.model.typedef.AtlasTypesDef;
+import org.apache.hop.atlas.shared.AtlasConnection;
 import org.apache.hop.core.exception.HopException;
 import org.apache.hop.core.gui.plugin.GuiPlugin;
 import org.apache.hop.core.variables.IVariables;
@@ -32,6 +33,7 @@ public class ApacheAtlasExecutionInfoLocation implements IExecutionInfoLocation 
 
     @HopMetadataProperty protected String pluginId;
     @HopMetadataProperty protected String pluginName;
+    @HopMetadataProperty protected String connectionName;
 
     private IVariables variables;
     private IHopMetadataProvider metadataProvider;
@@ -45,6 +47,7 @@ public class ApacheAtlasExecutionInfoLocation implements IExecutionInfoLocation 
     private static final String[] TYPES = {PIPELINE_TYPE, TRANSFORM_TYPE, PIPELINE_TRANSFORM_TYPE, PIPELINE_HOP_TYPE};
 
     public ApacheAtlasExecutionInfoLocation(){
+        this.connectionName = "atlas";
         this.pluginId = "apache-atlas-execinfo";
         this.pluginName = "Apache Atlas Execution Information";
     }
@@ -52,6 +55,7 @@ public class ApacheAtlasExecutionInfoLocation implements IExecutionInfoLocation 
     public ApacheAtlasExecutionInfoLocation(ApacheAtlasExecutionInfoLocation location){
         this.pluginId = location.pluginId;
         this.pluginName = location.pluginName;
+        this.connectionName = location.connectionName;
     }
 
     @Override
@@ -85,14 +89,22 @@ public class ApacheAtlasExecutionInfoLocation implements IExecutionInfoLocation 
         this.metadataProvider = metadataProvider;
 
         // Initialize Apache Atlas client
-        String[] baseUrl = {"http://0.0.0.0:21000"};
-        String[] basicAuthUsernamePassword = {"admin", "admin"};
-        atlasClient = new AtlasClientV2(baseUrl, basicAuthUsernamePassword);
-
+        try {
+            AtlasConnection connection =
+                    metadataProvider
+                            .getSerializer(AtlasConnection.class)
+                            .load(variables.resolve(connectionName));
+            AtlasClientV2 atlasClient = connection.getClient();
+            if (atlasClient == null) {
+                throw new HopException("Unable to find Apache Atlas connection " + connectionName);
+            }
+        }catch (Exception e){
+            throw new HopException("Error initializing Apache Atlas execution information: " + e.getMessage(), e);
+        }
         try{
             verifyTypes();
         }catch(AtlasServiceException e){
-            e.printStackTrace();
+            throw new HopException("Error verifying Apache Hop types in Apache Atlas: " + e.getMessage(), e);
         }
     }
 
@@ -181,5 +193,13 @@ public class ApacheAtlasExecutionInfoLocation implements IExecutionInfoLocation 
                 System.out.println("Need to register type " + typeName);
             }
         }
+    }
+
+    public String getConnectionName() {
+        return connectionName;
+    }
+
+    public void setConnectionName(String connectionName) {
+        this.connectionName = connectionName;
     }
 }

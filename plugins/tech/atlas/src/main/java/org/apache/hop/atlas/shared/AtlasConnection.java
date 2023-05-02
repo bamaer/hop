@@ -1,7 +1,16 @@
 package org.apache.hop.atlas.shared;
 
+import org.apache.atlas.ApplicationProperties;
 import org.apache.atlas.AtlasClientV2;
-import org.apache.atlas.model.SearchFilter;
+import org.apache.atlas.AtlasException;
+import org.apache.commons.compress.compressors.lz77support.Parameters;
+import org.apache.commons.configuration.Configuration;
+import org.apache.commons.configuration.PropertiesConfiguration;
+import org.apache.commons.configuration2.builder.BasicBuilderParameters;
+import org.apache.commons.configuration2.builder.BasicConfigurationBuilder;
+import org.apache.commons.configuration2.builder.DefaultParametersHandler;
+import org.apache.commons.configuration2.builder.fluent.Configurations;
+import org.apache.commons.configuration2.convert.DefaultListDelimiterHandler;
 import org.apache.hop.core.exception.HopException;
 import org.apache.hop.core.variables.IVariables;
 import org.apache.hop.metadata.api.HopMetadata;
@@ -24,8 +33,10 @@ public class AtlasConnection extends HopMetadataBase implements IHopMetadata {
     @HopMetadataProperty private String username;
     @HopMetadataProperty(password = true) private String password;
 
+    private Configuration config;
 
     public AtlasConnection(){
+        protocol = "http";
         hostname = "localhost";
         port = "21000";
         username = "admin";
@@ -90,13 +101,27 @@ public class AtlasConnection extends HopMetadataBase implements IHopMetadata {
         this.port = port;
     }
 
+    public AtlasClientV2 getClient() throws HopException, AtlasException {
+        String[] urls = { protocol + "://" + hostname + ":" + port };
+        String[] userPass = {username, password};
+        System.setProperty("atlas.rest.address", urls[0]);
+//        config = ApplicationProperties.get();
+        config.setProperty("atlas.rest.address", urls[0]);
+//        Configurations configs = new Configurations();
+
+
+//        Configuration config = ApplicationProperties.get();
+//        config.setProperty("atlas.rest.address", urls[0]);
+        AtlasClientV2 atlasClient = new AtlasClientV2(urls, userPass);
+        return atlasClient;
+    }
     public void test(IVariables variables) throws HopException{
         try{
             String[] url = {protocol + "://" + hostname + ":" + port};
             String[] usernamePassword = {username, password};
+            config = ApplicationProperties.get();
+            config.setProperty("atlas.rest.address", url);
             AtlasClientV2 atlasClient = new AtlasClientV2(url, usernamePassword);
-//            SearchFilter searchFilter = new SearchFilter();
-//            atlasClient.getAllTypeDefs(searchFilter);
         }catch(Exception e){
             throw new HopException("Unable to connect to Apache Atlas: " + e.getMessage(), e);
         }
