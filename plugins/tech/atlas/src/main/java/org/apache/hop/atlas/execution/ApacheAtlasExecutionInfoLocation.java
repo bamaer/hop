@@ -196,6 +196,39 @@ public class ApacheAtlasExecutionInfoLocation implements IExecutionInfoLocation 
         return null;
     }
 
+    @Override
+    public String getExecutionStateLoggingText(String executionId, int sizeLimit)
+            throws HopException {
+        synchronized (this) {
+            try {
+                return "";
+//                return session.readTransaction(
+//                        transaction -> getNeo4jExecutionStateLoggingText(transaction, executionId, sizeLimit));
+            } catch (Exception e) {
+                throw new HopException("Error getting execution from Neo4j", e);
+            }
+        }
+    }
+
+//    @Override
+//    public ExecutionState getExecutionState(String executionId) throws HopException {
+//        return getExecutionState(executionId, true);
+//    }
+
+    @Override
+    public ExecutionState getExecutionState(String executionId, boolean includeLogging)
+            throws HopException {
+        synchronized (this) {
+            try {
+                return null;
+//                return session.readTransaction(
+//                        transaction -> getNeo4jExecutionState(transaction, executionId, includeLogging));
+            } catch (Exception e) {
+                throw new HopException("Error getting execution from Neo4j", e);
+            }
+        }
+    }
+
     private void verifyTypes() throws AtlasServiceException {
         MultivaluedMap<String, String> searchParams = new MultivaluedMapImpl();
 
