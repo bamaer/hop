@@ -104,24 +104,14 @@ public class AtlasConnection extends HopMetadataBase implements IHopMetadata {
     public AtlasClientV2 getClient() throws HopException, AtlasException {
         String[] urls = { protocol + "://" + hostname + ":" + port };
         String[] userPass = {username, password};
-        System.setProperty("atlas.rest.address", urls[0]);
-//        config = ApplicationProperties.get();
+        config = ApplicationProperties.get();
         config.setProperty("atlas.rest.address", urls[0]);
-//        Configurations configs = new Configurations();
-
-
-//        Configuration config = ApplicationProperties.get();
-//        config.setProperty("atlas.rest.address", urls[0]);
         AtlasClientV2 atlasClient = new AtlasClientV2(urls, userPass);
         return atlasClient;
     }
     public void test(IVariables variables) throws HopException{
         try{
-            String[] url = {protocol + "://" + hostname + ":" + port};
-            String[] usernamePassword = {username, password};
-            config = ApplicationProperties.get();
-            config.setProperty("atlas.rest.address", url);
-            AtlasClientV2 atlasClient = new AtlasClientV2(url, usernamePassword);
+            getClient();
         }catch(Exception e){
             throw new HopException("Unable to connect to Apache Atlas: " + e.getMessage(), e);
         }

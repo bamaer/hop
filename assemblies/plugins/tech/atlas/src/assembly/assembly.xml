@@ -60,6 +60,10 @@
                 <include>com.sun.jersey:jersey-bundle:jar</include>
                 <include>com.sun.jersey.contribs:jersey-multipart:jar</include>
                 <include>org.apache.hadoop:hadoop-auth:jar</include>
+                <include>com.fasterxml.jackson.module:jackson-module-jaxb-annotations:jar</include>
+                <include>com.fasterxml.jackson.jaxrs:jackson-jaxrs-base:jar</include>
+                <include>com.fasterxml.jackson.jaxrs:jackson-jaxrs-json-provider:jar</include>
+                <include>org.apache.commons:commons-collections4:jar</include>
             </includes>
         </dependencySet>
     </dependencySets>

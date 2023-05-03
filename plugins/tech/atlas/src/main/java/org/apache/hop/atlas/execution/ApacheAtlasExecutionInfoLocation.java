@@ -6,10 +6,13 @@ import org.apache.atlas.model.SearchFilter;
 import org.apache.atlas.model.typedef.AtlasTypesDef;
 import org.apache.hop.atlas.shared.AtlasConnection;
 import org.apache.hop.core.exception.HopException;
+import org.apache.hop.core.gui.plugin.GuiElementType;
 import org.apache.hop.core.gui.plugin.GuiPlugin;
+import org.apache.hop.core.gui.plugin.GuiWidgetElement;
 import org.apache.hop.core.variables.IVariables;
 import org.apache.hop.execution.Execution;
 import org.apache.hop.execution.ExecutionData;
+import org.apache.hop.execution.ExecutionInfoLocation;
 import org.apache.hop.execution.ExecutionState;
 import org.apache.hop.execution.ExecutionType;
 import org.apache.hop.execution.IExecutionInfoLocation;
@@ -33,7 +36,6 @@ public class ApacheAtlasExecutionInfoLocation implements IExecutionInfoLocation 
 
     @HopMetadataProperty protected String pluginId;
     @HopMetadataProperty protected String pluginName;
-    @HopMetadataProperty protected String connectionName;
 
     private IVariables variables;
     private IHopMetadataProvider metadataProvider;
@@ -57,6 +59,17 @@ public class ApacheAtlasExecutionInfoLocation implements IExecutionInfoLocation 
         this.pluginName = location.pluginName;
         this.connectionName = location.connectionName;
     }
+
+    @GuiWidgetElement(
+            id = "connectionName",
+            order = "010",
+            parentId = ExecutionInfoLocation.GUI_PLUGIN_ELEMENT_PARENT_ID,
+            type = GuiElementType.METADATA,
+            typeMetadata = AtlasConnectionTypeMetadata.class,
+            toolTip = "i18n::AtlasExecutionInfoLocation.Connection.Tooltip",
+            label = "i18n::AtlasExecutionInfoLocation.Connection.Label")
+    @HopMetadataProperty(key = "connection")
+    protected String connectionName;
 
     @Override
     public String getPluginId() {
@@ -94,7 +107,7 @@ public class ApacheAtlasExecutionInfoLocation implements IExecutionInfoLocation 
                     metadataProvider
                             .getSerializer(AtlasConnection.class)
                             .load(variables.resolve(connectionName));
-            AtlasClientV2 atlasClient = connection.getClient();
+            atlasClient = connection.getClient();
             if (atlasClient == null) {
                 throw new HopException("Unable to find Apache Atlas connection " + connectionName);
             }
