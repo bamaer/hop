@@ -52,9 +52,10 @@
             <scope>runtime</scope>
             <includes>
                 <include>org.apache.atlas:atlas-client-common:jar</include>
-                <include>org.apache.atlas:atlas-common:jar</include>
+<!--                <include>org.apache.atlas:atlas-common:jar</include>-->
                 <include>org.apache.atlas:atlas-client-v2:jar</include>
                 <include>org.apache.atlas:atlas-intg:jar</include>
+<!--
                 <include>org.glassfish.jersey.core:jersey-client:jar</include>
                 <include>com.sun.jersey:jersey-client:jar</include>
                 <include>com.sun.jersey:jersey-bundle:jar</include>
@@ -63,7 +64,8 @@
                 <include>com.fasterxml.jackson.module:jackson-module-jaxb-annotations:jar</include>
                 <include>com.fasterxml.jackson.jaxrs:jackson-jaxrs-base:jar</include>
                 <include>com.fasterxml.jackson.jaxrs:jackson-jaxrs-json-provider:jar</include>
-                <include>org.apache.commons:commons-collections4:jar</include>
+                <include>commons-collections:commons-collections:jar</include>
+-->
             </includes>
         </dependencySet>
     </dependencySets>

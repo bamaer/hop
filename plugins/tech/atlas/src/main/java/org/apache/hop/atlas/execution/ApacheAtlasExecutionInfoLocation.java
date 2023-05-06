@@ -3,6 +3,8 @@ package org.apache.hop.atlas.execution;
 import org.apache.atlas.AtlasClientV2;
 import org.apache.atlas.AtlasServiceException;
 import org.apache.atlas.model.SearchFilter;
+import org.apache.atlas.model.typedef.AtlasEntityDef;
+import org.apache.atlas.model.typedef.AtlasRelationshipDef;
 import org.apache.atlas.model.typedef.AtlasTypesDef;
 import org.apache.hop.atlas.shared.AtlasConnection;
 import org.apache.hop.core.exception.HopException;
@@ -24,6 +26,8 @@ import org.apache.hop.metadata.api.IHopMetadataProvider;
 import com.sun.jersey.core.util.MultivaluedMapImpl;
 
 import javax.ws.rs.core.MultivaluedMap;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 @GuiPlugin(description="Apache Atlas Execution Information GUI Elements")
@@ -40,13 +44,32 @@ public class ApacheAtlasExecutionInfoLocation implements IExecutionInfoLocation 
     private IVariables variables;
     private IHopMetadataProvider metadataProvider;
     private AtlasClientV2 atlasClient;
+    private AtlasTypeUtil typeUtil;
 
-    private static final String PIPELINE_TYPE = "hop_pipeline";
-    private static final String TRANSFORM_TYPE = "hop_tansform";
-    private static final String PIPELINE_TRANSFORM_TYPE = "transform_pipeline";
-    private static final String PIPELINE_HOP_TYPE = "pipeline_hop";
-    private static final String VERSION = "1.0";
-    private static final String[] TYPES = {PIPELINE_TYPE, TRANSFORM_TYPE, PIPELINE_TRANSFORM_TYPE, PIPELINE_HOP_TYPE};
+    public static final String PIPELINE_TYPE = "hop_pipeline";
+    public static final String TRANSFORM_TYPE = "hop_transform";
+    public static final String PIPELINE_TRANSFORM_REL_TYPE = "hop_transform_pipeline";
+    public static final String PIPELINE_HOP_REL_TYPE = "hop_pipeline_hop";
+    public static final String PIPELINE_EXECUTION_REL_TYPE = "hop_pipeline_execution";
+    public static final String WORKFLOW_TYPE = "hop_workflow";
+    public static final String ACTION_TYPE = "hop_action";
+    public static final String WORKFLOW_ACTION_REL_TYPE = "hop_action_workflow";
+    public static final String WORKFLOW_HOP_REL_TYPE = "hop_workflow_hop";
+    public static final String WORKFLOW_EXECUTION_REL_TYPE = "hop_workflow_execution";
+    public static final String[] TYPES = {
+            PIPELINE_TYPE,
+            TRANSFORM_TYPE,
+            WORKFLOW_TYPE,
+            ACTION_TYPE
+    };
+    private static final String[] REL_TYPES = {
+            PIPELINE_TRANSFORM_REL_TYPE,
+            PIPELINE_HOP_REL_TYPE,
+            WORKFLOW_ACTION_REL_TYPE,
+            WORKFLOW_HOP_REL_TYPE,
+            PIPELINE_EXECUTION_REL_TYPE,
+            WORKFLOW_EXECUTION_REL_TYPE
+    };
 
     public ApacheAtlasExecutionInfoLocation(){
         this.connectionName = "atlas";
@@ -108,6 +131,8 @@ public class ApacheAtlasExecutionInfoLocation implements IExecutionInfoLocation 
                             .getSerializer(AtlasConnection.class)
                             .load(variables.resolve(connectionName));
             atlasClient = connection.getClient();
+            typeUtil = new AtlasTypeUtil(atlasClient);
+
             if (atlasClient == null) {
                 throw new HopException("Unable to find Apache Atlas connection " + connectionName);
             }
@@ -128,6 +153,7 @@ public class ApacheAtlasExecutionInfoLocation implements IExecutionInfoLocation 
 
     @Override
     public void registerExecution(Execution execution) throws HopException {
+        String dummy = "";
 
     }
 
@@ -210,11 +236,6 @@ public class ApacheAtlasExecutionInfoLocation implements IExecutionInfoLocation 
         }
     }
 
-//    @Override
-//    public ExecutionState getExecutionState(String executionId) throws HopException {
-//        return getExecutionState(executionId, true);
-//    }
-
     @Override
     public ExecutionState getExecutionState(String executionId, boolean includeLogging)
             throws HopException {
@@ -232,13 +253,45 @@ public class ApacheAtlasExecutionInfoLocation implements IExecutionInfoLocation 
     private void verifyTypes() throws AtlasServiceException {
         MultivaluedMap<String, String> searchParams = new MultivaluedMapImpl();
 
+        SearchFilter searchFilter = new SearchFilter();
+        searchFilter.setParam("type", "entity");
+        AtlasTypesDef registeredTypes = atlasClient.getAllTypeDefs(searchFilter);
+        List<AtlasEntityDef> entityDefs = registeredTypes.getEntityDefs();
+        List<String> entityDefNames = new ArrayList<>();
+        for(AtlasEntityDef entityDef : entityDefs){
+            entityDefNames.add(entityDef.getName());
+        }
+
+        List<AtlasEntityDef> typeDefinitions = new ArrayList<>();
+        List<AtlasRelationshipDef> relDefinitions = new ArrayList<>();
+
+        // check entity types
         for(String typeName : TYPES){
-            SearchFilter searchFilter = new SearchFilter();
-            AtlasTypesDef registeredTypes = atlasClient.getAllTypeDefs(searchFilter);
-            if(registeredTypes.isEmpty()){
+            if(!entityDefNames.contains(typeName)){
                 System.out.println("Need to register type " + typeName);
+                typeDefinitions.add(typeUtil.createType(typeName));
+//                atlasClient.createAtlasTypeDefs()
+//                atlasClient.createAtlasTypeDefs(typeUtil.createType(typeName));
             }
         }
+        for(String relName : REL_TYPES){
+            if(!entityDefNames.contains(relName)){
+                System.out.println("Need to register relationship type " + relName);
+                relDefinitions.add(typeUtil.createRelationship(relName));
+            }
+        }
+
+        AtlasTypesDef typesDefs = new AtlasTypesDef(Collections.emptyList(), Collections.emptyList(),
+                Collections.emptyList(), typeDefinitions, relDefinitions, Collections.emptyList());
+        try{
+            atlasClient.createAtlasTypeDefs(typesDefs);
+//            atlasClient.createre
+////            atlasClient.createAtlasTypeDefs(typesDefs);
+            System.out.println("types and relationships created");
+        }catch(AtlasServiceException e){
+            e.printStackTrace();
+        }
+
     }
 
     public String getConnectionName() {

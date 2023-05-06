@@ -17,6 +17,7 @@ import org.apache.hop.metadata.api.HopMetadata;
 import org.apache.hop.metadata.api.HopMetadataBase;
 import org.apache.hop.metadata.api.HopMetadataProperty;
 import org.apache.hop.metadata.api.IHopMetadata;
+import org.glassfish.jersey.client.ClientConfig;
 
 @HopMetadata(
         key = "atlas-connection",
@@ -34,6 +35,7 @@ public class AtlasConnection extends HopMetadataBase implements IHopMetadata {
     @HopMetadataProperty(password = true) private String password;
 
     private Configuration config;
+//    private ClientConfig config;
 
     public AtlasConnection(){
         protocol = "http";
@@ -106,8 +108,10 @@ public class AtlasConnection extends HopMetadataBase implements IHopMetadata {
         String[] userPass = {username, password};
         config = ApplicationProperties.get();
         config.setProperty("atlas.rest.address", urls[0]);
-        AtlasClientV2 atlasClient = new AtlasClientV2(urls, userPass);
-        return atlasClient;
+        config.setProperty("atlas.client.username", username);
+        config.setProperty("atlas.client.password", password);
+
+        return new AtlasClientV2(urls, userPass);
     }
     public void test(IVariables variables) throws HopException{
         try{
