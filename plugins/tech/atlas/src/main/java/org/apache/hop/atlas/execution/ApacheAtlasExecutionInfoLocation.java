@@ -281,8 +281,10 @@ public class ApacheAtlasExecutionInfoLocation implements IExecutionInfoLocation 
             }
         }
 
+//        AtlasTypesDef typesDefs = new AtlasTypesDef(Collections.emptyList(), Collections.emptyList(),
+//                Collections.emptyList(), typeDefinitions, relDefinitions, Collections.emptyList());
         AtlasTypesDef typesDefs = new AtlasTypesDef(Collections.emptyList(), Collections.emptyList(),
-                Collections.emptyList(), typeDefinitions, relDefinitions, Collections.emptyList());
+                Collections.emptyList(), typeDefinitions, Collections.emptyList(), Collections.emptyList());
         try{
             atlasClient.createAtlasTypeDefs(typesDefs);
 //            atlasClient.createre
