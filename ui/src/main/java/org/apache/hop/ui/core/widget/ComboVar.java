@@ -226,7 +226,11 @@ public class ComboVar extends Composite {
 
   @Override
   public void dispose() {
+<<<<<<< HEAD
     if (wCombo != null && !wCombo.isDisposed()) {
+=======
+    if (wCombo != null) {
+>>>>>>> 99c2f8b1e8 (fix #2399 Initial conversion of JDBCMetaData plugin from PDI to Hop)
       wCombo.dispose();
     }
     if (wlImage != null && !wlImage.isDisposed()) {
