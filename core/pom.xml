@@ -51,6 +51,7 @@
         <xmlunit.version>1.5</xmlunit.version>
         <javassist.version>3.28.0-GA</javassist.version>
         <json-simple.version>1.1.1</json-simple.version>
+        <neo4j.driver.version>4.4.11</neo4j.driver.version>
     </properties>
 
     <dependencies>
@@ -451,6 +452,11 @@
                     <artifactId>*</artifactId>
                 </exclusion>
             </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.neo4j.driver</groupId>
+            <artifactId>neo4j-java-driver</artifactId>
+            <version>${neo4j.driver.version}</version>
         </dependency>
 
         <!-- Test dependencies -->
