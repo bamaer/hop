@@ -663,15 +663,15 @@ public class GraphDatabaseMeta extends HopMetadataBase implements Cloneable, IHo
     }
 
     /** @return A manually entered URL which will be used over the internally generated one */
-    public String getManualUrl() {
-        return iGraphDatabase.getManualUrl();
+    public List<String> getManualUrl() {
+        return iGraphDatabase.getManualUrls();
     }
 
     /**
      * @param manualUrl A manually entered URL which will be used over the internally generated one
      */
     public void setManualUrl(String manualUrl) {
-        iGraphDatabase.setManualUrl(manualUrl);
+        iGraphDatabase.setManualUrls(manualUrls);
     }
 
     public List<String> getManualUrls() {

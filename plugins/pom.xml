@@ -45,6 +45,7 @@
                 <module>actions</module>
                 <module>databases</module>
                 <module>engines</module>
+                <module>graphdatabases</module>
                 <module>misc</module>
                 <module>tech</module>
                 <module>transforms</module>

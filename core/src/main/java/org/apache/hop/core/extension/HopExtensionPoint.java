@@ -93,6 +93,10 @@ public enum HopExtensionPoint {
   DatabaseConnected("A connection to a database was made"),
   DatabaseDisconnected("A connection to a database was terminated"),
 
+  GraphDatabaseCreated("A graph database connection was created"),
+  GraphDatabaseConnected("A connection to a graph database was made"),
+  GraphDatabaseDisconnected("A connection to a graph database was terminated"),
+
   TransformBeforeInitialize("Right before a transform is about to be initialized"),
   TransformAfterInitialize("After a transform is initialized"),
 

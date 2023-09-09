@@ -1,14 +1,27 @@
 package org.apache.hop.core.graph;
 
 import org.apache.hop.core.exception.HopValueException;
+import org.apache.hop.core.extension.ExtensionPointHandler;
+import org.apache.hop.core.extension.HopExtensionPoint;
+import org.apache.hop.core.logging.DefaultLogLevel;
+import org.apache.hop.core.logging.ILogChannel;
 import org.apache.hop.core.logging.ILoggingObject;
+import org.apache.hop.core.logging.LogChannel;
 import org.apache.hop.core.logging.LogLevel;
 import org.apache.hop.core.logging.LoggingObjectType;
 import org.apache.hop.core.row.IRowMeta;
+import org.apache.hop.core.row.IValueMeta;
+import org.apache.hop.core.row.value.ValueMetaFactory;
 import org.apache.hop.core.variables.IVariables;
+import org.apache.hop.core.variables.Variables;
+import org.neo4j.driver.Session;
 
+import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Graph Database handles the process of connecting to, reading from, writing to and updating graph databases.
@@ -17,6 +30,66 @@ import java.util.Map;
 public class GraphDatabase implements IVariables, ILoggingObject, AutoCloseable {
 
     private static final Class<?> PKG = GraphDatabase.class;
+
+    private ILogChannel log;
+    private ILoggingObject parentLoggingObject;
+    private IVariables variables = new Variables();
+    private LogLevel logLevel = DefaultLogLevel.getLogLevel();
+    private static final Map<String, Set<String>> registeredDrivers = new HashMap<>();
+    private String containerObjectId;
+    private int nrExecutedCommits;
+    private static List<IValueMeta> valueMetaPluginClasses;
+
+    private Session session;
+
+    static {
+        try {
+            valueMetaPluginClasses = ValueMetaFactory.getValueMetaPluginClasses();
+            Collections.sort(
+                    valueMetaPluginClasses,
+                    (o1, o2) ->
+                            // Reverse the sort list
+                            (Integer.valueOf(o1.getType()).compareTo(Integer.valueOf(o2.getType()))) * -1);
+        }catch(Exception e){
+            throw new RuntimeException("Unable to get list of instantiated value meta plugin classes", e);
+        }
+    }
+
+    private final GraphDatabaseMeta graphDatabaseMeta;
+
+    public GraphDatabase(ILoggingObject parentObject, IVariables variables, GraphDatabaseMeta graphDatabaseMeta){
+        this.parentLoggingObject = parentObject;
+        this.variables = variables;
+        this.graphDatabaseMeta = graphDatabaseMeta;
+
+        log = new LogChannel(this, parentObject);
+        this.containerObjectId = log.getContainerObjectId();
+        this.logLevel = log.getLogLevel();
+        if(parentObject != null){
+            log.setGatheringMetrics(parentObject.isGatheringMetrics());
+        }
+
+        try{
+            ExtensionPointHandler.callExtensionPoint(
+                    log, variables, HopExtensionPoint.GraphDatabaseCreated.id, this);
+        }catch(Exception e){
+            throw new RuntimeException("Error calling extension point while creating graph database connection", e);
+        }
+
+        if(log.isDetailed()){
+            log.logDetailed("New graph database connection defined");
+        }
+    }
+
+    @Override
+    public boolean equals(Object obj){
+        GraphDatabase other = (GraphDatabase) obj;
+        if(other == null){
+            return false;
+        }else{
+            return this.graphDatabaseMeta.equals(other.graphDatabaseMeta);
+        }
+    }
 
     @Override
     public void close() throws Exception {
@@ -156,5 +229,13 @@ public class GraphDatabase implements IVariables, ILoggingObject, AutoCloseable 
     @Override
     public String resolve(String aString, IRowMeta rowMeta, Object[] rowData) throws HopValueException {
         return null;
+    }
+
+    public Session getSession(){
+        return session;
+    }
+
+    public void setSession(Session session){
+        this.session = session;
     }
 }

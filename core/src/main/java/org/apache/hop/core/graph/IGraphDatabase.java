@@ -2,6 +2,9 @@ package org.apache.hop.core.graph;
 
 import org.apache.hop.metadata.api.HopMetadataObject;
 
+import java.util.List;
+import java.util.Map;
+
 @HopMetadataObject(objectFactory = GraphDatabaseMetaObjectFactory.class)
 public interface IGraphDatabase extends Cloneable{
 
@@ -23,9 +26,9 @@ public interface IGraphDatabase extends Cloneable{
     /** @param changed The changed to set. */
     void setChanged(boolean changed);
 
-    String getPort();
+    String getBrowserPort();
 
-    void setPort(String port);
+    void setBrowserPort(String browserPort);
 
     /** @return Returns the databaseName. */
     String getDatabaseName();
@@ -52,10 +55,10 @@ public interface IGraphDatabase extends Cloneable{
     void setPassword(String password);
 
     /** @return Returns the servername. */
-    String getServername();
+//    String getServername();
 
     /** @param servername The servername to set. */
-    void setServername(String servername);
+//    void setServername(String servername);
 
     /** Set default options for all graph databases **/
     default void addDefaultOptions(){}
@@ -78,12 +81,93 @@ public interface IGraphDatabase extends Cloneable{
     void setSupportsTimestampDataType(boolean b);
 
     /** @return A manually entered URL which will be used over the internally generated one */
-    String getManualUrl();
+    List<String> getManualUrls();
 
     /**
      * @param manualUrl A manually entered URL which will be used over the internally generated one
      */
-    void setManualUrl(String manualUrl);
+    void setManualUrls(List<String> manualUrl);
+
+    String getBoltPort();
+
+    void setBoltPort(String boltPort);
+
+    boolean isRouting();
+
+    void setRouting(boolean routing);
+
+    boolean isRoutingVariable();
+
+    void setRoutingVariable(boolean routingVariable);
+
+    String getRoutingPolicy();
+
+    void setRoutingPolicy(String routingPolicy);
+
+    boolean isUsingEncryption();
+
+    void setUsingEncryption(boolean usingEncryption);
+
+    String getUsingEncryptionVariable();
+
+    void setUsingEncryptionVariable(String usingEncryptionVariable);
+
+    boolean isTrustAllCertificates();
+
+    void setTrustAllCertificates(boolean trustAllCertificates);
+
+    String getTrustAllCertificatesVariable();
+
+    void setTrustAllCertificatesVariable(String trustAllCertificatesVariable);
+
+    String getConnectionLivenessCheckTimeout();
+
+    void setConnectionLivenessCheckTimeout(String connectionLivenessCheckTimeout);
+
+    String getMaxConnectionLifetime();
+
+    void setMaxConnectionLifetime(String maxconnectionLifetime);
+
+    String getMaxConnectionPoolSize();
+
+    void setMaxConnectionPoolSize(String maxConnectionPoolSize);
+
+    String getConnectionAcquisitionTimeout();
+
+    void setConnectionAcquisitionTimeout(String connectionAcquisitionTimeout);
+
+    String getConnectionTimeout();
+
+    void setConnectionTimeout(String connectionTimeout);
+
+    String getMaxTransactionRetryTime();
+
+    void setMaxTransactionRetryTime(String maxTransactionRetryTime);
+
+    boolean isVersion4();
+
+    void setVersion4(boolean version4);
+
+    String getVersion4Variable();
+
+    void setVersion4Variable(String version4Variable);
+
+    boolean isAutomatic();
+
+    void setAutomatic(boolean automatic);
+
+    String getAutomaticVariable();
+
+    void setAutomaticVariable(String automaticVariable);
+
+    String getProtocol();
+
+    void setProtocol(String protocol);
+
+    Map<String, String> getAttributes();
+
+    void setAttributes(Map<String, String> attributes);
+
 
     /**
      * Clone this graph database interface: copy all info to a new object
