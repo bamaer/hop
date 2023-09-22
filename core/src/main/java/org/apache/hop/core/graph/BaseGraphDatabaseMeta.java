@@ -1,16 +1,18 @@
 package org.apache.hop.core.graph;
 
+import org.apache.hop.core.database.DatabaseFactory;
 import org.apache.hop.core.database.DatabaseMeta;
 import org.apache.hop.core.gui.plugin.GuiElementType;
 import org.apache.hop.core.gui.plugin.GuiWidgetElement;
 import org.apache.hop.metadata.api.HopMetadataProperty;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class BaseGraphDatabaseMeta implements Cloneable, IGraphDatabase{
+public abstract class BaseGraphDatabaseMeta implements Cloneable, IGraphDatabase{
 
     @HopMetadataProperty
     @GuiWidgetElement(
@@ -46,6 +48,9 @@ public class BaseGraphDatabaseMeta implements Cloneable, IGraphDatabase{
 
     @HopMetadataProperty(password = true)
     protected String password;
+
+    @HopMetadataProperty
+    private String defaultBoltPort;
 
     @HopMetadataProperty
     private String boltPort;
@@ -101,7 +106,11 @@ public class BaseGraphDatabaseMeta implements Cloneable, IGraphDatabase{
 
     public BaseGraphDatabaseMeta(){
         attributes = Collections.synchronizedMap(new HashMap<>());
+        manualUrls = new ArrayList<>();
         changed = false;
+        defaultBoltPort = "666";
+        boltPort = "7687";
+        automatic = true;
     }
 
     @Override
@@ -214,14 +223,22 @@ public class BaseGraphDatabaseMeta implements Cloneable, IGraphDatabase{
     }
 
     @Override
-    public String getBoltPort() {
-        return boltPort;
+    public String getDefaultBoltPort() {
+        return defaultBoltPort;
+    }
+
+    @Override
+    public void setDefaultBoltPort(String defaultBoltPort){
+        this.defaultBoltPort = defaultBoltPort;
     }
 
     @Override
     public void setBoltPort(String boltPort) {
         this.boltPort = boltPort;
     }
+
+    @Override
+    public String getBoltPort(){ return boltPort; }
 
     @Override
     public boolean isRouting() {
@@ -234,7 +251,7 @@ public class BaseGraphDatabaseMeta implements Cloneable, IGraphDatabase{
     }
 
     @Override
-    public boolean isRoutingVariable() {
+    public boolean getRoutingVariable() {
         return routingVariable;
     }
 
@@ -426,5 +443,53 @@ public class BaseGraphDatabaseMeta implements Cloneable, IGraphDatabase{
             throw new RuntimeException(e);
         }
         return retval;
+    }
+
+    @Override
+    public boolean isSupportsRangeIndex() {
+        return false;
+    }
+
+    @Override
+    public boolean isSupportsLookupIndex() {
+        return false;
+    }
+
+    @Override
+    public boolean isSupportsTextIndex() {
+        return false;
+    }
+
+    @Override
+    public boolean isSupportsPointIndex() {
+        return false;
+    }
+
+    @Override
+    public boolean isSupportsFullTextIndex() {
+        return false;
+    }
+
+    @Override
+    public boolean isSupportsBTreeIndex() {
+        return false;
+    }
+
+    @Override
+    public String getDriverClass(){
+        return "org.neo4j.driver.Driver";
+    }
+
+    @Override
+    public void setDriverClass(String driverClass){}
+
+    /**
+     * You can use this method to supply an alternate factory for the test method in the dialogs.
+     *
+     * @return the name of the database test factory to use.
+     */
+    @Override
+    public String getGraphDatabaseFactoryName() {
+        return DatabaseFactory.class.getName();
     }
 }

@@ -42,6 +42,12 @@
             </includes>
         </fileSet>
         <fileSet>
+            <directory>graphdatabases</directory>
+            <includes>
+                <include>**/*.zip</include>
+            </includes>
+        </fileSet>
+        <fileSet>
             <directory>transforms</directory>
             <includes>
                 <include>**/*.zip</include>

@@ -2,8 +2,6 @@ package org.apache.hop.core.graph;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.hop.core.Const;
-import org.apache.hop.core.encryption.Encr;
-import org.apache.hop.core.exception.HopConfigException;
 import org.apache.hop.core.exception.HopException;
 import org.apache.hop.core.exception.HopPluginException;
 import org.apache.hop.core.exception.HopXmlException;
@@ -12,9 +10,7 @@ import org.apache.hop.core.logging.LogChannel;
 import org.apache.hop.core.plugins.IPlugin;
 import org.apache.hop.core.plugins.IPluginTypeListener;
 import org.apache.hop.core.plugins.PluginRegistry;
-import org.apache.hop.core.row.value.ValueMetaBase;
 import org.apache.hop.core.util.ExecutorUtil;
-import org.apache.hop.core.util.Utils;
 import org.apache.hop.core.variables.IVariables;
 import org.apache.hop.i18n.BaseMessages;
 import org.apache.hop.metadata.api.HopMetadata;
@@ -22,19 +18,7 @@ import org.apache.hop.metadata.api.HopMetadataBase;
 import org.apache.hop.metadata.api.HopMetadataProperty;
 import org.apache.hop.metadata.api.IHopMetadata;
 import org.apache.hop.metadata.api.IHopMetadataProvider;
-import org.neo4j.driver.AuthTokens;
-import org.neo4j.driver.Config;
-import org.neo4j.driver.Driver;
-import org.neo4j.driver.Logging;
-import org.neo4j.driver.Record;
-import org.neo4j.driver.Result;
-import org.neo4j.driver.Session;
-import org.neo4j.driver.SessionConfig;
-import org.neo4j.driver.Value;
 
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -43,8 +27,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
 
 @HopMetadata(
         key = "graphdb",
@@ -55,93 +37,19 @@ import java.util.logging.Level;
 public class GraphDatabaseMeta extends HopMetadataBase implements Cloneable, IHopMetadata {
 
     private static final Class<?> PKG = GraphDatabase.class;
+    public static final String XML_TAG = "graph_connection";
 
     public static final String GUI_PLUGIN_ELEMENT_PARENT_ID = "GraphDatabaseMeta-PluginSpecific-Options";
 
     public static final Comparator<GraphDatabaseMeta> comparator =
             (GraphDatabaseMeta gdbm1, GraphDatabaseMeta gbbm2) -> gdbm1.getName().compareToIgnoreCase(gbbm2.getName());
 
+
     @HopMetadataProperty(key = "graphdb")
     private IGraphDatabase iGraphDatabase;
 
-    @HopMetadataProperty
-    private List<String> manualUrls;
-
-    @HopMetadataProperty
-    private String server;
-
-    @HopMetadataProperty
-    private String databaseName;
-
-    @HopMetadataProperty
-    private String boltPort;
-
-    @HopMetadataProperty
-    private String browserPort;
-
-    @HopMetadataProperty
-    private boolean routing;
-
-    @HopMetadataProperty
-    private String routingVariable;
-
-    @HopMetadataProperty
-    private String routingPolicy;
-
-    @HopMetadataProperty
-    private String username;
-
-    @HopMetadataProperty(password = true)
-    private String password;
-
-    @HopMetadataProperty
-    private boolean usingEncryption;
-
-    @HopMetadataProperty
-    private String usingEncryptionVariable;
-
-    @HopMetadataProperty
-    private boolean trustAllCertificates;
-
-    @HopMetadataProperty
-    private String trustAllCertificatesVariable;
-
-    @HopMetadataProperty
-    private String connectionLivenessCheckTimeout;
-
-    @HopMetadataProperty
-    private String maxConnectionLifetime;
-
-    @HopMetadataProperty
-    private String maxConnectionPoolSize;
-
-    @HopMetadataProperty
-    private String connectionAcquisitionTimeout;
-
-    @HopMetadataProperty
-    private String connectionTimeout;
-
-    @HopMetadataProperty
-    private String maxTransactionRetryTime;
-
-    @HopMetadataProperty
-    private boolean version4;
-
-    @HopMetadataProperty
-    private String version4Variable;
-
-    @HopMetadataProperty
-    private boolean automatic;
-
-    @HopMetadataProperty
-    private String automaticVariable;
-
-    @HopMetadataProperty
-    private String protocol;
-
     private static volatile Future<Map<String, IGraphDatabase>> allGraphDatabaseInterfaces;
 
-/*
     static {
         init();
     }
@@ -166,7 +74,6 @@ public class GraphDatabaseMeta extends HopMetadataBase implements Cloneable, IHo
                             }
                         });
     }
-*/
 
     private boolean readOnly = false;
 
@@ -189,79 +96,35 @@ public class GraphDatabaseMeta extends HopMetadataBase implements Cloneable, IHo
      */
     public static final String EMPTY_OPTIONS_STRING = "><EMPTY><";
 
-    public GraphDatabaseMeta(){
-        boltPort = "7687";
-        browserPort = "7474";
-        protocol = "neo4j";
-        manualUrls = new ArrayList<>();
-        version4 = true;
-        automatic = true;
-    }
-
-    public GraphDatabaseMeta(GraphDatabaseMeta source) {
-        this.name = source.name;
-        this.server = source.server;
-        this.boltPort = source.boltPort;
-        this.browserPort = source.browserPort;
-        this.routing = source.routing;
-        this.routingVariable = source.routingVariable;
-        this.routingPolicy = source.routingPolicy;
-        this.username = source.username;
-        this.password = source.password;
-        this.usingEncryption = source.usingEncryption;
-        this.usingEncryptionVariable = source.usingEncryptionVariable;
-        this.trustAllCertificates = source.trustAllCertificates;
-        this.trustAllCertificatesVariable = source.trustAllCertificatesVariable;
-        this.connectionLivenessCheckTimeout = source.connectionLivenessCheckTimeout;
-        this.maxConnectionLifetime = source.maxConnectionLifetime;
-        this.maxConnectionPoolSize = source.maxConnectionPoolSize;
-        this.connectionAcquisitionTimeout = source.connectionAcquisitionTimeout;
-        this.connectionTimeout = source.connectionTimeout;
-        this.maxTransactionRetryTime = source.maxTransactionRetryTime;
-        this.version4 = source.version4;
-        this.version4Variable = source.version4Variable;
-        this.automatic = source.automatic;
-        this.automaticVariable = source.automaticVariable;
-        this.protocol = source.protocol;
-        this.manualUrls = new ArrayList<>();
-        this.manualUrls.addAll(source.manualUrls);
-    }
-
-
-/*
-    */
-/**
+    /**
      * Construct a new graph database connection. Note that all these parameters are not always mandatory.
      *
      * @param name The graph database name
      * @param type The graph database type
+     * @param protocol The graph database connection protocol to use
      * @param host The hostname or IP address
      * @param db The graph database name
      * @param port The port on which the graph database listens
      * @param user The username
      * @param pass The password
-     *//*
-
+     */
     public GraphDatabaseMeta(
             String name,
             String type,
+            String protocol,
             String host,
             String db,
             String port,
             String user,
-            String pass
-    ){
-        setValues(name, type, host, db, port, user, pass);
+            String pass){
+        setValues(name, type, protocol, host, db, port, user, pass);
         addOptions();
     }
-*/
 
-/*
     public GraphDatabaseMeta(){
         setDefault();
         addOptions();
     }
-*/
 
     public static GraphDatabaseMeta loadGraphDatabase(
         IHopMetadataProvider metadataProvider, String connectionName
@@ -277,12 +140,9 @@ public class GraphDatabaseMeta extends HopMetadataBase implements Cloneable, IHo
         }
     }
 
-/*
     public void setDefault(){
-        manualUrls = new ArrayList<>();
-        setValues("", "NONE", "", "", "", "", "");
+        setValues("", "NONE", "bolt", "", "", "", "", "");
     }
-*/
 
     public void addOptions(){
         iGraphDatabase.addDefaultOptions();
@@ -290,38 +150,41 @@ public class GraphDatabaseMeta extends HopMetadataBase implements Cloneable, IHo
         setSupportsTimestampDataType(true);
     }
 
-/*
     public GraphDatabaseMeta(GraphDatabaseMeta graphDatabaseMeta){
         this();
         replaceMeta(graphDatabaseMeta);
     }
-*/
 
     /** @return the system dependent graph database interface for this graph database metadata definition */
-    public IGraphDatabase getiGraphDatabase() {
+    public IGraphDatabase getIGraphDatabase(){
         return iGraphDatabase;
     }
 
     /**
      * Set the system dependent graph database interface for this graph database metadata definition
      *
-     * @param iGraphDatabase the system dependent graph database interface
+     * @param iGraphDatabase the system dependent database interface
      */
     public void setIGraphDatabase(IGraphDatabase iGraphDatabase){
         this.iGraphDatabase = iGraphDatabase;
     }
 
-/*
-    public static final IGraphDatabase getIGraphDatabase(String graphDatabaseType) throws HopGraphDatabaseException{
-        IGraphDatabase graphDb = findIGraphDatabase(graphDatabaseType);
-        if(graphDb == null){
+    /**
+     * Search for the right type of IGraphDatabase object and clone it.
+     *
+     * @param graphDatabaseType the type of IDatabase to look for (description)
+     * @return The requested IDatabase
+     * @throws HopGraphDatabaseException when the type could not be found or referenced.
+     */
+    public static final IGraphDatabase getIGraphDatabase(String graphDatabaseType) throws HopGraphDatabaseException {
+        IGraphDatabase igd = findIGraphDatabase(graphDatabaseType);
+        if(igd == null){
             throw new HopGraphDatabaseException(
-                    BaseMessages.getString(PKG, "GraphDatabaseMeta.Error.GraphDatabaseInterfaceNotFound", graphDatabaseType)
-            );
+                    BaseMessages.getString(
+                            PKG, "GraphDatabaseMeta.Error.GraphDatabaseInterfaceNotFound", graphDatabaseType));
         }
-        return (IGraphDatabase) graphDb.clone();
+        return (IGraphDatabase)igd.clone();
     }
-*/
 
     /**
      * Search for the right type of IGraphDatabase object and return it.
@@ -342,7 +205,6 @@ public class GraphDatabaseMeta extends HopMetadataBase implements Cloneable, IHo
             throw new HopGraphDatabaseException(
                     "database type with plugin id [" + graphDatabaseTypeDesc + "] couldn't be found!");
         }
-
         return getIGraphDatabaseMap().get(plugin.getIds()[0]);
     }
 
@@ -351,11 +213,11 @@ public class GraphDatabaseMeta extends HopMetadataBase implements Cloneable, IHo
         return new GraphDatabaseMeta(this);
     }
 
-/*
     public void replaceMeta(GraphDatabaseMeta graphDatabaseMeta) {
         this.setValues(
                 graphDatabaseMeta.getName(),
                 graphDatabaseMeta.getPluginId(),
+                graphDatabaseMeta.getProtocol(),
                 graphDatabaseMeta.getServer(),
                 graphDatabaseMeta.getDatabaseName(),
                 graphDatabaseMeta.getBoltPort(),
@@ -367,12 +229,11 @@ public class GraphDatabaseMeta extends HopMetadataBase implements Cloneable, IHo
 
         this.setChanged();
     }
-*/
 
-/*
     public void setValues(
             String name,
             String type,
+            String protocol,
             String host,
             String db,
             String port,
@@ -393,9 +254,7 @@ public class GraphDatabaseMeta extends HopMetadataBase implements Cloneable, IHo
         setServer(null);
         setChanged(false);
     }
-*/
 
-/*
     public void setGraphDatabaseType(String type) {
         IGraphDatabase oldInterface = iGraphDatabase;
 
@@ -407,13 +266,13 @@ public class GraphDatabaseMeta extends HopMetadataBase implements Cloneable, IHo
 
         setServer(oldInterface.getHostname());
         setDatabaseName(oldInterface.getDatabaseName());
-        setBoltPort(oldInterface.getPort());
+        setProtocol(oldInterface.getProtocol());
+        setBoltPort(oldInterface.getBoltPort());
         setUsername(oldInterface.getUsername());
         setPassword(oldInterface.getPassword());
-        setServer(oldInterface.getServername());
+        setServer(oldInterface.getHostname());
         setChanged(oldInterface.isChanged());
     }
-*/
 
     public void setValues(GraphDatabaseMeta info) {
         iGraphDatabase = (IGraphDatabase) info.iGraphDatabase.clone();
@@ -430,195 +289,195 @@ public class GraphDatabaseMeta extends HopMetadataBase implements Cloneable, IHo
     }
 
     public String getServer() {
-        return server;
+        return iGraphDatabase.getHostname();
     }
 
     public void setServer(String server) {
-        this.server = server;
+        iGraphDatabase.setHostname(server);
     }
 
     public String getDatabaseName() {
-        return databaseName;
+        return iGraphDatabase.getDatabaseName();
     }
 
     public void setDatabaseName(String databaseName) {
-        this.databaseName = databaseName;
+        iGraphDatabase.setDatabaseName(databaseName);
     }
 
     public String getBoltPort() {
-        return boltPort;
+        return iGraphDatabase.getBoltPort();
     }
 
     public void setBoltPort(String boltPort) {
-        this.boltPort = boltPort;
+        iGraphDatabase.setBoltPort(boltPort);
     }
 
     public String getBrowserPort() {
-        return browserPort;
+        return iGraphDatabase.getBrowserPort();
     }
 
     public void setBrowserPort(String browserPort) {
-        this.browserPort = browserPort;
+        iGraphDatabase.setBrowserPort(browserPort);
     }
 
     public boolean isRouting() {
-        return routing;
+        return iGraphDatabase.isRouting();
     }
 
     public void setRouting(boolean routing) {
-        this.routing = routing;
+        iGraphDatabase.setRouting(routing);
     }
 
-    public String getRoutingVariable() {
-        return routingVariable;
+    public boolean getRoutingVariable() {
+        return iGraphDatabase.getRoutingVariable();
     }
 
-    public void setRoutingVariable(String routingVariable) {
-        this.routingVariable = routingVariable;
+    public void setRoutingVariable(boolean routingVariable) {
+        iGraphDatabase.setRoutingVariable(routingVariable);
     }
 
     public String getRoutingPolicy() {
-        return routingPolicy;
+        return iGraphDatabase.getRoutingPolicy();
     }
 
     public void setRoutingPolicy(String routingPolicy) {
-        this.routingPolicy = routingPolicy;
+        iGraphDatabase.setRoutingPolicy(routingPolicy);
     }
 
     public String getUsername() {
-        return username;
+        return iGraphDatabase.getUsername();
     }
 
     public void setUsername(String username) {
-        this.username = username;
+        iGraphDatabase.setUsername(username);
     }
 
     public String getPassword() {
-        return password;
+        return iGraphDatabase.getPassword();
     }
 
     public void setPassword(String password) {
-        this.password = password;
+        iGraphDatabase.setPassword(password);
     }
 
     public boolean isUsingEncryption() {
-        return usingEncryption;
+        return iGraphDatabase.isUsingEncryption();
     }
 
     public void setUsingEncryption(boolean usingEncryption) {
-        this.usingEncryption = usingEncryption;
+        iGraphDatabase.setUsingEncryption(usingEncryption);
     }
 
     public String getUsingEncryptionVariable() {
-        return usingEncryptionVariable;
+        return iGraphDatabase.getUsingEncryptionVariable();
     }
 
     public void setUsingEncryptionVariable(String usingEncryptionVariable) {
-        this.usingEncryptionVariable = usingEncryptionVariable;
+        iGraphDatabase.setUsingEncryptionVariable(usingEncryptionVariable);
     }
 
     public boolean isTrustAllCertificates() {
-        return trustAllCertificates;
+        return iGraphDatabase.isTrustAllCertificates();
     }
 
     public void setTrustAllCertificates(boolean trustAllCertificates) {
-        this.trustAllCertificates = trustAllCertificates;
+        iGraphDatabase.setTrustAllCertificates(trustAllCertificates);
     }
 
     public String getTrustAllCertificatesVariable() {
-        return trustAllCertificatesVariable;
+        return iGraphDatabase.getTrustAllCertificatesVariable();
     }
 
     public void setTrustAllCertificatesVariable(String trustAllCertificatesVariable) {
-        this.trustAllCertificatesVariable = trustAllCertificatesVariable;
+        iGraphDatabase.setTrustAllCertificatesVariable(trustAllCertificatesVariable);
     }
 
     public String getConnectionLivenessCheckTimeout() {
-        return connectionLivenessCheckTimeout;
+        return iGraphDatabase.getConnectionLivenessCheckTimeout();
     }
 
     public void setConnectionLivenessCheckTimeout(String connectionLivenessCheckTimeout) {
-        this.connectionLivenessCheckTimeout = connectionLivenessCheckTimeout;
+        iGraphDatabase.setConnectionLivenessCheckTimeout(connectionLivenessCheckTimeout);
     }
 
     public String getMaxConnectionLifetime() {
-        return maxConnectionLifetime;
+        return iGraphDatabase.getMaxConnectionLifetime();
     }
 
     public void setMaxConnectionLifetime(String maxConnectionLifetime) {
-        this.maxConnectionLifetime = maxConnectionLifetime;
+        iGraphDatabase.setMaxConnectionLifetime(maxConnectionLifetime);
     }
 
     public String getMaxConnectionPoolSize() {
-        return maxConnectionPoolSize;
+        return iGraphDatabase.getMaxConnectionPoolSize();
     }
 
     public void setMaxConnectionPoolSize(String maxConnectionPoolSize) {
-        this.maxConnectionPoolSize = maxConnectionPoolSize;
+        iGraphDatabase.setMaxConnectionPoolSize(maxConnectionPoolSize);
     }
 
     public String getConnectionAcquisitionTimeout() {
-        return connectionAcquisitionTimeout;
+        return iGraphDatabase.getConnectionAcquisitionTimeout();
     }
 
     public void setConnectionAcquisitionTimeout(String connectionAcquisitionTimeout) {
-        this.connectionAcquisitionTimeout = connectionAcquisitionTimeout;
+        iGraphDatabase.setConnectionAcquisitionTimeout(connectionAcquisitionTimeout);
     }
 
     public String getConnectionTimeout() {
-        return connectionTimeout;
+        return iGraphDatabase.getConnectionTimeout();
     }
 
     public void setConnectionTimeout(String connectionTimeout) {
-        this.connectionTimeout = connectionTimeout;
+        iGraphDatabase.setConnectionTimeout(connectionTimeout);
     }
 
     public String getMaxTransactionRetryTime() {
-        return maxTransactionRetryTime;
+        return iGraphDatabase.getMaxTransactionRetryTime();
     }
 
     public void setMaxTransactionRetryTime(String maxTransactionRetryTime) {
-        this.maxTransactionRetryTime = maxTransactionRetryTime;
+        iGraphDatabase.setMaxTransactionRetryTime(maxTransactionRetryTime);
     }
 
     public boolean isVersion4() {
-        return version4;
+        return iGraphDatabase.isVersion4();
     }
 
     public void setVersion4(boolean version4) {
-        this.version4 = version4;
+        iGraphDatabase.setVersion4(version4);
     }
 
     public String getVersion4Variable() {
-        return version4Variable;
+        return iGraphDatabase.getVersion4Variable();
     }
 
     public void setVersion4Variable(String version4Variable) {
-        this.version4Variable = version4Variable;
+        iGraphDatabase.setVersion4Variable(version4Variable);
     }
 
     public boolean isAutomatic() {
-        return automatic;
+        return iGraphDatabase.isAutomatic();
     }
 
     public void setAutomatic(boolean automatic) {
-        this.automatic = automatic;
+        iGraphDatabase.setAutomatic(automatic);
     }
 
     public String getAutomaticVariable() {
-        return automaticVariable;
+        return iGraphDatabase.getAutomaticVariable();
     }
 
     public void setAutomaticVariable(String automaticVariable) {
-        this.automaticVariable = automaticVariable;
+        iGraphDatabase.setAutomaticVariable(automaticVariable);
     }
 
     public String getProtocol() {
-        return protocol;
+        return iGraphDatabase.getProtocol();
     }
 
     public void setProtocol(String protocol) {
-        this.protocol = protocol;
+        iGraphDatabase.setProtocol(protocol);
     }
 
     public void setChanged() {
@@ -663,24 +522,17 @@ public class GraphDatabaseMeta extends HopMetadataBase implements Cloneable, IHo
     }
 
     /** @return A manually entered URL which will be used over the internally generated one */
-    public List<String> getManualUrl() {
+    public List<String> getManualUrls() {
         return iGraphDatabase.getManualUrls();
     }
 
     /**
-     * @param manualUrl A manually entered URL which will be used over the internally generated one
+     * @param manualUrls A manually entered URL which will be used over the internally generated one
      */
-    public void setManualUrl(String manualUrl) {
+    public void setManualUrls(List<String> manualUrls) {
         iGraphDatabase.setManualUrls(manualUrls);
     }
 
-    public List<String> getManualUrls() {
-        return manualUrls;
-    }
-
-    public void setManualUrls(List<String> manualUrls) {
-        this.manualUrls = manualUrls;
-    }
 
     @Override
     public String toString() {
@@ -823,272 +675,63 @@ public class GraphDatabaseMeta extends HopMetadataBase implements Cloneable, IHo
         }
     }
 
-    /**
-     * Test this connection to a bolt/Neo4j compatible graph database
-     *
-     * @throws HopException In case anything goes wrong
-     * @param variables
-     */
-    public void test(IVariables variables) throws HopException {
+    public String[] checkParameters(){
+        ArrayList<String> remarks = new ArrayList<>();
 
-        try (Driver driver = getDriver(LogChannel.GENERAL, variables)) {
-            SessionConfig.Builder builder = SessionConfig.builder();
-            if (StringUtils.isNotEmpty(databaseName)) {
-                builder = builder.withDatabase(variables.resolve(databaseName));
-            }
-            try (Session session = driver.session(builder.build())) {
-                // Do something with the session otherwise it doesn't test the connection
-                //
-                Result result = session.run("RETURN 0");
-                Record record = result.next();
-                Value value = record.get(0);
-                int zero = value.asInt();
-                assert (zero == 0);
-            } catch (Exception e) {
-                throw new HopException(
-                        "Unable to connect to database '" + name + "' : " + e.getMessage(), e);
-            }
+        if(getIGraphDatabase() == null){
+            remarks.add(BaseMessages.getString(PKG, "GraphDatabaseMeta.BadInterface"));
         }
+
+        if(getName() == null || getName().length() == 0){
+            remarks.add(BaseMessages.getString(PKG, "GraphDatabaseMeta.BadConnectionName"));
+        }
+
+        return remarks.toArray(new String[0]);
     }
 
-    public org.neo4j.driver.Driver getDriver(ILogChannel log, IVariables variables) throws HopConfigException {
+    public GraphDatabaseTestResults testConnectionSuccess(IVariables variables){
+        StringBuilder report = new StringBuilder();
+        GraphDatabaseTestResults testResults = new GraphDatabaseTestResults();
 
-        try {
-            List<URI> uris = getURIs(variables);
-
-            String realUsername = variables.resolve(username);
-            String realPassword = Encr.decryptPasswordOptionallyEncrypted(variables.resolve(password));
-            Config.ConfigBuilder configBuilder;
-
-            if (!isAutomatic(variables)) {
-                if (encryptionVariableSet(variables) || usingEncryption) {
-                    configBuilder = Config.builder().withEncryption();
-                    if (trustAllCertificatesVariableSet(variables) || trustAllCertificates) {
-                        configBuilder =
-                                configBuilder.withTrustStrategy(Config.TrustStrategy.trustAllCertificates());
-                    }
-                } else {
-                    configBuilder = Config.builder().withoutEncryption();
-                }
-            } else {
-                configBuilder = Config.builder();
-            }
-            if (StringUtils.isNotEmpty(connectionLivenessCheckTimeout)) {
-                long seconds = Const.toLong(variables.resolve(connectionLivenessCheckTimeout), -1L);
-                if (seconds > 0) {
-                    configBuilder =
-                            configBuilder.withConnectionLivenessCheckTimeout(seconds, TimeUnit.MILLISECONDS);
-                }
-            }
-            if (StringUtils.isNotEmpty(maxConnectionLifetime)) {
-                long seconds = Const.toLong(variables.resolve(maxConnectionLifetime), -1L);
-                if (seconds > 0) {
-                    configBuilder = configBuilder.withMaxConnectionLifetime(seconds, TimeUnit.MILLISECONDS);
-                }
-            }
-            if (StringUtils.isNotEmpty(maxConnectionPoolSize)) {
-                int size = Const.toInt(variables.resolve(maxConnectionPoolSize), -1);
-                if (size > 0) {
-                    configBuilder = configBuilder.withMaxConnectionPoolSize(size);
-                }
-            }
-            if (StringUtils.isNotEmpty(connectionAcquisitionTimeout)) {
-                long seconds = Const.toLong(variables.resolve(connectionAcquisitionTimeout), -1L);
-                if (seconds > 0) {
-                    configBuilder =
-                            configBuilder.withConnectionAcquisitionTimeout(seconds, TimeUnit.MILLISECONDS);
-                }
-            }
-            if (StringUtils.isNotEmpty(connectionTimeout)) {
-                long seconds = Const.toLong(variables.resolve(connectionTimeout), -1L);
-                if (seconds > 0) {
-                    configBuilder = configBuilder.withConnectionTimeout(seconds, TimeUnit.MILLISECONDS);
-                }
-            }
-            if (StringUtils.isNotEmpty(maxTransactionRetryTime)) {
-                long seconds = Const.toLong(variables.resolve(maxTransactionRetryTime), -1L);
-                if (seconds >= 0) {
-                    configBuilder = configBuilder.withMaxTransactionRetryTime(seconds, TimeUnit.MILLISECONDS);
-                }
-            }
-
-            // Disable info messages: only warnings and above...
-            //
-            configBuilder = configBuilder.withLogging(Logging.javaUtilLogging(Level.WARNING));
-
-            Config config = configBuilder.build();
-
-            org.neo4j.driver.Driver driver;
-            if (isUsingRouting(variables)) {
-                driver =
-                        org.neo4j.driver.GraphDatabase.routingDriver(uris, AuthTokens.basic(realUsername, realPassword), config);
-            } else {
-                driver =
-                        org.neo4j.driver.GraphDatabase.driver(uris.get(0), AuthTokens.basic(realUsername, realPassword), config);
-            }
-
-            // Verify connectivity at this point to ensure we're not being dishonest when testing
-            //
-            driver.verifyConnectivity();
-
-            return driver;
-        } catch (URISyntaxException e) {
-            throw new HopConfigException(
-                    "URI syntax problem, check your settings, hostnames especially.  For routing use comma separated server values.",
-                    e);
-        } catch (Exception e) {
-            throw new HopConfigException("Error obtaining driver for a Neo4j connection", e);
+        // If the plugin needs to provide connection information, we ask the IGraphDatabase.
+        try{
+            IGraphDatabaseFactory factory = getGraphDatabaseFactory();
+            testResults = factory.getConnectionTestResults(variables, this);
+        }catch(ClassNotFoundException e){
+            report.append(
+                    BaseMessages.getString(PKG, "BaseGraphDatabaseMeta.TestConnectionReportNotImplemented.Message")).append(Const.CR);
+            report.append(BaseMessages.getString(PKG, "GraphDatabaseMeta.report.ConnectionError", getName()) + e.toString() + Const.CR);
+            report.append(Const.getStackTracker(e) + Const.CR);
+            testResults.setMessage(report.toString());
+            testResults.setSuccess(false);
+        }catch(Exception e){
+            report.append(
+                    BaseMessages.getString(PKG, "GraphDatabaseMeta.report.ConnectionError", getName())
+                    + e.toString()
+                    + Const.CR);
+            report.append(Const.getStackTracker(e) + Const.CR);
+            testResults.setMessage(report.toString());
+            testResults.setSuccess(false);
         }
+        return testResults;
     }
 
-    public boolean isUsingRouting(IVariables variables) {
-        if (!Utils.isEmpty(routingVariable)) {
-            String value = variables.resolve(routingVariable);
-            if (!Utils.isEmpty(value)) {
-                return ValueMetaBase.convertStringToBoolean(value);
-            }
+    public IGraphDatabaseFactory getGraphDatabaseFactory() throws Exception {
+        PluginRegistry registry = PluginRegistry.getInstance();
+        IPlugin plugin = registry.getPlugin(GraphDatabasePluginType.class, iGraphDatabase.getPluginId());
+        if(plugin == null){
+            throw new HopGraphDatabaseException(
+                    "graph database with plugin id [" + iGraphDatabase.getPluginId() + "] couldn't be found!");
         }
-        return routing;
+
+        ClassLoader loader = registry.getClassLoader(plugin);
+
+        Class<?> clazz = Class.forName(iGraphDatabase.getGraphDatabaseFactoryName(), true, loader);
+        return(IGraphDatabaseFactory) clazz.getDeclaredConstructor().newInstance();
     }
 
-    public List<URI> getURIs(IVariables variables) throws URISyntaxException {
-
-        List<URI> uris = new ArrayList<>();
-
-        if (manualUrls != null && !manualUrls.isEmpty()) {
-            // A manual URL is specified
-            //
-            for (String manualUrl : manualUrls) {
-                uris.add(new URI(manualUrl));
-            }
-        } else {
-            // Construct the URIs from the entered values
-            //
-            List<String> serverStrings = new ArrayList<>();
-            String serversString = variables.resolve(server);
-            if (!isAutomatic(variables) && isUsingRouting(variables)) {
-                Collections.addAll(serverStrings, serversString.split(","));
-            } else {
-                serverStrings.add(serversString);
-            }
-
-            for (String serverString : serverStrings) {
-                // Trim excess spaces from server name
-                //
-                String url = getUrl(Const.trim(serverString), variables);
-                uris.add(new URI(url));
-            }
-        }
-
-        return uris;
+    public String getDriverClass(IVariables variables){
+        return variables.resolve(iGraphDatabase.getDriverClass());
     }
 
-    public String getUrl(String hostname, IVariables variables) {
-
-        /*
-         * Construct the following URL:
-         *
-         * neo4://hostname:port
-         * bolt://hostname:port
-         * bolt+routing://core-server:port/?policy=MyPolicy
-         */
-        String url = "";
-        if (StringUtils.isEmpty(protocol)) {
-            if (isAutomatic(variables) || isUsingRouting(variables)) {
-                url += "neo4j";
-            } else {
-                url += "bolt";
-            }
-        } else {
-            url += variables.resolve(protocol);
-        }
-        url += "://";
-
-        // Hostname
-        //
-        url += hostname;
-
-        // Port
-        //
-        if (StringUtils.isNotEmpty(boltPort) && hostname != null && !hostname.contains(":")) {
-            url += ":" + variables.resolve(boltPort);
-        }
-
-        String routingPolicyString = variables.resolve(routingPolicy);
-
-        // We don't add these options if the automatic flag is set
-        //
-        if (!isAutomatic(variables)
-                && isUsingRouting(variables)
-                && StringUtils.isNotEmpty(routingPolicyString)) {
-            try {
-                url += "?policy=" + URLEncoder.encode(routingPolicyString, "UTF-8");
-            } catch (Exception e) {
-                LogChannel.GENERAL.logError(
-                        "Error encoding routing policy context '" + routingPolicyString + "' in connection URL",
-                        e);
-                url += "?policy=" + routingPolicyString;
-            }
-        }
-
-        return url;
-    }
-
-    public boolean encryptionVariableSet(IVariables variables) {
-        if (!Utils.isEmpty(usingEncryptionVariable)) {
-            String value = variables.resolve(usingEncryptionVariable);
-            if (!Utils.isEmpty(value)) {
-                return ValueMetaBase.convertStringToBoolean(value);
-            }
-        }
-        return false;
-    }
-
-    public boolean trustAllCertificatesVariableSet(IVariables variables) {
-        if (!Utils.isEmpty(trustAllCertificatesVariable)) {
-            String value = variables.resolve(trustAllCertificatesVariable);
-            if (!Utils.isEmpty(value)) {
-                return ValueMetaBase.convertStringToBoolean(value);
-            }
-        }
-        return false;
-    }
-
-    /**
-     * Checks both the automaticVariable String and automatic boolean to see if this connection is to
-     * be configured automatically.
-     *
-     * @param variables Used to resolve variable expressions
-     * @return True if the connection is to be configured automatically.
-     */
-    public boolean isAutomatic(IVariables variables) {
-        if (StringUtils.isEmpty(automaticVariable)) {
-            return isAutomatic();
-        } else {
-            String automaticString = variables.resolve(automaticVariable);
-            Boolean auto = ValueMetaBase.convertStringToBoolean(automaticString);
-            return auto != null && auto;
-        }
-    }
-
-    /**
-     * Get a list of all URLs, not just the first in case of routing.
-     *
-     * @return
-     * @param variables
-     */
-    public String getUrl(IVariables variables) {
-        StringBuffer urls = new StringBuffer();
-        try {
-            for (URI uri : getURIs(variables)) {
-                if (urls.length() > 0) {
-                    urls.append(",");
-                }
-                urls.append(uri.toString());
-            }
-        } catch (Exception e) {
-            urls.append("ERROR building URLs: " + e.getMessage());
-        }
-        return urls.toString();
-    }
 }

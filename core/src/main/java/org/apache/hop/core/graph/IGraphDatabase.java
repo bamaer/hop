@@ -88,6 +88,10 @@ public interface IGraphDatabase extends Cloneable{
      */
     void setManualUrls(List<String> manualUrl);
 
+    String getDefaultBoltPort();
+
+    void setDefaultBoltPort(String defaultBoltPort);
+
     String getBoltPort();
 
     void setBoltPort(String boltPort);
@@ -96,7 +100,7 @@ public interface IGraphDatabase extends Cloneable{
 
     void setRouting(boolean routing);
 
-    boolean isRoutingVariable();
+    boolean getRoutingVariable();
 
     void setRoutingVariable(boolean routingVariable);
 
@@ -175,5 +179,53 @@ public interface IGraphDatabase extends Cloneable{
      * @return the cloned Graph Database Interface object.
      */
     Object clone();
+
+    /**
+     * @return true if the database supports range indexes.
+     */
+    boolean isSupportsRangeIndex();
+
+    /**
+     * @return true if the database supports lookup indexes
+     */
+    boolean isSupportsLookupIndex();
+
+    /**
+     * @return true if the database supports text indexes
+     */
+    boolean isSupportsTextIndex();
+
+    /**
+     * @return true if the database supports point indexes
+     */
+    boolean isSupportsPointIndex();
+
+    /**
+     * @return true if the database supports full text indexes
+     */
+    boolean isSupportsFullTextIndex();
+
+    /**
+     * @return true if the database supports BTree indexes
+     */
+    boolean isSupportsBTreeIndex();
+
+
+    /**
+     * Obtain the name of the driver class that we need to use for this graph database connection!
+     *
+     * @return the name of the driver class for the specific graph database
+     */
+    String getDriverClass();
+
+    void setDriverClass(String driverClass);
+
+    /**
+     * You can use this method to supply an alternate factory for the test method in the dialogs. This
+     * is useful for plugins like SAP/R3 and PALO.
+     *
+     * @return the name of the database test factory to use.
+     */
+    String getGraphDatabaseFactoryName();
 
 }

@@ -1,12 +1,25 @@
 package org.apache.hop.ui.core.graph;
 
 import org.apache.hop.core.Const;
+import org.apache.hop.core.Props;
+import org.apache.hop.core.database.DatabaseMeta;
+import org.apache.hop.core.encryption.Encr;
+import org.apache.hop.core.exception.HopConfigException;
 import org.apache.hop.core.graph.GraphDatabaseMeta;
+import org.apache.hop.core.graph.GraphDatabasePluginType;
+import org.apache.hop.core.graph.GraphDatabaseTestResults;
+import org.apache.hop.core.graph.IGraphDatabase;
+import org.apache.hop.core.plugins.IPlugin;
+import org.apache.hop.core.plugins.PluginRegistry;
+import org.apache.hop.core.util.Utils;
 import org.apache.hop.core.variables.IVariables;
 import org.apache.hop.i18n.BaseMessages;
 import org.apache.hop.ui.core.PropsUi;
 import org.apache.hop.ui.core.dialog.ErrorDialog;
 import org.apache.hop.ui.core.dialog.MessageBox;
+import org.apache.hop.ui.core.dialog.ShowMessageDialog;
+import org.apache.hop.ui.core.gui.GuiCompositeWidgets;
+import org.apache.hop.ui.core.gui.GuiCompositeWidgetsAdapter;
 import org.apache.hop.ui.core.gui.GuiResource;
 import org.apache.hop.ui.core.metadata.MetadataEditor;
 import org.apache.hop.ui.core.metadata.MetadataManager;
@@ -17,6 +30,7 @@ import org.apache.hop.ui.core.widget.TableView;
 import org.apache.hop.ui.core.widget.TextVar;
 import org.apache.hop.ui.hopgui.HopGui;
 import org.apache.hop.ui.hopgui.perspective.metadata.MetadataPerspective;
+import org.apache.hop.ui.util.HelpUtils;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.CTabFolder;
 import org.eclipse.swt.custom.CTabItem;
@@ -27,17 +41,35 @@ import org.eclipse.swt.layout.FormAttachment;
 import org.eclipse.swt.layout.FormData;
 import org.eclipse.swt.layout.FormLayout;
 import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.TableItem;
 import org.eclipse.swt.widgets.Text;
+import org.eclipse.swt.widgets.ToolBar;
+import org.eclipse.swt.widgets.ToolItem;
+import org.neo4j.driver.Config;
+import org.neo4j.driver.Driver;
+
+import java.net.URI;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /** Dialog that allows you to edit the settings of a Neo4j connection */
 public class GraphDatabaseMetaEditor extends MetadataEditor<GraphDatabaseMeta> {
     private static final Class<?> PKG = GraphDatabaseMetaEditor.class; // for Translator2
 
     private CTabFolder wTabFolder;
+    private Composite wBasicComp;
+    private Composite wGraphDatabaseSpecificComp;
+    private GuiCompositeWidgets guiCompositeWidgets;
+    private Label wDriverInfo;
+    private Combo wConnectionType;
 
     // Connection properties
     //
@@ -74,20 +106,53 @@ public class GraphDatabaseMetaEditor extends MetadataEditor<GraphDatabaseMeta> {
     private TextVar wConnectionAcquisitionTimeout;
     private TextVar wConnectionTimeout;
     private TextVar wMaxTransactionRetryTime;
-
     private TableView wUrls;
+    private PropsUi props;
+    private int middle;
+    private int margin;
+    private Map<Class<? extends IGraphDatabase>, IGraphDatabase> metaMap;
+
+
 
     public GraphDatabaseMetaEditor(
             HopGui hopGui, MetadataManager<GraphDatabaseMeta> manager, GraphDatabaseMeta graphDatabaseMeta) {
         super(hopGui, manager, graphDatabaseMeta);
+        props = PropsUi.getInstance();
+        metaMap = populateMetaMap();
+        metaMap.put(graphDatabaseMeta.getIGraphDatabase().getClass(), graphDatabaseMeta.getIGraphDatabase());
+    }
+
+    private Map<Class<? extends IGraphDatabase>, IGraphDatabase> populateMetaMap(){
+        metaMap = new HashMap<>();
+        List<IPlugin> plugins = PluginRegistry.getInstance().getPlugins(GraphDatabasePluginType.class);
+        for (IPlugin plugin : plugins) {
+            try {
+                IGraphDatabase graphDatabase = (IGraphDatabase) PluginRegistry.getInstance().loadClass(plugin);
+                if(graphDatabase.getDefaultBoltPort() == null){
+                    graphDatabase.setDefaultBoltPort("7687");
+                }
+                if (Integer.valueOf(graphDatabase.getDefaultBoltPort()) > 0) {
+                    graphDatabase.setBoltPort(graphDatabase.getDefaultBoltPort());
+                }
+                graphDatabase.setPluginId(plugin.getIds()[0]);
+                graphDatabase.setPluginName(plugin.getName());
+                graphDatabase.addDefaultOptions();
+
+                metaMap.put(graphDatabase.getClass(), graphDatabase);
+            } catch (Exception e) {
+                HopGui.getInstance().getLog().logError("Error instantiating graph database metadata", e);
+            }
+        }
+        return metaMap;
+
     }
 
     @Override
     public void createControl(Composite composite) {
-        PropsUi props = PropsUi.getInstance();
+//        PropsUi props = PropsUi.getInstance();
 
-        int middle = props.getMiddlePct();
-        int margin = PropsUi.getMargin() + 2;
+        middle = props.getMiddlePct();
+        margin = PropsUi.getMargin() + 2;
 
         IVariables variables = getHopGui().getVariables();
 
@@ -167,13 +232,64 @@ public class GraphDatabaseMetaEditor extends MetadataEditor<GraphDatabaseMeta> {
         ScrolledComposite wBasicSComp = new ScrolledComposite(wTabFolder, SWT.V_SCROLL | SWT.H_SCROLL);
         wBasicSComp.setLayout(new FillLayout());
 
-        Composite wBasicComp = new Composite(wBasicSComp, SWT.NONE);
+        wBasicComp = new Composite(wBasicSComp, SWT.NONE);
         PropsUi.setLook(wBasicComp);
 
         FormLayout formLayout = new FormLayout();
         formLayout.marginWidth = 3;
         formLayout.marginHeight = 3;
         wBasicComp.setLayout(formLayout);
+
+        // What graph database type are we dealing with?
+        Label wlGraphConnectionType = new Label(wBasicComp, SWT.RIGHT);
+        PropsUi.setLook(wlGraphConnectionType);
+        wlGraphConnectionType.setText(BaseMessages.getString(PKG, "GraphConnectionEditor.label.ConnectionType"));
+        FormData fdlGraphConnectionType = new FormData();
+        fdlGraphConnectionType.top = new FormAttachment(0, margin);
+        fdlGraphConnectionType.left = new FormAttachment(0, 0);
+        fdlGraphConnectionType.right = new FormAttachment(middle, -margin);
+        wlGraphConnectionType.setLayoutData(fdlGraphConnectionType);
+
+        ToolBar wToolbar = new ToolBar(wBasicComp, SWT.FLAT | SWT.HORIZONTAL);
+        FormData fdToolbar = new FormData();
+        fdToolbar.right = new FormAttachment(100, 0);
+        fdToolbar.top = new FormAttachment(0, 0);
+        wToolbar.setLayoutData(fdToolbar);
+        PropsUi.setLook(wToolbar, Props.WIDGET_STYLE_DEFAULT);
+
+        ToolItem item = new ToolItem(wToolbar, SWT.PUSH);
+        item.setImage(GuiResource.getInstance().getImageHelpWeb());
+        item.setToolTipText(BaseMessages.getString(PKG, "System.Tooltip.Help"));
+        item.addListener(SWT.Selection, e -> onHelpDatabaseType());
+
+        wConnectionType = new Combo(wBasicComp, SWT.SINGLE|SWT.LEFT|SWT.BORDER);
+        wConnectionType.setItems(getGraphConnectionTypes());
+        PropsUi.setLook(wConnectionType);
+        FormData fdConnectionType = new FormData();
+        fdConnectionType.top = new FormAttachment(wlGraphConnectionType, 0, SWT.CENTER);
+        fdConnectionType.left = new FormAttachment(middle, 0); // To the right of the label
+        fdConnectionType.right = new FormAttachment(wToolbar, -margin);
+        wConnectionType.setLayoutData(fdConnectionType);
+        Control lastControl = wConnectionType;
+
+        Label wlDriverInfo = new Label(wBasicComp, SWT.RIGHT);
+        PropsUi.setLook(wlDriverInfo);
+        wlDriverInfo.setText(BaseMessages.getString(PKG, "GraphConnectionEditor.label.InstalledDriver"));
+        FormData fdlDriverInfo = new FormData();
+        fdlDriverInfo.top = new FormAttachment(lastControl, margin*2);
+        fdlDriverInfo.left = new FormAttachment(0, 0);
+        fdlDriverInfo.right = new FormAttachment(middle, -margin);
+        wlDriverInfo.setLayoutData(fdlDriverInfo);
+
+        wDriverInfo = new Label(wBasicComp, SWT.LEFT);
+        wDriverInfo.setEnabled(false);
+        PropsUi.setLook(wDriverInfo);
+        FormData fdDriverInfo = new FormData();
+        fdDriverInfo.top = new FormAttachment(wlDriverInfo, SWT.CENTER);
+        fdDriverInfo.left = new FormAttachment(middle, 0);
+        fdDriverInfo.right = new FormAttachment(100, 0);
+        wDriverInfo.setLayoutData(fdDriverInfo);
+        lastControl = wDriverInfo;
 
         // Automatic?
         wlAutomatic = new Label(wBasicComp, SWT.RIGHT);
@@ -182,7 +298,7 @@ public class GraphDatabaseMetaEditor extends MetadataEditor<GraphDatabaseMeta> {
                 BaseMessages.getString(PKG, "GraphConnectionEditor.Automatic.Tooltip"));
         PropsUi.setLook(wlAutomatic);
         FormData fdlAutomatic = new FormData();
-        fdlAutomatic.top = new FormAttachment(0, margin);
+        fdlAutomatic.top = new FormAttachment(lastControl, margin*2);
         fdlAutomatic.left = new FormAttachment(0, 0);
         fdlAutomatic.right = new FormAttachment(middle, -margin);
         wlAutomatic.setLayoutData(fdlAutomatic);
@@ -195,7 +311,7 @@ public class GraphDatabaseMetaEditor extends MetadataEditor<GraphDatabaseMeta> {
         fdAutomatic.right = new FormAttachment(95, 0);
         wAutomatic.setLayoutData(fdAutomatic);
         wAutomatic.addListener(SWT.Selection, e -> enableFields());
-        Control lastControl = wAutomatic;
+        lastControl = wAutomatic;
 
         // Protocol
         Label wlProtocol = new Label(wBasicComp, SWT.RIGHT);
@@ -306,6 +422,37 @@ public class GraphDatabaseMetaEditor extends MetadataEditor<GraphDatabaseMeta> {
         fdPassword.right = new FormAttachment(95, 0);
         wPassword.setLayoutData(fdPassword);
 
+        // Add a composite area
+        wGraphDatabaseSpecificComp = new Composite(wBasicSComp, SWT.BACKGROUND);
+        wGraphDatabaseSpecificComp.setLayout(new FormLayout());
+        FormData fdGraphDatabaseSpecificComp = new FormData();
+        fdGraphDatabaseSpecificComp.left = new FormAttachment(0,0);
+        fdGraphDatabaseSpecificComp.right = new FormAttachment(100, 0);
+        fdGraphDatabaseSpecificComp.top = new FormAttachment(lastControl, margin);
+        wGraphDatabaseSpecificComp.setLayoutData(wGraphDatabaseSpecificComp);
+        PropsUi.setLook(wGraphDatabaseSpecificComp);
+        lastControl = wGraphDatabaseSpecificComp;
+
+        // Add the Graph connection specific widgets
+        guiCompositeWidgets = new GuiCompositeWidgets(manager.getVariables());
+        guiCompositeWidgets.createCompositeWidgets(
+                getMetadata().getIGraphDatabase(),
+                null,
+                wGraphDatabaseSpecificComp,
+                GraphDatabaseMeta.GUI_PLUGIN_ELEMENT_PARENT_ID,
+                null);
+
+        // Add listener to detect change
+        guiCompositeWidgets.setWidgetsListener(
+                new GuiCompositeWidgetsAdapter() {
+                    @Override
+                    public void widgetModified(
+                            GuiCompositeWidgets compositeWidgets, Control changedWidget, String widgetId) {
+                        setChanged();
+                        updateDriverInfo();
+                    }
+                });
+
         // End of the basic tab...
         //
         wBasicComp.pack();
@@ -320,6 +467,32 @@ public class GraphDatabaseMetaEditor extends MetadataEditor<GraphDatabaseMeta> {
 
         wModelTab.setControl(wBasicSComp);
     }
+
+    /**
+     *  Update JDBC driver information and version
+     */
+    protected void updateDriverInfo() {
+        try {
+            GraphDatabaseMeta graphDatabaseMeta = new GraphDatabaseMeta();
+            this.getWidgetsContent(graphDatabaseMeta);
+
+            wDriverInfo.setText("");
+            String driverName = graphDatabaseMeta.getDriverClass(getVariables());
+            if ( !Utils.isEmpty(driverName) ) {
+                ClassLoader classLoader = graphDatabaseMeta.getIGraphDatabase().getClass().getClassLoader();
+                Class<?> driver = classLoader.loadClass(driverName);
+
+                if ( driver.getPackage().getImplementationVersion()!=null ) {
+                    driverName = driverName+" ("+driver.getPackage().getImplementationVersion()+")";
+                }
+
+                wDriverInfo.setText(driverName);
+            }
+        } catch (Exception e) {
+            wDriverInfo.setText("No driver installed");
+        }
+    }
+
 
     private void addProtocolTab(PropsUi props, IVariables variables, int middle, int margin) {
         CTabItem wProtocolTab = new CTabItem(wTabFolder, SWT.NONE);
@@ -728,7 +901,7 @@ public class GraphDatabaseMetaEditor extends MetadataEditor<GraphDatabaseMeta> {
         wDatabasePort.setText(Const.NVL(metadata.getBoltPort(), ""));
         wBrowserPort.setText(Const.NVL(metadata.getBrowserPort(), ""));
         wRouting.setSelection(metadata.isRouting());
-        wRouting.setVariableName(Const.NVL(metadata.getRoutingVariable(), ""));
+//        wRoutingVariable.setVariableName(Const.NVL(metadata.getRoutingVariable(), ""));
         wPolicy.setText(Const.NVL(metadata.getRoutingPolicy(), ""));
         wUsername.setText(Const.NVL(metadata.getUsername(), ""));
         wPassword.setText(Const.NVL(metadata.getPassword(), ""));
@@ -769,7 +942,7 @@ public class GraphDatabaseMetaEditor extends MetadataEditor<GraphDatabaseMeta> {
         graphDatabaseMeta.setBoltPort(wDatabasePort.getText());
         graphDatabaseMeta.setBrowserPort(wBrowserPort.getText());
         graphDatabaseMeta.setRouting(wRouting.getSelection());
-        graphDatabaseMeta.setRoutingVariable(wRouting.getVariableName());
+//        graphDatabaseMeta.setRoutingVariable(wRouting.getVariableName());
         graphDatabaseMeta.setRoutingPolicy(wPolicy.getText());
         graphDatabaseMeta.setUsername(wUsername.getText());
         graphDatabaseMeta.setPassword(wPassword.getText());
@@ -792,12 +965,58 @@ public class GraphDatabaseMetaEditor extends MetadataEditor<GraphDatabaseMeta> {
         }
     }
 
+    private void test(){
+        GraphDatabaseMeta graphDatabaseMeta = new GraphDatabaseMeta();
+        getWidgetsContent(graphDatabaseMeta);
+        testConnection(getShell(), manager.getVariables(), graphDatabaseMeta);
+    }
+
+    public static final void testConnection(
+            Shell shell, IVariables variables, GraphDatabaseMeta graphDatabaseMeta){
+        String[] remarks = graphDatabaseMeta.checkParameters();
+        if(remarks.length == 0){
+            GraphDatabaseTestResults testResults = graphDatabaseMeta.testConnectionSuccess(variables);
+            String message = testResults.getMessage();
+            boolean success = testResults.isSuccess();
+            String title =
+                    success
+                            ? BaseMessages.getString(PKG, "GraphDatabaseDialog.DatabaseConnectionTestSuccess.title")
+                            : BaseMessages.getString(PKG, "GraphDatabaseDialog.DatabaseConnectionTest.title");
+            if (success && message.contains(Const.CR)) {
+                message =
+                        message.substring(0, message.indexOf(Const.CR))
+                                + Const.CR
+                                + message.substring(message.indexOf(Const.CR));
+                message = message.substring(0, message.lastIndexOf(Const.CR));
+            }
+            ShowMessageDialog msgDialog =
+                    new ShowMessageDialog(
+                            shell, SWT.ICON_INFORMATION | SWT.OK, title, message, message.length() > 300);
+            msgDialog.setType(
+                    success
+                            ? Const.SHOW_MESSAGE_DIALOG_DB_TEST_SUCCESS
+                            : Const.SHOW_MESSAGE_DIALOG_DB_TEST_DEFAULT);
+            msgDialog.open();
+        } else {
+            String message = "";
+            for (int i = 0; i < remarks.length; i++) {
+                message += "    * " + remarks[i] + Const.CR;
+            }
+
+            MessageBox mb = new MessageBox(shell, SWT.OK | SWT.ICON_ERROR);
+            mb.setText(BaseMessages.getString(PKG, "GraphDatabaseDialog.ErrorParameters2.title"));
+            mb.setMessage(
+                    BaseMessages.getString(PKG, "GraphDatabaseDialog.ErrorParameters2.description", message));
+            mb.open();        }
+    }
+
+/*
     public void test() {
         IVariables variables = manager.getVariables();
         GraphDatabaseMeta graphDatabaseMeta = new GraphDatabaseMeta(metadata);
         try {
             getWidgetsContent(graphDatabaseMeta);
-            graphDatabaseMeta.test(variables);
+
             MessageBox box = new MessageBox(hopGui.getShell(), SWT.OK);
             box.setText("OK");
             String message = "Connection successful!" + Const.CR;
@@ -813,6 +1032,160 @@ public class GraphDatabaseMetaEditor extends MetadataEditor<GraphDatabaseMeta> {
                     e);
         }
     }
+*/
+
+/*
+    public static final void testConnection(Shell shell, IVariables variables, GraphDatabaseMeta graphDatabaseMeta){
+
+    }
+
+    public Driver getDriver(ILogChannel log, IVariables variables) throws HopConfigException {
+
+        try {
+            List<URI> uris = getURIs(variables);
+
+            String realUsername = variables.resolve(username);
+            String realPassword = Encr.decryptPasswordOptionallyEncrypted(variables.resolve(password));
+            Config.ConfigBuilder configBuilder;
+
+            if (!isAutomatic(variables)) {
+                if (encryptionVariableSet(variables) || usingEncryption) {
+                    configBuilder = Config.builder().withEncryption();
+                    if (trustAllCertificatesVariableSet(variables) || trustAllCertificates) {
+                        configBuilder =
+                                configBuilder.withTrustStrategy(Config.TrustStrategy.trustAllCertificates());
+                    }
+                } else {
+                    configBuilder = Config.builder().withoutEncryption();
+                }
+            } else {
+                configBuilder = Config.builder();
+            }
+            if (StringUtils.isNotEmpty(connectionLivenessCheckTimeout)) {
+                long seconds = Const.toLong(variables.resolve(connectionLivenessCheckTimeout), -1L);
+                if (seconds > 0) {
+                    configBuilder =
+                            configBuilder.withConnectionLivenessCheckTimeout(seconds, TimeUnit.MILLISECONDS);
+                }
+            }
+            if (StringUtils.isNotEmpty(maxConnectionLifetime)) {
+                long seconds = Const.toLong(variables.resolve(maxConnectionLifetime), -1L);
+                if (seconds > 0) {
+                    configBuilder = configBuilder.withMaxConnectionLifetime(seconds, TimeUnit.MILLISECONDS);
+                }
+            }
+            if (StringUtils.isNotEmpty(maxConnectionPoolSize)) {
+                int size = Const.toInt(variables.resolve(maxConnectionPoolSize), -1);
+                if (size > 0) {
+                    configBuilder = configBuilder.withMaxConnectionPoolSize(size);
+                }
+            }
+            if (StringUtils.isNotEmpty(connectionAcquisitionTimeout)) {
+                long seconds = Const.toLong(variables.resolve(connectionAcquisitionTimeout), -1L);
+                if (seconds > 0) {
+                    configBuilder =
+                            configBuilder.withConnectionAcquisitionTimeout(seconds, TimeUnit.MILLISECONDS);
+                }
+            }
+            if (StringUtils.isNotEmpty(connectionTimeout)) {
+                long seconds = Const.toLong(variables.resolve(connectionTimeout), -1L);
+                if (seconds > 0) {
+                    configBuilder = configBuilder.withConnectionTimeout(seconds, TimeUnit.MILLISECONDS);
+                }
+            }
+            if (StringUtils.isNotEmpty(maxTransactionRetryTime)) {
+                long seconds = Const.toLong(variables.resolve(maxTransactionRetryTime), -1L);
+                if (seconds >= 0) {
+                    configBuilder = configBuilder.withMaxTransactionRetryTime(seconds, TimeUnit.MILLISECONDS);
+                }
+            }
+
+            // Disable info messages: only warnings and above...
+            //
+            configBuilder = configBuilder.withLogging(Logging.javaUtilLogging(Level.WARNING));
+
+            Config config = configBuilder.build();
+
+            org.neo4j.driver.Driver driver;
+            if (isUsingRouting(variables)) {
+                driver =
+                        org.neo4j.driver.GraphDatabase.routingDriver(uris, AuthTokens.basic(realUsername, realPassword), config);
+            } else {
+                driver =
+                        org.neo4j.driver.GraphDatabase.driver(uris.get(0), AuthTokens.basic(realUsername, realPassword), config);
+            }
+
+            // Verify connectivity at this point to ensure we're not being dishonest when testing
+            //
+            driver.verifyConnectivity();
+
+            return driver;
+        } catch (URISyntaxException e) {
+            throw new HopConfigException(
+                    "URI syntax problem, check your settings, hostnames especially.  For routing use comma separated server values.",
+                    e);
+        } catch (Exception e) {
+            throw new HopConfigException("Error obtaining driver for a Neo4j connection", e);
+        }
+    }
+
+    public List<URI> getURIs(IVariables variables) throws URISyntaxException {
+
+        List<URI> uris = new ArrayList<>();
+
+        if (manualUrls != null && !manualUrls.isEmpty()) {
+            // A manual URL is specified
+            //
+            for (String manualUrl : manualUrls) {
+                uris.add(new URI(manualUrl));
+            }
+        } else {
+            // Construct the URIs from the entered values
+            //
+            List<String> serverStrings = new ArrayList<>();
+            String serversString = variables.resolve(server);
+            if (!isAutomatic(variables) && isUsingRouting(variables)) {
+                Collections.addAll(serverStrings, serversString.split(","));
+            } else {
+                serverStrings.add(serversString);
+            }
+
+            for (String serverString : serverStrings) {
+                // Trim excess spaces from server name
+                //
+                String url = getUrl(Const.trim(serverString), variables);
+                uris.add(new URI(url));
+            }
+        }
+
+        return uris;
+    }
+*/
+
+
+/*
+    public void test(IVariables variables) throws HopException {
+
+        try (Driver driver = getDriver(LogChannel.GENERAL, variables)) {
+            SessionConfig.Builder builder = SessionConfig.builder();
+            if (StringUtils.isNotEmpty(databaseName)) {
+                builder = builder.withDatabase(variables.resolve(databaseName));
+            }
+            try (Session session = driver.session(builder.build())) {
+                // Do something with the session otherwise it doesn't test the connection
+                //
+                Result result = session.run("RETURN 0");
+                Record record = result.next();
+                Value value = record.get(0);
+                int zero = value.asInt();
+                assert (zero == 0);
+            } catch (Exception e) {
+                throw new HopException(
+                        "Unable to connect to database '" + name + "' : " + e.getMessage(), e);
+            }
+        }
+    }
+*/
 
     @Override
     public Button[] createButtonsForButtonBar(Composite composite) {
@@ -835,4 +1208,98 @@ public class GraphDatabaseMetaEditor extends MetadataEditor<GraphDatabaseMeta> {
         resetChanged();
         MetadataPerspective.getInstance().updateEditor(this);
     }
+
+    private void onHelpDatabaseType() {
+        PluginRegistry registry = PluginRegistry.getInstance();
+        String name = wConnectionType.getText();
+        for (IPlugin plugin : registry.getPlugins(GraphDatabasePluginType.class)) {
+            if (plugin.getName().equals(name)) {
+                HelpUtils.openHelp(getShell(), plugin);
+                break;
+            }
+        }
+    }
+
+    private String[] getGraphConnectionTypes() {
+        PluginRegistry registry = PluginRegistry.getInstance();
+        List<IPlugin> plugins = registry.getPlugins(GraphDatabasePluginType.class);
+        String[] types = new String[plugins.size()];
+        for (int i = 0; i < types.length; i++) {
+            types[i] = plugins.get(i).getName();
+        }
+        Arrays.sort(types, String.CASE_INSENSITIVE_ORDER);
+        return types;
+    }
+
+    private AtomicBoolean busyChangingConnectionType = new AtomicBoolean(false);
+
+    private void changeConnectionType() {
+
+        if (busyChangingConnectionType.get()) {
+            return;
+        }
+        busyChangingConnectionType.set(true);
+
+        GraphDatabaseMeta graphDatabaseMeta = this.getMetadata();
+
+        // Keep track of the old database type since this changes when getting the content
+        //
+        Class<? extends IGraphDatabase> oldClass = graphDatabaseMeta.getIGraphDatabase().getClass();
+        String oldTypeName = graphDatabaseMeta.getPluginName();
+        String newTypeName = wConnectionType.getText();
+        wConnectionType.setText(graphDatabaseMeta.getPluginName());
+
+        // Capture any information on the widgets
+        //
+        this.getWidgetsContent(graphDatabaseMeta);
+
+        // Save the state of this type, so we can switch back and forth
+        //
+        metaMap.put(oldClass, graphDatabaseMeta.getIGraphDatabase());
+
+        // Now change the data type
+        //
+        wConnectionType.setText(newTypeName);
+        graphDatabaseMeta.setGraphDatabaseType(newTypeName);
+
+        // Get possible information from the metadata map (from previous work)
+        //
+        graphDatabaseMeta.setIGraphDatabase(metaMap.get(graphDatabaseMeta.getIGraphDatabase().getClass()));
+
+        // Remove existing children
+        //
+        for (Control child : wGraphDatabaseSpecificComp.getChildren()) {
+            child.dispose();
+        }
+
+        // Re-add the widgets
+        //
+        guiCompositeWidgets = new GuiCompositeWidgets(manager.getVariables());
+        guiCompositeWidgets.createCompositeWidgets(
+                graphDatabaseMeta.getIGraphDatabase(),
+                null,
+                wGraphDatabaseSpecificComp,
+                DatabaseMeta.GUI_PLUGIN_ELEMENT_PARENT_ID,
+                null);
+        guiCompositeWidgets.setWidgetsListener(
+                new GuiCompositeWidgetsAdapter() {
+                    @Override
+                    public void widgetModified(
+                            GuiCompositeWidgets compositeWidgets, Control changedWidget, String widgetId) {
+                        setChanged();
+                        updateDriverInfo();
+                    }
+                });
+//        addCompositeWidgetsUsernamePassword();
+
+        // Put the data back
+        //
+        setWidgetsContent();
+
+        wBasicComp.layout(true, true);
+
+        busyChangingConnectionType.set(false);
+    }
+
+
 }
