@@ -1,5 +1,9 @@
 package org.apache.hop.core.graph;
 
+import org.apache.commons.lang.StringUtils;
+import org.apache.hop.core.Const;
+import org.apache.hop.core.encryption.Encr;
+import org.apache.hop.core.exception.HopConfigException;
 import org.apache.hop.core.exception.HopValueException;
 import org.apache.hop.core.extension.ExtensionPointHandler;
 import org.apache.hop.core.extension.HopExtensionPoint;
@@ -14,14 +18,24 @@ import org.apache.hop.core.row.IValueMeta;
 import org.apache.hop.core.row.value.ValueMetaFactory;
 import org.apache.hop.core.variables.IVariables;
 import org.apache.hop.core.variables.Variables;
+import org.neo4j.driver.AuthTokens;
+import org.neo4j.driver.Config;
+import org.neo4j.driver.Driver;
+import org.neo4j.driver.Logging;
 import org.neo4j.driver.Session;
 
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URLEncoder;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
 
 /**
  * Graph Database handles the process of connecting to, reading from, writing to and updating graph databases.
@@ -237,5 +251,182 @@ public class GraphDatabase implements IVariables, ILoggingObject, AutoCloseable 
 
     public void setSession(Session session){
         this.session = session;
+    }
+
+    public Driver getDriver(ILogChannel log, IVariables variables) throws HopConfigException {
+
+        try {
+            List<URI> uris = getURIs(variables);
+
+            String realUsername = variables.resolve(graphDatabaseMeta.getUsername());
+            String realPassword = Encr.decryptPasswordOptionallyEncrypted(variables.resolve(graphDatabaseMeta.getPassword()));
+            Config.ConfigBuilder configBuilder;
+
+            if (!graphDatabaseMeta.isAutomatic()) {
+                if (!StringUtils.isEmpty(graphDatabaseMeta.getUsingEncryptionVariable()) || graphDatabaseMeta.isUsingEncryption()) {
+                    configBuilder = Config.builder().withEncryption();
+                    if (!StringUtils.isEmpty(graphDatabaseMeta.getTrustAllCertificatesVariable()) || graphDatabaseMeta.isTrustAllCertificates()) {
+                        configBuilder =
+                                configBuilder.withTrustStrategy(Config.TrustStrategy.trustAllCertificates());
+                    }
+                } else {
+                    configBuilder = Config.builder().withoutEncryption();
+                }
+            } else {
+                configBuilder = Config.builder();
+            }
+            if (StringUtils.isNotEmpty(graphDatabaseMeta.getConnectionLivenessCheckTimeout())) {
+                long seconds = Const.toLong(variables.resolve(graphDatabaseMeta.getConnectionLivenessCheckTimeout()), -1L);
+                if (seconds > 0) {
+                    configBuilder =
+                            configBuilder.withConnectionLivenessCheckTimeout(seconds, TimeUnit.MILLISECONDS);
+                }
+            }
+            if (StringUtils.isNotEmpty(graphDatabaseMeta.getMaxConnectionLifetime())) {
+                long seconds = Const.toLong(variables.resolve(graphDatabaseMeta.getMaxConnectionLifetime()), -1L);
+                if (seconds > 0) {
+                    configBuilder = configBuilder.withMaxConnectionLifetime(seconds, TimeUnit.MILLISECONDS);
+                }
+            }
+            if (StringUtils.isNotEmpty(graphDatabaseMeta.getMaxConnectionPoolSize())) {
+                int size = Const.toInt(variables.resolve(graphDatabaseMeta.getMaxConnectionPoolSize()), -1);
+                if (size > 0) {
+                    configBuilder = configBuilder.withMaxConnectionPoolSize(size);
+                }
+            }
+            if (StringUtils.isNotEmpty(graphDatabaseMeta.getConnectionAcquisitionTimeout())) {
+                long seconds = Const.toLong(variables.resolve(graphDatabaseMeta.getConnectionAcquisitionTimeout()), -1L);
+                if (seconds > 0) {
+                    configBuilder =
+                            configBuilder.withConnectionAcquisitionTimeout(seconds, TimeUnit.MILLISECONDS);
+                }
+            }
+            if (StringUtils.isNotEmpty(graphDatabaseMeta.getConnectionTimeout())) {
+                long seconds = Const.toLong(variables.resolve(graphDatabaseMeta.getConnectionTimeout()), -1L);
+                if (seconds > 0) {
+                    configBuilder = configBuilder.withConnectionTimeout(seconds, TimeUnit.MILLISECONDS);
+                }
+            }
+            if (StringUtils.isNotEmpty(graphDatabaseMeta.getMaxTransactionRetryTime())) {
+                long seconds = Const.toLong(variables.resolve(graphDatabaseMeta.getMaxTransactionRetryTime()), -1L);
+                if (seconds >= 0) {
+                    configBuilder = configBuilder.withMaxTransactionRetryTime(seconds, TimeUnit.MILLISECONDS);
+                }
+            }
+
+            // Disable info messages: only warnings and above...
+            //
+            configBuilder = configBuilder.withLogging(Logging.javaUtilLogging(Level.WARNING));
+
+            Config config = configBuilder.build();
+
+            org.neo4j.driver.Driver driver;
+            if (graphDatabaseMeta.isRouting()) {
+                driver =
+                        org.neo4j.driver.GraphDatabase.routingDriver(uris, AuthTokens.basic(realUsername, realPassword), config);
+            } else {
+                driver =
+                        org.neo4j.driver.GraphDatabase.driver(uris.get(0), AuthTokens.basic(realUsername, realPassword), config);
+            }
+
+            // Verify connectivity at this point to ensure we're not being dishonest when testing
+            //
+            driver.verifyConnectivity();
+
+            return driver;
+        } catch (URISyntaxException e) {
+            throw new HopConfigException(
+                    "URI syntax problem, check your settings, hostnames especially.  For routing use comma separated server values.",
+                    e);
+        } catch (Exception e) {
+            throw new HopConfigException("Error obtaining driver for a Neo4j connection", e);
+        }
+    }
+
+    public List<URI> getURIs(IVariables variables) throws URISyntaxException {
+
+        List<URI> uris = new ArrayList<>();
+
+        if (graphDatabaseMeta.getManualUrls() != null && !graphDatabaseMeta.getManualUrls().isEmpty()) {
+            // A manual URL is specified
+            //
+            for (String manualUrl : graphDatabaseMeta.getManualUrls()) {
+                uris.add(new URI(manualUrl));
+            }
+        } else {
+            // Construct the URIs from the entered values
+            //
+            List<String> serverStrings = new ArrayList<>();
+            String serversString = variables.resolve(graphDatabaseMeta.getServer());
+            if (!graphDatabaseMeta.isAutomatic() && graphDatabaseMeta.isRouting()) {
+                Collections.addAll(serverStrings, serversString.split(","));
+            } else {
+                serverStrings.add(serversString);
+            }
+
+            for (String serverString : serverStrings) {
+                // Trim excess spaces from server name
+                //
+                String url = getUrl(Const.trim(serverString), variables);
+                uris.add(new URI(url));
+            }
+        }
+
+        return uris;
+    }
+
+    public String getUrl(String hostname, IVariables variables) {
+
+        /*
+         * Construct the following URL:
+         *
+         * neo4://hostname:port
+         * bolt://hostname:port
+         * bolt+routing://core-server:port/?policy=MyPolicy
+         */
+        String url = "";
+        if (StringUtils.isEmpty(graphDatabaseMeta.getProtocol())) {
+            if (graphDatabaseMeta.isAutomatic() || graphDatabaseMeta.isRouting()) {
+                url += "neo4j";
+            } else {
+                url += "bolt";
+            }
+        } else {
+            url += variables.resolve(graphDatabaseMeta.getProtocol());
+        }
+        url += "://";
+
+        // Hostname
+        //
+        url += hostname;
+
+        // Port
+        //
+        if (StringUtils.isNotEmpty(graphDatabaseMeta.getBoltPort()) && hostname != null && !hostname.contains(":")) {
+            url += ":" + variables.resolve(graphDatabaseMeta.getBoltPort());
+        }
+
+        String routingPolicyString = variables.resolve(graphDatabaseMeta.getRoutingPolicy());
+
+        // We don't add these options if the automatic flag is set
+        //
+        if (!graphDatabaseMeta.isAutomatic()
+                && graphDatabaseMeta.isRouting()
+                && StringUtils.isNotEmpty(routingPolicyString)) {
+            try {
+                url += "?policy=" + URLEncoder.encode(routingPolicyString, "UTF-8");
+            } catch (Exception e) {
+                LogChannel.GENERAL.logError(
+                        "Error encoding routing policy context '" + routingPolicyString + "' in connection URL",
+                        e);
+                url += "?policy=" + routingPolicyString;
+            }
+        }
+
+        return url;
+    }
+
+    public void disconnect(){
+        // clean up and close the session.
     }
 }

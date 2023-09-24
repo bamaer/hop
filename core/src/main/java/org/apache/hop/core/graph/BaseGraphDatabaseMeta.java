@@ -14,6 +14,11 @@ import java.util.Map;
 
 public abstract class BaseGraphDatabaseMeta implements Cloneable, IGraphDatabase{
 
+    public static final String ID_USERNAME_LABEL = "username-label";
+    public static final String ID_USERNAME_WIDGET = "username-widget";
+    public static final String ID_PASSWORD_LABEL = "password-label";
+    public static final String ID_PASSWORD_WIDGET = "password-widget";
+
     @HopMetadataProperty
     @GuiWidgetElement(
             id = "hostname",

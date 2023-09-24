@@ -2,9 +2,11 @@ package org.apache.hop.ui.core.graph;
 
 import org.apache.hop.core.Const;
 import org.apache.hop.core.Props;
+import org.apache.hop.core.database.BaseDatabaseMeta;
 import org.apache.hop.core.database.DatabaseMeta;
 import org.apache.hop.core.encryption.Encr;
 import org.apache.hop.core.exception.HopConfigException;
+import org.apache.hop.core.graph.BaseGraphDatabaseMeta;
 import org.apache.hop.core.graph.GraphDatabaseMeta;
 import org.apache.hop.core.graph.GraphDatabasePluginType;
 import org.apache.hop.core.graph.GraphDatabaseTestResults;
@@ -45,6 +47,7 @@ import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.TableItem;
 import org.eclipse.swt.widgets.Text;
@@ -73,6 +76,8 @@ public class GraphDatabaseMetaEditor extends MetadataEditor<GraphDatabaseMeta> {
 
     // Connection properties
     //
+    private Label wlUsername;
+    private Label wlPassword;
     private Text wName;
     private Label wlAutomatic;
     private CheckBoxVar wAutomatic;
@@ -194,6 +199,11 @@ public class GraphDatabaseMetaEditor extends MetadataEditor<GraphDatabaseMeta> {
 
         clearChanged();
 
+        Listener modifyListener = event -> {
+            setChanged();
+            MetadataPerspective.getInstance().updateEditor(this);
+        };
+
         // Add modify listeners to all controls.
         // This will inform the Metadata perspective in the Hop GUI that this object was modified and
         // needs to be saved.
@@ -201,6 +211,7 @@ public class GraphDatabaseMetaEditor extends MetadataEditor<GraphDatabaseMeta> {
         Control[] controls = {
                 wName,
                 wAutomatic,
+                wProtocol,
                 wServer,
                 wDatabaseName,
                 wVersion4,
@@ -223,6 +234,7 @@ public class GraphDatabaseMetaEditor extends MetadataEditor<GraphDatabaseMeta> {
             control.addListener(SWT.Modify, e -> setChanged());
             control.addListener(SWT.Selection, e -> setChanged());
         }
+        wConnectionType.addListener(SWT.Modify, event -> changeConnectionType());
     }
 
     private void addBasicTab(PropsUi props, IVariables variables, int middle, int margin) {
@@ -388,7 +400,7 @@ public class GraphDatabaseMetaEditor extends MetadataEditor<GraphDatabaseMeta> {
         lastControl = wDatabasePort;
 
         // Username
-        Label wlUsername = new Label(wBasicComp, SWT.RIGHT);
+        wlUsername = new Label(wBasicComp, SWT.RIGHT);
         wlUsername.setText(BaseMessages.getString(PKG, "GraphConnectionEditor.UserName.Label"));
         PropsUi.setLook(wlUsername);
         FormData fdlUsername = new FormData();
@@ -406,7 +418,7 @@ public class GraphDatabaseMetaEditor extends MetadataEditor<GraphDatabaseMeta> {
         lastControl = wUsername;
 
         // Password
-        Label wlPassword = new Label(wBasicComp, SWT.RIGHT);
+        wlPassword = new Label(wBasicComp, SWT.RIGHT);
         wlPassword.setText(BaseMessages.getString(PKG, "GraphConnectionEditor.Password.Label"));
         PropsUi.setLook(wlPassword);
         FormData fdlPassword = new FormData();
@@ -845,6 +857,10 @@ public class GraphDatabaseMetaEditor extends MetadataEditor<GraphDatabaseMeta> {
         boolean hasNoUrls = wUrls.nrNonEmpty() == 0;
         for (Control control :
                 new Control[] {
+                        wlUsername,
+                        wlPassword,
+                        wUsername,
+                        wPassword,
                         wlServer,
                         wServer,
                         wlDatabaseName,
@@ -1279,7 +1295,7 @@ public class GraphDatabaseMetaEditor extends MetadataEditor<GraphDatabaseMeta> {
                 graphDatabaseMeta.getIGraphDatabase(),
                 null,
                 wGraphDatabaseSpecificComp,
-                DatabaseMeta.GUI_PLUGIN_ELEMENT_PARENT_ID,
+                GraphDatabaseMeta.GUI_PLUGIN_ELEMENT_PARENT_ID,
                 null);
         guiCompositeWidgets.setWidgetsListener(
                 new GuiCompositeWidgetsAdapter() {
@@ -1290,7 +1306,7 @@ public class GraphDatabaseMetaEditor extends MetadataEditor<GraphDatabaseMeta> {
                         updateDriverInfo();
                     }
                 });
-//        addCompositeWidgetsUsernamePassword();
+        addCompositeWidgetsUsernamePassword();
 
         // Put the data back
         //
@@ -1301,5 +1317,13 @@ public class GraphDatabaseMetaEditor extends MetadataEditor<GraphDatabaseMeta> {
         busyChangingConnectionType.set(false);
     }
 
+    private void addCompositeWidgetsUsernamePassword() {
+        // Add username and password to the mix so folks can enable/disable those
+        //
+        guiCompositeWidgets.getWidgetsMap().put(BaseGraphDatabaseMeta.ID_USERNAME_LABEL, wlUsername);
+        guiCompositeWidgets.getWidgetsMap().put(BaseGraphDatabaseMeta.ID_USERNAME_WIDGET, wUsername);
+        guiCompositeWidgets.getWidgetsMap().put(BaseGraphDatabaseMeta.ID_PASSWORD_LABEL, wlPassword);
+        guiCompositeWidgets.getWidgetsMap().put(BaseGraphDatabaseMeta.ID_PASSWORD_WIDGET, wPassword);
+    }
 
 }

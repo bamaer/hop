@@ -224,7 +224,7 @@ public interface IGraphDatabase extends Cloneable{
      * You can use this method to supply an alternate factory for the test method in the dialogs. This
      * is useful for plugins like SAP/R3 and PALO.
      *
-     * @return the name of the database test factory to use.
+     * @return the name of the graph database test factory to use.
      */
     String getGraphDatabaseFactoryName();
 
