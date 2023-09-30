@@ -11,6 +11,7 @@ import org.apache.hop.core.graph.GraphDatabaseMeta;
 import org.apache.hop.core.graph.GraphDatabasePluginType;
 import org.apache.hop.core.graph.GraphDatabaseTestResults;
 import org.apache.hop.core.graph.IGraphDatabase;
+import org.apache.hop.core.gui.plugin.GuiPlugin;
 import org.apache.hop.core.plugins.IPlugin;
 import org.apache.hop.core.plugins.PluginRegistry;
 import org.apache.hop.core.util.Utils;
@@ -37,6 +38,7 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.CTabFolder;
 import org.eclipse.swt.custom.CTabItem;
 import org.eclipse.swt.custom.ScrolledComposite;
+import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.FormAttachment;
@@ -64,6 +66,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /** Dialog that allows you to edit the settings of a Neo4j connection */
+@GuiPlugin(description = "This is the editor for graph database connection metadata")
 public class GraphDatabaseMetaEditor extends MetadataEditor<GraphDatabaseMeta> {
     private static final Class<?> PKG = GraphDatabaseMetaEditor.class; // for Translator2
 
@@ -210,25 +213,25 @@ public class GraphDatabaseMetaEditor extends MetadataEditor<GraphDatabaseMeta> {
         //
         Control[] controls = {
                 wName,
-                wAutomatic,
-                wProtocol,
-                wServer,
-                wDatabaseName,
-                wVersion4,
-                wDatabasePort,
-                wBrowserPort,
-                wPolicy,
-                wUsername,
-                wPassword,
-                wRouting,
-                wEncryption,
-                wTrustAllCertificates,
-                wConnectionLivenessCheckTimeout,
-                wMaxConnectionLifetime,
-                wMaxConnectionPoolSize,
-                wConnectionAcquisitionTimeout,
-                wConnectionTimeout,
-                wMaxTransactionRetryTime
+//                wAutomatic,
+//                wProtocol,
+//                wServer,
+//                wDatabaseName,
+//                wVersion4,
+//                wDatabasePort,
+//                wBrowserPort,
+//                wPolicy,
+//                wUsername,
+//                wPassword,
+//                wRouting,
+//                wEncryption,
+//                wTrustAllCertificates,
+//                wConnectionLivenessCheckTimeout,
+//                wMaxConnectionLifetime,
+//                wMaxConnectionPoolSize,
+//                wConnectionAcquisitionTimeout,
+//                wConnectionTimeout,
+//                wMaxTransactionRetryTime
         };
         for (Control control : controls) {
             control.addListener(SWT.Modify, e -> setChanged());
@@ -297,151 +300,152 @@ public class GraphDatabaseMetaEditor extends MetadataEditor<GraphDatabaseMeta> {
         wDriverInfo.setEnabled(false);
         PropsUi.setLook(wDriverInfo);
         FormData fdDriverInfo = new FormData();
-        fdDriverInfo.top = new FormAttachment(wlDriverInfo, SWT.CENTER);
+        fdDriverInfo.top = new FormAttachment(wlDriverInfo, 0, SWT.CENTER);
         fdDriverInfo.left = new FormAttachment(middle, 0);
         fdDriverInfo.right = new FormAttachment(100, 0);
         wDriverInfo.setLayoutData(fdDriverInfo);
         lastControl = wDriverInfo;
 
         // Automatic?
-        wlAutomatic = new Label(wBasicComp, SWT.RIGHT);
-        wlAutomatic.setText(BaseMessages.getString(PKG, "GraphConnectionEditor.Automatic.Label"));
-        wlAutomatic.setToolTipText(
-                BaseMessages.getString(PKG, "GraphConnectionEditor.Automatic.Tooltip"));
-        PropsUi.setLook(wlAutomatic);
-        FormData fdlAutomatic = new FormData();
-        fdlAutomatic.top = new FormAttachment(lastControl, margin*2);
-        fdlAutomatic.left = new FormAttachment(0, 0);
-        fdlAutomatic.right = new FormAttachment(middle, -margin);
-        wlAutomatic.setLayoutData(fdlAutomatic);
-        wAutomatic = new CheckBoxVar(variables, wBasicComp, SWT.CHECK);
-        wAutomatic.setToolTipText(BaseMessages.getString(PKG, "GraphConnectionEditor.Automatic.Tooltip"));
-        PropsUi.setLook(wAutomatic);
-        FormData fdAutomatic = new FormData();
-        fdAutomatic.top = new FormAttachment(wlAutomatic, 0, SWT.CENTER);
-        fdAutomatic.left = new FormAttachment(middle, 0);
-        fdAutomatic.right = new FormAttachment(95, 0);
-        wAutomatic.setLayoutData(fdAutomatic);
-        wAutomatic.addListener(SWT.Selection, e -> enableFields());
-        lastControl = wAutomatic;
-
-        // Protocol
-        Label wlProtocol = new Label(wBasicComp, SWT.RIGHT);
-        wlProtocol.setText(BaseMessages.getString(PKG, "GraphConnectionEditor.Protocol.Label"));
-        wlProtocol.setToolTipText(BaseMessages.getString(PKG, "GraphConnectionEditor.Protocol.Tooltip"));
-        PropsUi.setLook(wlProtocol);
-        FormData fdlProtocol = new FormData();
-        fdlProtocol.top = new FormAttachment(lastControl, margin);
-        fdlProtocol.left = new FormAttachment(0, 0);
-        fdlProtocol.right = new FormAttachment(middle, -margin);
-        wlProtocol.setLayoutData(fdlProtocol);
-        wProtocol = new TextVar(variables, wBasicComp, SWT.SINGLE | SWT.LEFT | SWT.BORDER);
-        wProtocol.setToolTipText(BaseMessages.getString(PKG, "GraphConnectionEditor.Protocol.Tooltip"));
-        PropsUi.setLook(wProtocol);
-        FormData fdProtocol = new FormData();
-        fdProtocol.top = new FormAttachment(wlProtocol, 0, SWT.CENTER);
-        fdProtocol.left = new FormAttachment(middle, 0);
-        fdProtocol.right = new FormAttachment(95, 0);
-        wProtocol.setLayoutData(fdProtocol);
-        lastControl = wProtocol;
-
-        // The server
-        wlServer = new Label(wBasicComp, SWT.RIGHT);
-        PropsUi.setLook(wlServer);
-        wlServer.setText(BaseMessages.getString(PKG, "GraphConnectionEditor.Server.Label"));
-        FormData fdlServer = new FormData();
-        fdlServer.top = new FormAttachment(lastControl, margin);
-        fdlServer.left = new FormAttachment(0, 0); // First one in the left top corner
-        fdlServer.right = new FormAttachment(middle, -margin);
-        wlServer.setLayoutData(fdlServer);
-        wServer = new TextVar(variables, wBasicComp, SWT.SINGLE | SWT.LEFT | SWT.BORDER);
-        PropsUi.setLook(wServer);
-        FormData fdServer = new FormData();
-        fdServer.top = new FormAttachment(wlServer, 0, SWT.CENTER);
-        fdServer.left = new FormAttachment(middle, 0); // To the right of the label
-        fdServer.right = new FormAttachment(95, 0);
-        wServer.setLayoutData(fdServer);
-        lastControl = wServer;
-
-        // The DatabaseName
-        wlDatabaseName = new Label(wBasicComp, SWT.RIGHT);
-        PropsUi.setLook(wlDatabaseName);
-        wlDatabaseName.setText(BaseMessages.getString(PKG, "GraphConnectionEditor.DatabaseName.Label"));
-        FormData fdlDatabaseName = new FormData();
-        fdlDatabaseName.top = new FormAttachment(lastControl, margin);
-        fdlDatabaseName.left = new FormAttachment(0, 0); // First one in the left top corner
-        fdlDatabaseName.right = new FormAttachment(middle, -margin);
-        wlDatabaseName.setLayoutData(fdlDatabaseName);
-        wDatabaseName = new TextVar(variables, wBasicComp, SWT.SINGLE | SWT.LEFT | SWT.BORDER);
-        PropsUi.setLook(wDatabaseName);
-        FormData fdDatabaseName = new FormData();
-        fdDatabaseName.top = new FormAttachment(wlDatabaseName, 0, SWT.CENTER);
-        fdDatabaseName.left = new FormAttachment(middle, 0); // To the right of the label
-        fdDatabaseName.right = new FormAttachment(95, 0);
-        wDatabaseName.setLayoutData(fdDatabaseName);
-        lastControl = wDatabaseName;
-
-        // Database port?
-        wlDatabasePort = new Label(wBasicComp, SWT.RIGHT);
-        PropsUi.setLook(wlDatabasePort);
-        wlDatabasePort.setText(BaseMessages.getString(PKG, "GraphConnectionEditor.DatabasePort.Label"));
-        FormData fdlDatabasePort = new FormData();
-        fdlDatabasePort.top = new FormAttachment(lastControl, margin);
-        fdlDatabasePort.left = new FormAttachment(0, 0); // First one in the left top corner
-        fdlDatabasePort.right = new FormAttachment(middle, -margin);
-        wlDatabasePort.setLayoutData(fdlDatabasePort);
-        wDatabasePort = new TextVar(variables, wBasicComp, SWT.SINGLE | SWT.LEFT | SWT.BORDER);
-        PropsUi.setLook(wDatabasePort);
-        FormData fdDatabasePort = new FormData();
-        fdDatabasePort.top = new FormAttachment(wlDatabasePort, 0, SWT.CENTER);
-        fdDatabasePort.left = new FormAttachment(middle, 0); // To the right of the label
-        fdDatabasePort.right = new FormAttachment(95, 0);
-        wDatabasePort.setLayoutData(fdDatabasePort);
-        lastControl = wDatabasePort;
-
-        // Username
-        wlUsername = new Label(wBasicComp, SWT.RIGHT);
-        wlUsername.setText(BaseMessages.getString(PKG, "GraphConnectionEditor.UserName.Label"));
-        PropsUi.setLook(wlUsername);
-        FormData fdlUsername = new FormData();
-        fdlUsername.top = new FormAttachment(lastControl, margin);
-        fdlUsername.left = new FormAttachment(0, 0);
-        fdlUsername.right = new FormAttachment(middle, -margin);
-        wlUsername.setLayoutData(fdlUsername);
-        wUsername = new TextVar(variables, wBasicComp, SWT.SINGLE | SWT.LEFT | SWT.BORDER);
-        PropsUi.setLook(wUsername);
-        FormData fdUsername = new FormData();
-        fdUsername.top = new FormAttachment(wlUsername, 0, SWT.CENTER);
-        fdUsername.left = new FormAttachment(middle, 0);
-        fdUsername.right = new FormAttachment(95, 0);
-        wUsername.setLayoutData(fdUsername);
-        lastControl = wUsername;
-
-        // Password
-        wlPassword = new Label(wBasicComp, SWT.RIGHT);
-        wlPassword.setText(BaseMessages.getString(PKG, "GraphConnectionEditor.Password.Label"));
-        PropsUi.setLook(wlPassword);
-        FormData fdlPassword = new FormData();
-        fdlPassword.top = new FormAttachment(lastControl, margin);
-        fdlPassword.left = new FormAttachment(0, 0);
-        fdlPassword.right = new FormAttachment(middle, -margin);
-        wlPassword.setLayoutData(fdlPassword);
-        wPassword = new PasswordTextVar(variables, wBasicComp, SWT.SINGLE | SWT.LEFT | SWT.BORDER);
-        PropsUi.setLook(wPassword);
-        FormData fdPassword = new FormData();
-        fdPassword.top = new FormAttachment(wlPassword, 0, SWT.CENTER);
-        fdPassword.left = new FormAttachment(middle, 0);
-        fdPassword.right = new FormAttachment(95, 0);
-        wPassword.setLayoutData(fdPassword);
+//        wlAutomatic = new Label(wBasicComp, SWT.RIGHT);
+//        wlAutomatic.setText(BaseMessages.getString(PKG, "GraphConnectionEditor.Automatic.Label"));
+//        wlAutomatic.setToolTipText(
+//                BaseMessages.getString(PKG, "GraphConnectionEditor.Automatic.Tooltip"));
+//        PropsUi.setLook(wlAutomatic);
+//        FormData fdlAutomatic = new FormData();
+//        fdlAutomatic.top = new FormAttachment(lastControl, margin*2);
+//        fdlAutomatic.left = new FormAttachment(0, 0);
+//        fdlAutomatic.right = new FormAttachment(middle, -margin);
+//        wlAutomatic.setLayoutData(fdlAutomatic);
+//        wAutomatic = new CheckBoxVar(variables, wBasicComp, SWT.CHECK);
+//        wAutomatic.setToolTipText(BaseMessages.getString(PKG, "GraphConnectionEditor.Automatic.Tooltip"));
+//        PropsUi.setLook(wAutomatic);
+//        FormData fdAutomatic = new FormData();
+//        fdAutomatic.top = new FormAttachment(wlAutomatic, 0, SWT.CENTER);
+//        fdAutomatic.left = new FormAttachment(middle, 0);
+//        fdAutomatic.right = new FormAttachment(95, 0);
+//        wAutomatic.setLayoutData(fdAutomatic);
+//        wAutomatic.addListener(SWT.Selection, e -> enableFields());
+//        lastControl = wAutomatic;
+//
+//        // Protocol
+//        Label wlProtocol = new Label(wBasicComp, SWT.RIGHT);
+//        wlProtocol.setText(BaseMessages.getString(PKG, "GraphConnectionEditor.Protocol.Label"));
+//        wlProtocol.setToolTipText(BaseMessages.getString(PKG, "GraphConnectionEditor.Protocol.Tooltip"));
+//        PropsUi.setLook(wlProtocol);
+//        FormData fdlProtocol = new FormData();
+//        fdlProtocol.top = new FormAttachment(lastControl, margin);
+//        fdlProtocol.left = new FormAttachment(0, 0);
+//        fdlProtocol.right = new FormAttachment(middle, -margin);
+//        wlProtocol.setLayoutData(fdlProtocol);
+//        wProtocol = new TextVar(variables, wBasicComp, SWT.SINGLE | SWT.LEFT | SWT.BORDER);
+//        wProtocol.setToolTipText(BaseMessages.getString(PKG, "GraphConnectionEditor.Protocol.Tooltip"));
+//        PropsUi.setLook(wProtocol);
+//        FormData fdProtocol = new FormData();
+//        fdProtocol.top = new FormAttachment(wlProtocol, 0, SWT.CENTER);
+//        fdProtocol.left = new FormAttachment(middle, 0);
+//        fdProtocol.right = new FormAttachment(95, 0);
+//        wProtocol.setLayoutData(fdProtocol);
+//        lastControl = wProtocol;
+//
+//        // The server
+//        wlServer = new Label(wBasicComp, SWT.RIGHT);
+//        PropsUi.setLook(wlServer);
+//        wlServer.setText(BaseMessages.getString(PKG, "GraphConnectionEditor.Server.Label"));
+//        FormData fdlServer = new FormData();
+//        fdlServer.top = new FormAttachment(lastControl, margin);
+//        fdlServer.left = new FormAttachment(0, 0); // First one in the left top corner
+//        fdlServer.right = new FormAttachment(middle, -margin);
+//        wlServer.setLayoutData(fdlServer);
+//        wServer = new TextVar(variables, wBasicComp, SWT.SINGLE | SWT.LEFT | SWT.BORDER);
+//        PropsUi.setLook(wServer);
+//        FormData fdServer = new FormData();
+//        fdServer.top = new FormAttachment(wlServer, 0, SWT.CENTER);
+//        fdServer.left = new FormAttachment(middle, 0); // To the right of the label
+//        fdServer.right = new FormAttachment(95, 0);
+//        wServer.setLayoutData(fdServer);
+//        lastControl = wServer;
+//
+//        // The DatabaseName
+//        wlDatabaseName = new Label(wBasicComp, SWT.RIGHT);
+//        PropsUi.setLook(wlDatabaseName);
+//        wlDatabaseName.setText(BaseMessages.getString(PKG, "GraphConnectionEditor.DatabaseName.Label"));
+//        FormData fdlDatabaseName = new FormData();
+//        fdlDatabaseName.top = new FormAttachment(lastControl, margin);
+//        fdlDatabaseName.left = new FormAttachment(0, 0); // First one in the left top corner
+//        fdlDatabaseName.right = new FormAttachment(middle, -margin);
+//        wlDatabaseName.setLayoutData(fdlDatabaseName);
+//        wDatabaseName = new TextVar(variables, wBasicComp, SWT.SINGLE | SWT.LEFT | SWT.BORDER);
+//        PropsUi.setLook(wDatabaseName);
+//        FormData fdDatabaseName = new FormData();
+//        fdDatabaseName.top = new FormAttachment(wlDatabaseName, 0, SWT.CENTER);
+//        fdDatabaseName.left = new FormAttachment(middle, 0); // To the right of the label
+//        fdDatabaseName.right = new FormAttachment(95, 0);
+//        wDatabaseName.setLayoutData(fdDatabaseName);
+//        lastControl = wDatabaseName;
+//
+//        // Database port?
+//        wlDatabasePort = new Label(wBasicComp, SWT.RIGHT);
+//        PropsUi.setLook(wlDatabasePort);
+//        wlDatabasePort.setText(BaseMessages.getString(PKG, "GraphConnectionEditor.DatabasePort.Label"));
+//        FormData fdlDatabasePort = new FormData();
+//        fdlDatabasePort.top = new FormAttachment(lastControl, margin);
+//        fdlDatabasePort.left = new FormAttachment(0, 0); // First one in the left top corner
+//        fdlDatabasePort.right = new FormAttachment(middle, -margin);
+//        wlDatabasePort.setLayoutData(fdlDatabasePort);
+//        wDatabasePort = new TextVar(variables, wBasicComp, SWT.SINGLE | SWT.LEFT | SWT.BORDER);
+//        PropsUi.setLook(wDatabasePort);
+//        FormData fdDatabasePort = new FormData();
+//        fdDatabasePort.top = new FormAttachment(wlDatabasePort, 0, SWT.CENTER);
+//        fdDatabasePort.left = new FormAttachment(middle, 0); // To the right of the label
+//        fdDatabasePort.right = new FormAttachment(95, 0);
+//        wDatabasePort.setLayoutData(fdDatabasePort);
+//        lastControl = wDatabasePort;
+//
+//        // Username
+//        wlUsername = new Label(wBasicComp, SWT.RIGHT);
+//        wlUsername.setText(BaseMessages.getString(PKG, "GraphConnectionEditor.UserName.Label"));
+//        PropsUi.setLook(wlUsername);
+//        FormData fdlUsername = new FormData();
+//        fdlUsername.top = new FormAttachment(lastControl, margin);
+//        fdlUsername.left = new FormAttachment(0, 0);
+//        fdlUsername.right = new FormAttachment(middle, -margin);
+//        wlUsername.setLayoutData(fdlUsername);
+//        wUsername = new TextVar(variables, wBasicComp, SWT.SINGLE | SWT.LEFT | SWT.BORDER);
+//        PropsUi.setLook(wUsername);
+//        FormData fdUsername = new FormData();
+//        fdUsername.top = new FormAttachment(wlUsername, 0, SWT.CENTER);
+//        fdUsername.left = new FormAttachment(middle, 0);
+//        fdUsername.right = new FormAttachment(95, 0);
+//        wUsername.setLayoutData(fdUsername);
+//        lastControl = wUsername;
+//
+//        // Password
+//        wlPassword = new Label(wBasicComp, SWT.RIGHT);
+//        wlPassword.setText(BaseMessages.getString(PKG, "GraphConnectionEditor.Password.Label"));
+//        PropsUi.setLook(wlPassword);
+//        FormData fdlPassword = new FormData();
+//        fdlPassword.top = new FormAttachment(lastControl, margin);
+//        fdlPassword.left = new FormAttachment(0, 0);
+//        fdlPassword.right = new FormAttachment(middle, -margin);
+//        wlPassword.setLayoutData(fdlPassword);
+//        wPassword = new PasswordTextVar(variables, wBasicComp, SWT.SINGLE | SWT.LEFT | SWT.BORDER);
+//        PropsUi.setLook(wPassword);
+//        FormData fdPassword = new FormData();
+//        fdPassword.top = new FormAttachment(wlPassword, 0, SWT.CENTER);
+//        fdPassword.left = new FormAttachment(middle, 0);
+//        fdPassword.right = new FormAttachment(95, 0);
+//        wPassword.setLayoutData(fdPassword);
+//        lastControl = wPassword;
 
         // Add a composite area
-        wGraphDatabaseSpecificComp = new Composite(wBasicSComp, SWT.BACKGROUND);
+        wGraphDatabaseSpecificComp = new Composite(wBasicComp, SWT.BACKGROUND);
         wGraphDatabaseSpecificComp.setLayout(new FormLayout());
         FormData fdGraphDatabaseSpecificComp = new FormData();
         fdGraphDatabaseSpecificComp.left = new FormAttachment(0,0);
         fdGraphDatabaseSpecificComp.right = new FormAttachment(100, 0);
         fdGraphDatabaseSpecificComp.top = new FormAttachment(lastControl, margin);
-        wGraphDatabaseSpecificComp.setLayoutData(wGraphDatabaseSpecificComp);
+        wGraphDatabaseSpecificComp.setLayoutData(fdGraphDatabaseSpecificComp);
         PropsUi.setLook(wGraphDatabaseSpecificComp);
         lastControl = wGraphDatabaseSpecificComp;
 
@@ -458,12 +462,12 @@ public class GraphDatabaseMetaEditor extends MetadataEditor<GraphDatabaseMeta> {
         guiCompositeWidgets.setWidgetsListener(
                 new GuiCompositeWidgetsAdapter() {
                     @Override
-                    public void widgetModified(
-                            GuiCompositeWidgets compositeWidgets, Control changedWidget, String widgetId) {
+                    public void widgetModified(GuiCompositeWidgets compositeWidgets, Control changedWidget, String widgetId){
                         setChanged();
                         updateDriverInfo();
                     }
-                });
+                }
+        );
 
         // End of the basic tab...
         //
@@ -631,6 +635,7 @@ public class GraphDatabaseMetaEditor extends MetadataEditor<GraphDatabaseMeta> {
         fdTrustAllCertificates.left = new FormAttachment(middle, 0);
         fdTrustAllCertificates.right = new FormAttachment(95, 0);
         wTrustAllCertificates.setLayoutData(fdTrustAllCertificates);
+        lastControl = wTrustAllCertificates;
 
         // End of the basic tab...
         //
@@ -857,24 +862,24 @@ public class GraphDatabaseMetaEditor extends MetadataEditor<GraphDatabaseMeta> {
         boolean hasNoUrls = wUrls.nrNonEmpty() == 0;
         for (Control control :
                 new Control[] {
-                        wlUsername,
-                        wlPassword,
-                        wUsername,
-                        wPassword,
-                        wlServer,
-                        wServer,
-                        wlDatabaseName,
-                        wDatabaseName,
-                        wlDatabasePort,
-                        wDatabasePort,
-                        wlRouting,
-                        wRouting,
-                        wlPolicy,
-                        wPolicy,
-                        wlEncryption,
-                        wEncryption,
+//                        wlUsername,
+//                        wlPassword,
+//                        wUsername,
+//                        wPassword,
+//                        wlServer,
+//                        wServer,
+//                        wlDatabaseName,
+//                        wDatabaseName,
+//                        wlDatabasePort,
+//                        wDatabasePort,
+//                        wlRouting,
+//                        wRouting,
+//                        wlPolicy,
+//                        wPolicy,
+//                        wlEncryption,
+//                        wEncryption,
                 }) {
-            control.setEnabled(hasNoUrls);
+            control.setEnabled(true);
         }
 
         // For the normal scenarios without manual URLs we consider the automatic flag.
@@ -884,63 +889,79 @@ public class GraphDatabaseMetaEditor extends MetadataEditor<GraphDatabaseMeta> {
         GraphDatabaseMeta graphDatabaseMeta = new GraphDatabaseMeta();
         getWidgetsContent(graphDatabaseMeta);
 
-        boolean automatic = graphDatabaseMeta.isAutomatic();
-        boolean routing = graphDatabaseMeta.isRouting();
-        boolean encryption = graphDatabaseMeta.isUsingEncryption();
+//        boolean automatic = graphDatabaseMeta.isAutomatic();
+//        boolean routing = graphDatabaseMeta.isRouting();
+//        boolean encryption = graphDatabaseMeta.isUsingEncryption();
 
-        wlVersion4.setEnabled(!automatic);
-        wVersion4.setEnabled(!automatic);
-        wRouting.setEnabled(!automatic);
-        wlRouting.setEnabled(!automatic);
-        wRouting.setEnabled(!automatic);
-        wlEncryption.setEnabled(!automatic);
-        wEncryption.setEnabled(!automatic);
+//        wlVersion4.setEnabled(!automatic);
+//        wVersion4.setEnabled(!automatic);
+//        wRouting.setEnabled(!automatic);
+//        wlRouting.setEnabled(!automatic);
+//        wRouting.setEnabled(!automatic);
+//        wlEncryption.setEnabled(!automatic);
+//        wEncryption.setEnabled(!automatic);
+//
+//        wlPolicy.setEnabled(!automatic && routing);
+//        wPolicy.setEnabled(!automatic && routing);
+//
+//        wlTrustAllCertificates.setEnabled(!automatic && encryption);
+//        wTrustAllCertificates.setEnabled(!automatic && encryption);
+//        wTrustAllCertificates.getTextVar().setEnabled(!automatic && encryption);
 
-        wlPolicy.setEnabled(!automatic && routing);
-        wPolicy.setEnabled(!automatic && routing);
-
-        wlTrustAllCertificates.setEnabled(!automatic && encryption);
-        wTrustAllCertificates.setEnabled(!automatic && encryption);
-        wTrustAllCertificates.getTextVar().setEnabled(!automatic && encryption);
+        // Also enable/disable the custom native fields
+        //
+        guiCompositeWidgets.enableWidgets(
+                getMetadata().getIGraphDatabase(), DatabaseMeta.GUI_PLUGIN_ELEMENT_PARENT_ID, true);
     }
 
     @Override
     public void setWidgetsContent() {
-        wName.setText(Const.NVL(metadata.getName(), ""));
-        wAutomatic.setSelection(metadata.isAutomatic());
-        wAutomatic.setVariableName(Const.NVL(metadata.getAutomaticVariable(), ""));
-        wProtocol.setText(Const.NVL(metadata.getProtocol(), ""));
-        wServer.setText(Const.NVL(metadata.getServer(), ""));
-        wDatabaseName.setText(Const.NVL(metadata.getDatabaseName(), ""));
-        wVersion4.setSelection(metadata.isVersion4());
-        wVersion4.setVariableName(Const.NVL(metadata.getVersion4Variable(), ""));
-        wDatabasePort.setText(Const.NVL(metadata.getBoltPort(), ""));
-        wBrowserPort.setText(Const.NVL(metadata.getBrowserPort(), ""));
-        wRouting.setSelection(metadata.isRouting());
-//        wRoutingVariable.setVariableName(Const.NVL(metadata.getRoutingVariable(), ""));
-        wPolicy.setText(Const.NVL(metadata.getRoutingPolicy(), ""));
-        wUsername.setText(Const.NVL(metadata.getUsername(), ""));
-        wPassword.setText(Const.NVL(metadata.getPassword(), ""));
-        wEncryption.setSelection(metadata.isUsingEncryption());
-        wEncryption.setVariableName(Const.NVL(metadata.getUsingEncryptionVariable(), ""));
-        wTrustAllCertificates.setSelection(metadata.isTrustAllCertificates());
-        wTrustAllCertificates.setVariableName(
-                Const.NVL(metadata.getTrustAllCertificatesVariable(), ""));
-        wConnectionLivenessCheckTimeout.setText(
-                Const.NVL(metadata.getConnectionLivenessCheckTimeout(), ""));
-        wMaxConnectionLifetime.setText(Const.NVL(metadata.getMaxConnectionLifetime(), ""));
-        wMaxConnectionPoolSize.setText(Const.NVL(metadata.getMaxConnectionPoolSize(), ""));
-        wConnectionAcquisitionTimeout.setText(
-                Const.NVL(metadata.getConnectionAcquisitionTimeout(), ""));
-        wConnectionTimeout.setText(Const.NVL(metadata.getConnectionTimeout(), ""));
-        wMaxTransactionRetryTime.setText(Const.NVL(metadata.getMaxTransactionRetryTime(), ""));
-        for (int i = 0; i < metadata.getManualUrls().size(); i++) {
-            TableItem item = wUrls.table.getItem(i);
-            item.setText(1, Const.NVL(metadata.getManualUrls().get(i), ""));
-        }
-        wUrls.setRowNums();
-        wUrls.optWidth(true);
 
+        GraphDatabaseMeta graphDatabaseMeta = this.getMetadata();
+
+        wName.setText(Const.NVL(graphDatabaseMeta.getName(), ""));
+//        wAutomatic.setSelection(graphDatabaseMeta.isAutomatic());
+//        wAutomatic.setVariableName(Const.NVL(graphDatabaseMeta.getAutomaticVariable(), ""));
+//        wProtocol.setText(Const.NVL(graphDatabaseMeta.getProtocol(), ""));
+//        wServer.setText(Const.NVL(graphDatabaseMeta.getServer(), ""));
+//        wDatabaseName.setText(Const.NVL(graphDatabaseMeta.getDatabaseName(), ""));
+//        wVersion4.setSelection(graphDatabaseMeta.isVersion4());
+//        wVersion4.setVariableName(Const.NVL(graphDatabaseMeta.getVersion4Variable(), ""));
+//        wDatabasePort.setText(Const.NVL(graphDatabaseMeta.getBoltPort(), ""));
+//        wBrowserPort.setText(Const.NVL(graphDatabaseMeta.getBrowserPort(), ""));
+//        wRouting.setSelection(graphDatabaseMeta.isRouting());
+//        wRoutingVariable.setVariableName(Const.NVL(metadata.getRoutingVariable(), ""));
+//        wPolicy.setText(Const.NVL(graphDatabaseMeta.getRoutingPolicy(), ""));
+//        wUsername.setText(Const.NVL(graphDatabaseMeta.getUsername(), ""));
+//        wPassword.setText(Const.NVL(graphDatabaseMeta.getPassword(), ""));
+
+//        wEncryption.setSelection(graphDatabaseMeta.isUsingEncryption());
+//        wEncryption.setVariableName(Const.NVL(graphDatabaseMeta.getUsingEncryptionVariable(), ""));
+//        wTrustAllCertificates.setSelection(graphDatabaseMeta.isTrustAllCertificates());
+//        wTrustAllCertificates.setVariableName(
+//                Const.NVL(graphDatabaseMeta.getTrustAllCertificatesVariable(), ""));
+//        wConnectionLivenessCheckTimeout.setText(
+//                Const.NVL(graphDatabaseMeta.getConnectionLivenessCheckTimeout(), ""));
+//        wMaxConnectionLifetime.setText(Const.NVL(graphDatabaseMeta.getMaxConnectionLifetime(), ""));
+//        wMaxConnectionPoolSize.setText(Const.NVL(graphDatabaseMeta.getMaxConnectionPoolSize(), ""));
+//        wConnectionAcquisitionTimeout.setText(
+//                Const.NVL(graphDatabaseMeta.getConnectionAcquisitionTimeout(), ""));
+//        wConnectionTimeout.setText(Const.NVL(graphDatabaseMeta.getConnectionTimeout(), ""));
+//        wMaxTransactionRetryTime.setText(Const.NVL(graphDatabaseMeta.getMaxTransactionRetryTime(), ""));
+//        for (int i = 0; i < graphDatabaseMeta.getManualUrls().size(); i++) {
+//            TableItem item = wUrls.table.getItem(i);
+//            item.setText(1, Const.NVL(graphDatabaseMeta.getManualUrls().get(i), ""));
+//        }
+//        wUrls.setRowNums();
+//        wUrls.optWidth(true);
+//
+//        guiCompositeWidgets.setWidgetsContents(
+//                graphDatabaseMeta.getIGraphDatabase(),
+//                wGraphDatabaseSpecificComp,
+//                GraphDatabaseMeta.GUI_PLUGIN_ELEMENT_PARENT_ID
+//        );
+
+        updateDriverInfo();
         enableFields();
         wName.setFocus();
     }
@@ -948,37 +969,37 @@ public class GraphDatabaseMetaEditor extends MetadataEditor<GraphDatabaseMeta> {
     @Override
     public void getWidgetsContent(GraphDatabaseMeta graphDatabaseMeta) {
         graphDatabaseMeta.setName(wName.getText());
-        graphDatabaseMeta.setAutomatic(wAutomatic.getSelection());
-        graphDatabaseMeta.setAutomaticVariable(wAutomatic.getVariableName());
-        graphDatabaseMeta.setProtocol(wProtocol.getText());
-        graphDatabaseMeta.setServer(wServer.getText());
-        graphDatabaseMeta.setDatabaseName(wDatabaseName.getText());
-        graphDatabaseMeta.setVersion4(wVersion4.getSelection());
-        graphDatabaseMeta.setVersion4Variable(wVersion4.getVariableName());
-        graphDatabaseMeta.setBoltPort(wDatabasePort.getText());
-        graphDatabaseMeta.setBrowserPort(wBrowserPort.getText());
-        graphDatabaseMeta.setRouting(wRouting.getSelection());
+
+//        graphDatabaseMeta.setAutomatic(wAutomatic.getSelection());
+//        graphDatabaseMeta.setAutomaticVariable(wAutomatic.getVariableName());
+//        graphDatabaseMeta.setProtocol(wProtocol.getText());
+//        graphDatabaseMeta.setServer(wServer.getText());
+//        graphDatabaseMeta.setDatabaseName(wDatabaseName.getText());
+//        graphDatabaseMeta.setVersion4(wVersion4.getSelection());
+//        graphDatabaseMeta.setVersion4Variable(wVersion4.getVariableName());
+//        graphDatabaseMeta.setBoltPort(wDatabasePort.getText());
+//        graphDatabaseMeta.setBrowserPort(wBrowserPort.getText());
+//        graphDatabaseMeta.setRouting(wRouting.getSelection());
 //        graphDatabaseMeta.setRoutingVariable(wRouting.getVariableName());
-        graphDatabaseMeta.setRoutingPolicy(wPolicy.getText());
-        graphDatabaseMeta.setUsername(wUsername.getText());
-        graphDatabaseMeta.setPassword(wPassword.getText());
-        graphDatabaseMeta.setUsingEncryption(wEncryption.getSelection());
-        graphDatabaseMeta.setUsingEncryptionVariable(wEncryption.getVariableName());
-        graphDatabaseMeta.setTrustAllCertificates(wTrustAllCertificates.getSelection());
-        graphDatabaseMeta.setTrustAllCertificatesVariable(wTrustAllCertificates.getVariableName());
+//        graphDatabaseMeta.setRoutingPolicy(wPolicy.getText());
+//        graphDatabaseMeta.setUsername(wUsername.getText());
+//        graphDatabaseMeta.setPassword(wPassword.getText());
 
-        graphDatabaseMeta.setConnectionLivenessCheckTimeout(wConnectionLivenessCheckTimeout.getText());
-        graphDatabaseMeta.setMaxConnectionLifetime(wMaxConnectionLifetime.getText());
-        graphDatabaseMeta.setMaxConnectionPoolSize(wMaxConnectionPoolSize.getText());
-        graphDatabaseMeta.setConnectionAcquisitionTimeout(wConnectionAcquisitionTimeout.getText());
-        graphDatabaseMeta.setConnectionTimeout(wConnectionTimeout.getText());
-        graphDatabaseMeta.setMaxTransactionRetryTime(wMaxTransactionRetryTime.getText());
+//        graphDatabaseMeta.setConnectionLivenessCheckTimeout(wConnectionLivenessCheckTimeout.getText());
+//        graphDatabaseMeta.setMaxConnectionLifetime(wMaxConnectionLifetime.getText());
+//        graphDatabaseMeta.setMaxConnectionPoolSize(wMaxConnectionPoolSize.getText());
+//        graphDatabaseMeta.setConnectionAcquisitionTimeout(wConnectionAcquisitionTimeout.getText());
+//        graphDatabaseMeta.setConnectionTimeout(wConnectionTimeout.getText());
+//        graphDatabaseMeta.setMaxTransactionRetryTime(wMaxTransactionRetryTime.getText());
+//
+//        graphDatabaseMeta.getManualUrls().clear();
+//        for (int i = 0; i < wUrls.nrNonEmpty(); i++) {
+//            TableItem item = wUrls.getNonEmpty(i);
+//            graphDatabaseMeta.getManualUrls().add(item.getText(1));
+//        }
+        guiCompositeWidgets.getWidgetsContents(
+                graphDatabaseMeta.getIGraphDatabase(), GraphDatabaseMeta.GUI_PLUGIN_ELEMENT_PARENT_ID);
 
-        graphDatabaseMeta.getManualUrls().clear();
-        for (int i = 0; i < wUrls.nrNonEmpty(); i++) {
-            TableItem item = wUrls.getNonEmpty(i);
-            graphDatabaseMeta.getManualUrls().add(item.getText(1));
-        }
     }
 
     private void test(){

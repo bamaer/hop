@@ -100,7 +100,7 @@ public interface IGraphDatabase extends Cloneable{
 
     void setRouting(boolean routing);
 
-    boolean getRoutingVariable();
+    boolean isRoutingVariable();
 
     void setRoutingVariable(boolean routingVariable);
 

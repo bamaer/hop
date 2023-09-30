@@ -7,4 +7,5 @@ package org.apache.hop.core.graph;
         documentationUrl = ""
 )
 public class NoneGraphDatabaseMeta extends BaseGraphDatabaseMeta implements IGraphDatabase{
+
 }

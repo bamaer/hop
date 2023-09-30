@@ -8,6 +8,7 @@ import org.apache.hop.core.gui.plugin.GuiElementType;
 import org.apache.hop.core.gui.plugin.GuiPlugin;
 import org.apache.hop.core.gui.plugin.GuiWidgetElement;
 import org.apache.hop.core.logging.ILogChannel;
+import org.apache.hop.metadata.api.HopMetadataProperty;
 import org.apache.hop.metadata.api.IHopMetadataProvider;
 
 import java.util.ArrayList;
@@ -30,15 +31,30 @@ public class Neo4jGraphDatabaseMeta extends BaseGraphDatabaseMeta implements IGr
         type = GuiElementType.COMBO,
         variables = false,
         comboValuesMethod = "getNeo4jVersions",
-        label = "i18n::Neo4jGraphDatabaseMeta.label.Neo4jVersion"
+        label = "i18n::Neo4jGraphDatabaseMeta.Neo4jVersion.Label"
     )
+    @HopMetadataProperty(key = "neo4jVersion")
     private String neo4jVersion = "Neo4j 5";
+
 
     public List<String> getNeo4jVersions(ILogChannel log, IHopMetadataProvider metadataProvider){
         List<String> versions = new ArrayList<>();
         versions.add("Neo4j 4");
         versions.add("Neo4j 5");
         return versions;
+    }
+
+    public String getNeo4jVersion(){
+        return neo4jVersion;
+    }
+
+    public void setNeo4jVersion(String neo4jVersion){
+        this.neo4jVersion = neo4jVersion;
+    }
+
+    @Override
+    public String getDriverClass(){
+        return "Neo4j driver";
     }
 
     @Override

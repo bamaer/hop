@@ -4,7 +4,9 @@ import org.apache.hop.core.database.DatabaseFactory;
 import org.apache.hop.core.database.DatabaseMeta;
 import org.apache.hop.core.gui.plugin.GuiElementType;
 import org.apache.hop.core.gui.plugin.GuiWidgetElement;
+import org.apache.hop.core.logging.ILogChannel;
 import org.apache.hop.metadata.api.HopMetadataProperty;
+import org.apache.hop.metadata.api.IHopMetadataProvider;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -19,49 +21,101 @@ public abstract class BaseGraphDatabaseMeta implements Cloneable, IGraphDatabase
     public static final String ID_PASSWORD_LABEL = "password-label";
     public static final String ID_PASSWORD_WIDGET = "password-widget";
 
+    private String driverClass = "org.neo4j.driver.Driver";
+
+    @HopMetadataProperty
+    @GuiWidgetElement(
+            id = "automatic",
+            order = "01",
+            label = "i18n:org.apache.hop.ui.core.graph:GraphDatabaseDialog.Automatic.Label",
+            type = GuiElementType.CHECKBOX,
+            variables = true,
+            parentId = GraphDatabaseMeta.GUI_PLUGIN_ELEMENT_PARENT_ID
+    )
+    private boolean automatic;
+
+    @HopMetadataProperty
+    @GuiWidgetElement(
+            id = "protocol",
+            order = "02",
+            label = "i18n:org.apache.hop.ui.core.graph:GraphDatabaseDialog.Protocol.Label",
+            type = GuiElementType.COMBO,
+            variables = true,
+            comboValuesMethod = "getSupportedProtocols",
+            parentId = GraphDatabaseMeta.GUI_PLUGIN_ELEMENT_PARENT_ID
+    )
+    private String protocol;
+
     @HopMetadataProperty
     @GuiWidgetElement(
             id = "hostname",
-            order = "01",
-            label = "i18n:org.apache.hop.ui.core.grahdatabase:DatabaseDialog.label.ServerHostname",
+            order = "03",
+            label = "i18n:org.apache.hop.ui.core.graph:GraphDatabaseDialog.ServerHostname.Label",
             type = GuiElementType.TEXT,
             variables = true,
-            parentId = DatabaseMeta.GUI_PLUGIN_ELEMENT_PARENT_ID)
+            parentId = GraphDatabaseMeta.GUI_PLUGIN_ELEMENT_PARENT_ID)
     protected String hostname;
 
     @HopMetadataProperty
     @GuiWidgetElement(
-            id = "port",
-            order = "02",
-            label = "i18n:org.apache.hop.ui.core.graphdatabase:DatabaseDialog.label.PortNumber",
+            id = "boltPort",
+            order = "04",
+            label = "i18n:org.apache.hop.ui.core.graph:GraphDatabaseDialog.BoltPort.Label",
             type = GuiElementType.TEXT,
             variables = true,
-            parentId = DatabaseMeta.GUI_PLUGIN_ELEMENT_PARENT_ID)
-    protected String browserPort;
+            parentId = GraphDatabaseMeta.GUI_PLUGIN_ELEMENT_PARENT_ID)
+    protected String boltPort;
 
     @HopMetadataProperty
     @GuiWidgetElement(
             id = "databaseName",
-            order = "03",
-            label = "i18n:org.apache.hop.ui.core.graphdatabase:DatabaseDialog.label.DatabaseName",
+            order = "05",
+            label = "i18n:org.apache.hop.ui.core.graph:GraphDatabaseDialog.DatabaseName.Label",
             type = GuiElementType.TEXT,
             variables = true,
-            parentId = DatabaseMeta.GUI_PLUGIN_ELEMENT_PARENT_ID)
+            parentId = GraphDatabaseMeta.GUI_PLUGIN_ELEMENT_PARENT_ID)
     protected String databaseName;
 
-    @HopMetadataProperty protected String username;
+    @HopMetadataProperty
+    @GuiWidgetElement(
+            id = "username",
+            order = "06",
+            label = "i18n:org.apache.hop.ui.core.graph:GraphDatabaseDialog.Username.Label",
+            type = GuiElementType.TEXT,
+            variables = true,
+            parentId = GraphDatabaseMeta.GUI_PLUGIN_ELEMENT_PARENT_ID
+    )
+    protected String username;
 
     @HopMetadataProperty(password = true)
+    @GuiWidgetElement(
+            id = "password",
+            order = "07",
+            label = "i18n:org.apache.hop.ui.core.graph:GraphDatabaseDialog.Password.Label",
+            type = GuiElementType.TEXT,
+            variables = true,
+            parentId = GraphDatabaseMeta.GUI_PLUGIN_ELEMENT_PARENT_ID
+    )
     protected String password;
 
     @HopMetadataProperty
     private String defaultBoltPort;
 
     @HopMetadataProperty
-    private String boltPort;
+/*
+    @GuiWidgetElement(
+            id = "routing",
+            order = "",
+            label = "i18n:org.apache.hop.ui.core.graphdatabase:GraphDatabaseDialog.label.Routing",
+            type = GuiElementType.TEXT,
+            variables = true,
+            parentId = GraphDatabaseMeta.GUI_PLUGIN_ELEMENT_PARENT_ID
+    )
+*/
+    private boolean routing;
 
     @HopMetadataProperty
-    private boolean routing;
+    private String browserPort;
 
     @HopMetadataProperty
     private boolean routingVariable;
@@ -95,11 +149,7 @@ public abstract class BaseGraphDatabaseMeta implements Cloneable, IGraphDatabase
 
     @HopMetadataProperty private String version4Variable;
 
-    @HopMetadataProperty private boolean automatic;
-
     @HopMetadataProperty private String automaticVariable;
-
-    @HopMetadataProperty private String protocol;
 
 
     private boolean changed;
@@ -256,7 +306,7 @@ public abstract class BaseGraphDatabaseMeta implements Cloneable, IGraphDatabase
     }
 
     @Override
-    public boolean getRoutingVariable() {
+    public boolean isRoutingVariable() {
         return routingVariable;
     }
 
@@ -482,11 +532,13 @@ public abstract class BaseGraphDatabaseMeta implements Cloneable, IGraphDatabase
 
     @Override
     public String getDriverClass(){
-        return "org.neo4j.driver.Driver";
+        return driverClass;
     }
 
     @Override
-    public void setDriverClass(String driverClass){}
+    public void setDriverClass(String driverClass){
+        this.driverClass = driverClass;
+    }
 
     /**
      * You can use this method to supply an alternate factory for the test method in the dialogs.
@@ -496,5 +548,12 @@ public abstract class BaseGraphDatabaseMeta implements Cloneable, IGraphDatabase
     @Override
     public String getGraphDatabaseFactoryName() {
         return DatabaseFactory.class.getName();
+    }
+
+    public List<String> getSupportedProtocols(ILogChannel log, IHopMetadataProvider metadataProvider){
+        List<String> protocols = new ArrayList<>();
+        protocols.add("neo4j");
+        protocols.add("bolt");
+        return protocols;
     }
 }

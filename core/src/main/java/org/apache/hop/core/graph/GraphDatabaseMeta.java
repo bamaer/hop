@@ -2,9 +2,6 @@ package org.apache.hop.core.graph;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.hop.core.Const;
-import org.apache.hop.core.encryption.Encr;
-import org.apache.hop.core.exception.HopConfigException;
-import org.apache.hop.core.exception.HopException;
 import org.apache.hop.core.exception.HopPluginException;
 import org.apache.hop.core.exception.HopXmlException;
 import org.apache.hop.core.logging.ILogChannel;
@@ -20,11 +17,7 @@ import org.apache.hop.metadata.api.HopMetadataBase;
 import org.apache.hop.metadata.api.HopMetadataProperty;
 import org.apache.hop.metadata.api.IHopMetadata;
 import org.apache.hop.metadata.api.IHopMetadataProvider;
-import org.neo4j.driver.Config;
-import org.neo4j.driver.Driver;
 
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -335,7 +328,7 @@ public class GraphDatabaseMeta extends HopMetadataBase implements Cloneable, IHo
     }
 
     public boolean getRoutingVariable() {
-        return iGraphDatabase.getRoutingVariable();
+        return iGraphDatabase.isRoutingVariable();
     }
 
     public void setRoutingVariable(boolean routingVariable) {
