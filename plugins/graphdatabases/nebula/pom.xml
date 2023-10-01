@@ -20,69 +20,25 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>org.apache.hop</groupId>
-    <artifactId>hop-plugins-graphdatabases</artifactId>
-    <version>2.7.0-SNAPSHOT</version>
-    <packaging>pom</packaging>
-
-    <name>Hop Plugins Graph Databases</name>
-
     <parent>
         <groupId>org.apache.hop</groupId>
-        <artifactId>hop-plugins</artifactId>
+        <artifactId>hop-plugins-graphdatabases</artifactId>
         <version>2.7.0-SNAPSHOT</version>
     </parent>
+
+    <artifactId>hop-graphdatabases-nebula</artifactId>
 
     <dependencies>
         <dependency>
             <groupId>org.apache.hop</groupId>
             <artifactId>hop-core</artifactId>
             <scope>compile</scope>
+            <version>${project.version}</version>
         </dependency>
     </dependencies>
 
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>org.apache.hop</groupId>
-                <artifactId>hop-core</artifactId>
-                <version>${project.version}</version>
-                <scope>provided</scope>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
+    <packaging>jar</packaging>
 
-    <modules>
-    </modules>
-
-    <profiles>
-        <profile>
-            <id>lowdeps</id>
-            <activation>
-                <property>
-                    <name>!skipDefault</name>
-                </property>
-            </activation>
-            <modules>
-                <module>neo4j</module>
-            </modules>
-        </profile>
-
-        <profile>
-            <id>highdeps</id>
-            <activation>
-                <property>
-                    <name>!skipDefault</name>
-                </property>
-            </activation>
-            <modules>
-                <module>memgraph</module>
-                <module>nebula</module>
-                <module>neo4j</module>
-                <module>neptune</module>
-            </modules>
-        </profile>
-
-    </profiles>
+    <name>Hop Plugins Graph Databases Nebula Graph</name>
 
 </project>

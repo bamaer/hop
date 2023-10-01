@@ -100,23 +100,24 @@ public class GraphDatabaseMeta extends HopMetadataBase implements Cloneable, IHo
      *
      * @param name The graph database name
      * @param type The graph database type
-     * @param protocol The graph database connection protocol to use
-     * @param host The hostname or IP address
-     * @param db The graph database name
-     * @param port The port on which the graph database listens
+//     * @param protocol The graph database connection protocol to use
+//     * @param host The hostname or IP address
+//     * @param db The graph database name
+//     * @param port The port on which the graph database listens
      * @param user The username
      * @param pass The password
      */
     public GraphDatabaseMeta(
             String name,
             String type,
-            String protocol,
-            String host,
-            String db,
-            String port,
+//            String protocol,
+//            String host,
+//            String db,
+//            String port,
             String user,
             String pass){
-        setValues(name, type, protocol, host, db, port, user, pass);
+//        setValues(name, type, protocol, host, db, port, user, pass);
+        setValues(name, type, user, pass);
         addOptions();
     }
 
@@ -140,13 +141,14 @@ public class GraphDatabaseMeta extends HopMetadataBase implements Cloneable, IHo
     }
 
     public void setDefault(){
-        setValues("", "NONE", "bolt", "", "", "", "", "");
+//        setValues("", "NONE", "bolt", "", "", "", "", "");
+        setValues("", "NONE", "", "");
     }
 
     public void addOptions(){
-        iGraphDatabase.addDefaultOptions();
-        setSupportsBooleanDataType(true);
-        setSupportsTimestampDataType(true);
+//        iGraphDatabase.addDefaultOptions();
+//        setSupportsBooleanDataType(true);
+//        setSupportsTimestampDataType(true);
     }
 
     public GraphDatabaseMeta(GraphDatabaseMeta graphDatabaseMeta){
@@ -216,13 +218,13 @@ public class GraphDatabaseMeta extends HopMetadataBase implements Cloneable, IHo
         this.setValues(
                 graphDatabaseMeta.getName(),
                 graphDatabaseMeta.getPluginId(),
-                graphDatabaseMeta.getProtocol(),
-                graphDatabaseMeta.getServer(),
-                graphDatabaseMeta.getDatabaseName(),
-                graphDatabaseMeta.getBoltPort(),
+//                graphDatabaseMeta.getProtocol(),
+//                graphDatabaseMeta.getServer(),
+//                graphDatabaseMeta.getDatabaseName(),
+//                graphDatabaseMeta.getBoltPort(),
                 graphDatabaseMeta.getUsername(),
                 graphDatabaseMeta.getPassword());
-        this.setServer(graphDatabaseMeta.getServer());
+//        this.setServer(graphDatabaseMeta.getServer());
 
         this.iGraphDatabase = (IGraphDatabase) graphDatabaseMeta.iGraphDatabase.clone();
 
@@ -232,10 +234,10 @@ public class GraphDatabaseMeta extends HopMetadataBase implements Cloneable, IHo
     public void setValues(
             String name,
             String type,
-            String protocol,
-            String host,
-            String db,
-            String port,
+//            String protocol,
+//            String host,
+//            String db,
+//            String port,
             String user,
             String pass) {
         try {
@@ -245,13 +247,14 @@ public class GraphDatabaseMeta extends HopMetadataBase implements Cloneable, IHo
         }
 
         setName(name);
-        setServer(host);
-        setDatabaseName(db);
-        setBoltPort(port);
+        setGraphDatabaseType(type);
+//        setServer(host);
+//        setDatabaseName(db);
+//        setBoltPort(port);
         setUsername(user);
         setPassword(pass);
-        setServer(null);
-        setChanged(false);
+//        setServer(null);
+//        setChanged(false);
     }
 
     public void setGraphDatabaseType(String type) {
@@ -263,13 +266,13 @@ public class GraphDatabaseMeta extends HopMetadataBase implements Cloneable, IHo
             throw new RuntimeException("Database type [" + type + "] not found!", kde);
         }
 
-        setServer(oldInterface.getHostname());
-        setDatabaseName(oldInterface.getDatabaseName());
-        setProtocol(oldInterface.getProtocol());
-        setBoltPort(oldInterface.getBoltPort());
+//        setServer(oldInterface.getHostname());
+//        setDatabaseName(oldInterface.getDatabaseName());
+//        setProtocol(oldInterface.getProtocol());
+//        setBoltPort(oldInterface.getBoltPort());
         setUsername(oldInterface.getUsername());
         setPassword(oldInterface.getPassword());
-        setServer(oldInterface.getHostname());
+//        setServer(oldInterface.getHostname());
         setChanged(oldInterface.isChanged());
     }
 
@@ -287,6 +290,7 @@ public class GraphDatabaseMeta extends HopMetadataBase implements Cloneable, IHo
         return iGraphDatabase.getPluginName();
     }
 
+/*
     public String getServer() {
         return iGraphDatabase.getHostname();
     }
@@ -342,6 +346,7 @@ public class GraphDatabaseMeta extends HopMetadataBase implements Cloneable, IHo
     public void setRoutingPolicy(String routingPolicy) {
         iGraphDatabase.setRoutingPolicy(routingPolicy);
     }
+*/
 
     public String getUsername() {
         return iGraphDatabase.getUsername();
@@ -359,6 +364,7 @@ public class GraphDatabaseMeta extends HopMetadataBase implements Cloneable, IHo
         iGraphDatabase.setPassword(password);
     }
 
+/*
     public boolean isUsingEncryption() {
         return iGraphDatabase.isUsingEncryption();
     }
@@ -478,6 +484,7 @@ public class GraphDatabaseMeta extends HopMetadataBase implements Cloneable, IHo
     public void setProtocol(String protocol) {
         iGraphDatabase.setProtocol(protocol);
     }
+*/
 
     public void setChanged() {
         setChanged(true);
@@ -495,42 +502,56 @@ public class GraphDatabaseMeta extends HopMetadataBase implements Cloneable, IHo
         iGraphDatabase.setChanged(false);
     }
 
-    /** @return true if the database supports a boolean, bit, logical, ... datatype */
+/*
+    */
+/** @return true if the database supports a boolean, bit, logical, ... datatype *//*
+
     public boolean supportsBooleanDataType() {
         return iGraphDatabase.isSupportsBooleanDataType();
     }
 
-    /** @param b Set to true if the database supports a boolean, bit, logical, ... datatype */
+    */
+/** @param b Set to true if the database supports a boolean, bit, logical, ... datatype *//*
+
     public void setSupportsBooleanDataType(boolean b) {
         iGraphDatabase.setSupportsBooleanDataType(b);
     }
 
-    /**
+    */
+/**
      * @return true if the database supports the Timestamp data type (nanosecond precision and all)
-     */
+     *//*
+
     public boolean supportsTimestampDataType() {
         return iGraphDatabase.isSupportsTimestampDataType();
     }
 
-    /**
+    */
+/**
      * @param b Set to true if the database supports the Timestamp data type (nanosecond precision and
      *     all)
-     */
+     *//*
+
     public void setSupportsTimestampDataType(boolean b) {
         iGraphDatabase.setSupportsTimestampDataType(b);
     }
 
-    /** @return A manually entered URL which will be used over the internally generated one */
+    */
+/** @return A manually entered URL which will be used over the internally generated one *//*
+
     public List<String> getManualUrls() {
         return iGraphDatabase.getManualUrls();
     }
 
-    /**
+    */
+/**
      * @param manualUrls A manually entered URL which will be used over the internally generated one
-     */
+     *//*
+
     public void setManualUrls(List<String> manualUrls) {
         iGraphDatabase.setManualUrls(manualUrls);
     }
+*/
 
 
     @Override

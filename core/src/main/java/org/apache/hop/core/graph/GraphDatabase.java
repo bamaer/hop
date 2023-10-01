@@ -262,6 +262,7 @@ public class GraphDatabase implements IVariables, ILoggingObject, AutoCloseable 
             String realPassword = Encr.decryptPasswordOptionallyEncrypted(variables.resolve(graphDatabaseMeta.getPassword()));
             Config.ConfigBuilder configBuilder;
 
+/*
             if (!graphDatabaseMeta.isAutomatic()) {
                 if (!StringUtils.isEmpty(graphDatabaseMeta.getUsingEncryptionVariable()) || graphDatabaseMeta.isUsingEncryption()) {
                     configBuilder = Config.builder().withEncryption();
@@ -313,14 +314,17 @@ public class GraphDatabase implements IVariables, ILoggingObject, AutoCloseable 
                     configBuilder = configBuilder.withMaxTransactionRetryTime(seconds, TimeUnit.MILLISECONDS);
                 }
             }
+*/
 
             // Disable info messages: only warnings and above...
             //
+            configBuilder = Config.builder();
             configBuilder = configBuilder.withLogging(Logging.javaUtilLogging(Level.WARNING));
 
             Config config = configBuilder.build();
 
             org.neo4j.driver.Driver driver;
+/*
             if (graphDatabaseMeta.isRouting()) {
                 driver =
                         org.neo4j.driver.GraphDatabase.routingDriver(uris, AuthTokens.basic(realUsername, realPassword), config);
@@ -328,6 +332,8 @@ public class GraphDatabase implements IVariables, ILoggingObject, AutoCloseable 
                 driver =
                         org.neo4j.driver.GraphDatabase.driver(uris.get(0), AuthTokens.basic(realUsername, realPassword), config);
             }
+*/
+            driver = org.neo4j.driver.GraphDatabase.driver(uris.get(0), AuthTokens.basic(realUsername, realPassword), config);
 
             // Verify connectivity at this point to ensure we're not being dishonest when testing
             //
@@ -347,6 +353,7 @@ public class GraphDatabase implements IVariables, ILoggingObject, AutoCloseable 
 
         List<URI> uris = new ArrayList<>();
 
+/*
         if (graphDatabaseMeta.getManualUrls() != null && !graphDatabaseMeta.getManualUrls().isEmpty()) {
             // A manual URL is specified
             //
@@ -371,6 +378,7 @@ public class GraphDatabase implements IVariables, ILoggingObject, AutoCloseable 
                 uris.add(new URI(url));
             }
         }
+*/
 
         return uris;
     }
@@ -385,6 +393,7 @@ public class GraphDatabase implements IVariables, ILoggingObject, AutoCloseable 
          * bolt+routing://core-server:port/?policy=MyPolicy
          */
         String url = "";
+/*
         if (StringUtils.isEmpty(graphDatabaseMeta.getProtocol())) {
             if (graphDatabaseMeta.isAutomatic() || graphDatabaseMeta.isRouting()) {
                 url += "neo4j";
@@ -394,6 +403,7 @@ public class GraphDatabase implements IVariables, ILoggingObject, AutoCloseable 
         } else {
             url += variables.resolve(graphDatabaseMeta.getProtocol());
         }
+*/
         url += "://";
 
         // Hostname
@@ -402,6 +412,7 @@ public class GraphDatabase implements IVariables, ILoggingObject, AutoCloseable 
 
         // Port
         //
+/*
         if (StringUtils.isNotEmpty(graphDatabaseMeta.getBoltPort()) && hostname != null && !hostname.contains(":")) {
             url += ":" + variables.resolve(graphDatabaseMeta.getBoltPort());
         }
@@ -422,6 +433,7 @@ public class GraphDatabase implements IVariables, ILoggingObject, AutoCloseable 
                 url += "?policy=" + routingPolicyString;
             }
         }
+*/
 
         return url;
     }

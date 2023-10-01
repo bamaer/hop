@@ -82,6 +82,10 @@ public class GraphDatabaseMetaEditor extends MetadataEditor<GraphDatabaseMeta> {
     private Label wlUsername;
     private Label wlPassword;
     private Text wName;
+    private TextVar wUsername;
+    private TextVar wPassword;
+
+    /*
     private Label wlAutomatic;
     private CheckBoxVar wAutomatic;
     private TextVar wProtocol;
@@ -91,11 +95,10 @@ public class GraphDatabaseMetaEditor extends MetadataEditor<GraphDatabaseMeta> {
     private TextVar wDatabaseName;
     private Label wlDatabasePort;
     private TextVar wDatabasePort;
-    private TextVar wUsername;
-    private TextVar wPassword;
-
+*/
     // Advanced
     //
+/*
     private Label wlVersion4;
     private CheckBoxVar wVersion4;
     private TextVar wBrowserPort;
@@ -114,6 +117,7 @@ public class GraphDatabaseMetaEditor extends MetadataEditor<GraphDatabaseMeta> {
     private TextVar wConnectionAcquisitionTimeout;
     private TextVar wConnectionTimeout;
     private TextVar wMaxTransactionRetryTime;
+*/
     private TableView wUrls;
     private PropsUi props;
     private int middle;
@@ -136,15 +140,17 @@ public class GraphDatabaseMetaEditor extends MetadataEditor<GraphDatabaseMeta> {
         for (IPlugin plugin : plugins) {
             try {
                 IGraphDatabase graphDatabase = (IGraphDatabase) PluginRegistry.getInstance().loadClass(plugin);
+/*
                 if(graphDatabase.getDefaultBoltPort() == null){
                     graphDatabase.setDefaultBoltPort("7687");
                 }
                 if (Integer.valueOf(graphDatabase.getDefaultBoltPort()) > 0) {
                     graphDatabase.setBoltPort(graphDatabase.getDefaultBoltPort());
                 }
+*/
                 graphDatabase.setPluginId(plugin.getIds()[0]);
                 graphDatabase.setPluginName(plugin.getName());
-                graphDatabase.addDefaultOptions();
+//                graphDatabase.addDefaultOptions();
 
                 metaMap.put(graphDatabase.getClass(), graphDatabase);
             } catch (Exception e) {
@@ -527,6 +533,7 @@ public class GraphDatabaseMetaEditor extends MetadataEditor<GraphDatabaseMeta> {
         wProtocolComp.setLayout(formLayout);
 
         // Version4?
+/*
         wlVersion4 = new Label(wProtocolComp, SWT.RIGHT);
         wlVersion4.setText(BaseMessages.getString(PKG, "GraphConnectionEditor.Version4.Label"));
         PropsUi.setLook(wlVersion4);
@@ -636,6 +643,7 @@ public class GraphDatabaseMetaEditor extends MetadataEditor<GraphDatabaseMeta> {
         fdTrustAllCertificates.right = new FormAttachment(95, 0);
         wTrustAllCertificates.setLayoutData(fdTrustAllCertificates);
         lastControl = wTrustAllCertificates;
+*/
 
         // End of the basic tab...
         //
@@ -662,6 +670,7 @@ public class GraphDatabaseMetaEditor extends MetadataEditor<GraphDatabaseMeta> {
         Composite wUrlsComp = new Composite(wUrlsSComp, SWT.NONE);
         PropsUi.setLook(wUrlsComp);
 
+/*
         FormLayout formLayout = new FormLayout();
         formLayout.marginWidth = 3;
         formLayout.marginHeight = 3;
@@ -700,6 +709,7 @@ public class GraphDatabaseMetaEditor extends MetadataEditor<GraphDatabaseMeta> {
         wUrlsSComp.setExpandVertical(true);
         wUrlsSComp.setMinWidth(bounds.width);
         wUrlsSComp.setMinHeight(bounds.height);
+*/
 
         wUrlsTab.setControl(wUrlsSComp);
     }
@@ -721,6 +731,7 @@ public class GraphDatabaseMetaEditor extends MetadataEditor<GraphDatabaseMeta> {
         wAdvancedComp.setLayout(formLayout);
 
         // ConnectionLivenessCheckTimeout
+/*
         Label wlConnectionLivenessCheckTimeout = new Label(wAdvancedComp, SWT.RIGHT);
         wlConnectionLivenessCheckTimeout.setText(
                 BaseMessages.getString(PKG, "GraphConnectionEditor.ConnectionLivenessCheckTimeout.Label"));
@@ -839,6 +850,7 @@ public class GraphDatabaseMetaEditor extends MetadataEditor<GraphDatabaseMeta> {
         fdMaxTransactionRetryTime.left = new FormAttachment(middle, 0);
         fdMaxTransactionRetryTime.right = new FormAttachment(95, 0);
         wMaxTransactionRetryTime.setLayoutData(fdMaxTransactionRetryTime);
+*/
 
         // End of the basic tab...
         //
@@ -859,9 +871,9 @@ public class GraphDatabaseMetaEditor extends MetadataEditor<GraphDatabaseMeta> {
 
         // If you specify URLs manually a lot of things are no longer available...
         //
-        boolean hasNoUrls = wUrls.nrNonEmpty() == 0;
-        for (Control control :
-                new Control[] {
+//        boolean hasNoUrls = wUrls.nrNonEmpty() == 0;
+//        for (Control control :
+//                new Control[] {
 //                        wlUsername,
 //                        wlPassword,
 //                        wUsername,
@@ -878,9 +890,9 @@ public class GraphDatabaseMetaEditor extends MetadataEditor<GraphDatabaseMeta> {
 //                        wPolicy,
 //                        wlEncryption,
 //                        wEncryption,
-                }) {
-            control.setEnabled(true);
-        }
+//                }) {
+//            control.setEnabled(true);
+//        }
 
         // For the normal scenarios without manual URLs we consider the automatic flag.
         // If things are configured automatically a number of flags are no longer applicable:

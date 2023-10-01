@@ -8,4 +8,13 @@ package org.apache.hop.core.graph;
 )
 public class NoneGraphDatabaseMeta extends BaseGraphDatabaseMeta implements IGraphDatabase{
 
+    @Override
+    public boolean isSupportsTimestampDataType() {
+        return false;
+    }
+
+    @Override
+    public void setSupportsTimestampDataType(boolean b) {
+
+    }
 }

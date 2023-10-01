@@ -1,8 +1,10 @@
 package org.apache.org.graphdatabases.neo4j;
 
+import org.apache.hop.core.graph.BaseBoltGraphDatabaseMeta;
 import org.apache.hop.core.graph.BaseGraphDatabaseMeta;
 import org.apache.hop.core.graph.GraphDatabaseMeta;
 import org.apache.hop.core.graph.GraphDatabaseMetaPlugin;
+import org.apache.hop.core.graph.IBoltGraphDatabase;
 import org.apache.hop.core.graph.IGraphDatabase;
 import org.apache.hop.core.gui.plugin.GuiElementType;
 import org.apache.hop.core.gui.plugin.GuiPlugin;
@@ -20,7 +22,7 @@ import java.util.List;
         documentationUrl = ""
 )
 @GuiPlugin(id = "GUI-Neo4GraphDatabaseMeta")
-public class Neo4jGraphDatabaseMeta extends BaseGraphDatabaseMeta implements IGraphDatabase {
+public class Neo4jGraphDatabaseMeta extends BaseBoltGraphDatabaseMeta implements IBoltGraphDatabase {
 
     private static final Class<?> PKG = Neo4jGraphDatabaseMeta.class; // For Translator
 
@@ -58,9 +60,19 @@ public class Neo4jGraphDatabaseMeta extends BaseGraphDatabaseMeta implements IGr
     }
 
     @Override
-    public boolean isSupportsBTreeIndex(){
-        return true;
+    public String getServername() {
+        return null;
     }
+
+    @Override
+    public void setServername(String servername) {
+
+    }
+
+//    @Override
+//    public boolean isSupportsBTreeIndex(){
+//        return true;
+//    }
 
 
 }
