@@ -173,7 +173,7 @@ public class GraphDatabaseMetaEditor extends MetadataEditor<GraphDatabaseMeta> {
         // The name
         Label wlName = new Label(composite, SWT.RIGHT);
         PropsUi.setLook(wlName);
-        wlName.setText(BaseMessages.getString(PKG, "GraphConnectionEditor.Name.Label"));
+        wlName.setText(BaseMessages.getString(PKG, "GraphConnectionDialog.Name.Label"));
         FormData fdlName = new FormData();
         fdlName.top = new FormAttachment(0, margin);
         fdlName.left = new FormAttachment(0, 0); // First one in the left top corner
@@ -264,7 +264,7 @@ public class GraphDatabaseMetaEditor extends MetadataEditor<GraphDatabaseMeta> {
         // What graph database type are we dealing with?
         Label wlGraphConnectionType = new Label(wBasicComp, SWT.RIGHT);
         PropsUi.setLook(wlGraphConnectionType);
-        wlGraphConnectionType.setText(BaseMessages.getString(PKG, "GraphConnectionEditor.label.ConnectionType"));
+        wlGraphConnectionType.setText(BaseMessages.getString(PKG, "GraphConnectionDialog.label.ConnectionType"));
         FormData fdlGraphConnectionType = new FormData();
         fdlGraphConnectionType.top = new FormAttachment(0, margin);
         fdlGraphConnectionType.left = new FormAttachment(0, 0);
@@ -295,7 +295,7 @@ public class GraphDatabaseMetaEditor extends MetadataEditor<GraphDatabaseMeta> {
 
         Label wlDriverInfo = new Label(wBasicComp, SWT.RIGHT);
         PropsUi.setLook(wlDriverInfo);
-        wlDriverInfo.setText(BaseMessages.getString(PKG, "GraphConnectionEditor.label.InstalledDriver"));
+        wlDriverInfo.setText(BaseMessages.getString(PKG, "GraphConnectionDialog.InstalledDriver.Label"));
         FormData fdlDriverInfo = new FormData();
         fdlDriverInfo.top = new FormAttachment(lastControl, margin*2);
         fdlDriverInfo.left = new FormAttachment(0, 0);

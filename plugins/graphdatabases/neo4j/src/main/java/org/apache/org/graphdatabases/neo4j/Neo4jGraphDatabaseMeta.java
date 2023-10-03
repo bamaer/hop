@@ -26,17 +26,6 @@ public class Neo4jGraphDatabaseMeta extends BaseBoltGraphDatabaseMeta implements
 
     private static final Class<?> PKG = Neo4jGraphDatabaseMeta.class; // For Translator
 
-    @GuiWidgetElement(
-        id = "neo4jVersion",
-        order = "10",
-        parentId = GraphDatabaseMeta.GUI_PLUGIN_ELEMENT_PARENT_ID,
-        type = GuiElementType.COMBO,
-        variables = false,
-        comboValuesMethod = "getNeo4jVersions",
-        label = "i18n::Neo4jGraphDatabaseMeta.Neo4jVersion.Label"
-    )
-    @HopMetadataProperty(key = "neo4jVersion")
-    private String neo4jVersion = "Neo4j 5";
 
 
     public List<String> getNeo4jVersions(ILogChannel log, IHopMetadataProvider metadataProvider){
@@ -44,14 +33,6 @@ public class Neo4jGraphDatabaseMeta extends BaseBoltGraphDatabaseMeta implements
         versions.add("Neo4j 4");
         versions.add("Neo4j 5");
         return versions;
-    }
-
-    public String getNeo4jVersion(){
-        return neo4jVersion;
-    }
-
-    public void setNeo4jVersion(String neo4jVersion){
-        this.neo4jVersion = neo4jVersion;
     }
 
     @Override

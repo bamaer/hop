@@ -1,10 +1,9 @@
 package org.apache.hop.graphdatabases.neptune;
 
+
 import org.apache.hop.core.graph.BaseBoltGraphDatabaseMeta;
-import org.apache.hop.core.graph.BaseGraphDatabaseMeta;
 import org.apache.hop.core.graph.GraphDatabaseMetaPlugin;
 import org.apache.hop.core.graph.IBoltGraphDatabase;
-import org.apache.hop.core.graph.IGraphDatabase;
 import org.apache.hop.core.gui.plugin.GuiPlugin;
 
 @GraphDatabaseMetaPlugin(

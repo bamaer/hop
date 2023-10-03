@@ -12,6 +12,18 @@ import java.util.Map;
 
 public class BaseBoltGraphDatabaseMeta extends BaseGraphDatabaseMeta implements IBoltGraphDatabase{
 
+    @GuiWidgetElement(
+            id = "neo4jVersion",
+            order = "10",
+            parentId = GraphDatabaseMeta.GUI_PLUGIN_ELEMENT_PARENT_ID,
+            type = GuiElementType.COMBO,
+            variables = false,
+            comboValuesMethod = "getNeo4jVersions",
+            label = "i18n:org.apache.hop.ui.core.graph:Neo4jGraphDatabaseMeta.Neo4jVersion.Label"
+    )
+    @HopMetadataProperty(key = "neo4jVersion")
+    private String neo4jVersion = "Neo4j 5";
+
     @HopMetadataProperty
     @GuiWidgetElement(
             id = "automatic",
@@ -105,6 +117,24 @@ public class BaseBoltGraphDatabaseMeta extends BaseGraphDatabaseMeta implements 
         defaultBoltPort = "666";
         boltPort = "7687";
         automatic = true;
+    }
+
+    public String getNeo4jVersion(){
+        return neo4jVersion;
+    }
+
+    public void setNeo4jVersion(String neo4jVersion){
+        this.neo4jVersion = neo4jVersion;
+    }
+
+    @Override
+    public boolean isAutomatic() {
+        return automatic;
+    }
+
+    @Override
+    public void setAutomatic(boolean automatic) {
+        this.automatic = automatic;
     }
 
     @Override
@@ -342,16 +372,6 @@ public class BaseBoltGraphDatabaseMeta extends BaseGraphDatabaseMeta implements 
     @Override
     public void setVersion4Variable(String version4Variable) {
         this.version4Variable = version4Variable;
-    }
-
-    @Override
-    public boolean isAutomatic() {
-        return automatic;
-    }
-
-    @Override
-    public void setAutomatic(boolean automatic) {
-        this.automatic = automatic;
     }
 
     @Override
