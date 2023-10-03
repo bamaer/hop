@@ -34,9 +34,9 @@
 
     <properties>
         <!-- Third-party dependencies -->
-        <aws-java-sdk-s3.version>1.12.279</aws-java-sdk-s3.version>
-        <aws-java-sdk-core.version>1.12.279</aws-java-sdk-core.version>
-
+        <guava.version>31.1-jre</guava.version>
+        <aws-java-sdk-s3.version>2.18.16</aws-java-sdk-s3.version>
+        <aws-java-sdk-core.version>2.18.16</aws-java-sdk-core.version>
         <!-- Test dependencies -->
         <mockito.version>1.10.19</mockito.version>
         <powermock.version>2.0.9</powermock.version>
@@ -61,16 +61,14 @@
             <version>${joda-time.version}</version>
         </dependency>
         <dependency>
-            <groupId>com.amazonaws</groupId>
-            <artifactId>aws-java-sdk-core</artifactId>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>sdk-core</artifactId>
             <version>${aws-java-sdk-core.version}</version>
-            <scope>compile</scope>
         </dependency>
         <dependency>
-            <groupId>com.amazonaws</groupId>
-            <artifactId>aws-java-sdk-s3</artifactId>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>s3</artifactId>
             <version>${aws-java-sdk-s3.version}</version>
-            <scope>compile</scope>
         </dependency>
     </dependencies>
 </project>

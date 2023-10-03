@@ -6,16 +6,17 @@
  * (the "License"); you may not use this file except in compliance with
  * the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *       http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
  */
 
-package org.apache.hop.vfs.s3.s3.vfs;
+package org.apache.hop.vfs;
 
 import org.apache.commons.vfs2.FileName;
 import org.apache.commons.vfs2.FileSystemException;
@@ -25,36 +26,34 @@ import org.apache.commons.vfs2.provider.FileNameParser;
 import org.apache.commons.vfs2.provider.UriParser;
 import org.apache.commons.vfs2.provider.VfsComponentContext;
 
-/** Custom parser for the s3 URL */
-public class S3FileNameParser extends AbstractFileNameParser {
-  private static final S3FileNameParser INSTANCE = new S3FileNameParser();
+public class AwsS3FileNameParser extends AbstractFileNameParser {
 
-  public S3FileNameParser() {
-    super();
-  }
+    private static final AwsS3FileNameParser INSTANCE = new AwsS3FileNameParser();
 
-  public static FileNameParser getInstance() {
-    return INSTANCE;
-  }
+    public AwsS3FileNameParser() {
+        super();
+    }
 
-  @Override
-  public FileName parseUri(VfsComponentContext context, FileName base, String uri)
-      throws FileSystemException {
-    StringBuilder name = new StringBuilder();
+    public static FileNameParser getInstance() {
+        return INSTANCE;
+    }
 
-    String scheme = UriParser.extractScheme(uri, name);
-    UriParser.canonicalizePath(name, 0, name.length(), this);
+    @Override
+    public FileName parseUri(VfsComponentContext vfsComponentContext, FileName fileName, String uri) throws FileSystemException {
+        StringBuilder name = new StringBuilder();
 
-    // Normalize separators in the path
-    UriParser.fixSeparators(name);
+        String scheme = UriParser.extractScheme(uri, name);
+        UriParser.canonicalizePath(name, 0, name.length(), this);
 
-    // Normalise the path
-    FileType fileType = UriParser.normalisePath(name);
+        // Normalize separators in the path
+        UriParser.fixSeparators(name);
 
-    String fullPath = name.toString();
-    // Extract bucket name
-    final String bucketName = UriParser.extractFirstElement(name);
+        // Normalise the path
+        FileType fileType = UriParser.normalisePath(name);
 
-    return new S3FileName(scheme, bucketName, fullPath, fileType);
-  }
+        String fullPath = name.toString();
+        // Extract bucket name
+        final String bucketName = UriParser.extractFirstElement(name);
+
+        return new AwsS3FileName(scheme, bucketName, fullPath, fileType);    }
 }
