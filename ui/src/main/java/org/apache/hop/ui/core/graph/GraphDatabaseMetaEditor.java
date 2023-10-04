@@ -1,5 +1,6 @@
 package org.apache.hop.ui.core.graph;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.hop.core.Const;
 import org.apache.hop.core.Props;
 import org.apache.hop.core.database.DatabaseMeta;
@@ -347,6 +348,7 @@ public class GraphDatabaseMetaEditor extends MetadataEditor<GraphDatabaseMeta> {
 //        lastControl = wProtocol;
 //
         // The server
+/*
         wlHostname = new Label(wBasicComp, SWT.RIGHT);
         PropsUi.setLook(wlHostname);
         wlHostname.setText(BaseMessages.getString(PKG, "GraphConnectionEditor.Server.Label"));
@@ -381,6 +383,7 @@ public class GraphDatabaseMetaEditor extends MetadataEditor<GraphDatabaseMeta> {
         fdDatabaseName.right = new FormAttachment(95, 0);
         wDatabaseName.setLayoutData(fdDatabaseName);
         lastControl = wDatabaseName;
+*/
 
 //        // Database port?
 //        wlDatabasePort = new Label(wBasicComp, SWT.RIGHT);
@@ -923,12 +926,18 @@ public class GraphDatabaseMetaEditor extends MetadataEditor<GraphDatabaseMeta> {
 
         GraphDatabaseMeta graphDatabaseMeta = this.getMetadata();
 
+        wConnectionType.setText(Const.NVL(graphDatabaseMeta.getPluginName(), ""));
         wName.setText(Const.NVL(graphDatabaseMeta.getName(), ""));
+
+
+//        wHostname.setText(Const.NVL(graphDatabaseMeta.getHostname(), ""));
+//        wDatabaseName.setText(Const.NVL(graphDatabaseMeta.getDatabaseName(), ""));
+//        wUsername.setText(Const.NVL(graphDatabaseMeta.getUsername(), ""));
+//        wPassword.setText(Const.NVL(graphDatabaseMeta.getPassword(), ""));
+
 //        wAutomatic.setSelection(graphDatabaseMeta.isAutomatic());
 //        wAutomatic.setVariableName(Const.NVL(graphDatabaseMeta.getAutomaticVariable(), ""));
 //        wProtocol.setText(Const.NVL(graphDatabaseMeta.getProtocol(), ""));
-//        wServer.setText(Const.NVL(graphDatabaseMeta.getServer(), ""));
-//        wDatabaseName.setText(Const.NVL(graphDatabaseMeta.getDatabaseName(), ""));
 //        wVersion4.setSelection(graphDatabaseMeta.isVersion4());
 //        wVersion4.setVariableName(Const.NVL(graphDatabaseMeta.getVersion4Variable(), ""));
 //        wDatabasePort.setText(Const.NVL(graphDatabaseMeta.getBoltPort(), ""));
@@ -936,8 +945,6 @@ public class GraphDatabaseMetaEditor extends MetadataEditor<GraphDatabaseMeta> {
 //        wRouting.setSelection(graphDatabaseMeta.isRouting());
 //        wRoutingVariable.setVariableName(Const.NVL(metadata.getRoutingVariable(), ""));
 //        wPolicy.setText(Const.NVL(graphDatabaseMeta.getRoutingPolicy(), ""));
-//        wUsername.setText(Const.NVL(graphDatabaseMeta.getUsername(), ""));
-//        wPassword.setText(Const.NVL(graphDatabaseMeta.getPassword(), ""));
 
 //        wEncryption.setSelection(graphDatabaseMeta.isUsingEncryption());
 //        wEncryption.setVariableName(Const.NVL(graphDatabaseMeta.getUsingEncryptionVariable(), ""));
@@ -959,11 +966,11 @@ public class GraphDatabaseMetaEditor extends MetadataEditor<GraphDatabaseMeta> {
 //        wUrls.setRowNums();
 //        wUrls.optWidth(true);
 //
-//        guiCompositeWidgets.setWidgetsContents(
-//                graphDatabaseMeta.getIGraphDatabase(),
-//                wGraphDatabaseSpecificComp,
-//                GraphDatabaseMeta.GUI_PLUGIN_ELEMENT_PARENT_ID
-//        );
+        guiCompositeWidgets.setWidgetsContents(
+                graphDatabaseMeta.getIGraphDatabase(),
+                wGraphDatabaseSpecificComp,
+                GraphDatabaseMeta.GUI_PLUGIN_ELEMENT_PARENT_ID
+        );
 
         updateDriverInfo();
         enableFields();
@@ -972,11 +979,24 @@ public class GraphDatabaseMetaEditor extends MetadataEditor<GraphDatabaseMeta> {
 
     @Override
     public void getWidgetsContent(GraphDatabaseMeta graphDatabaseMeta) {
-        graphDatabaseMeta.setName(wName.getText());
-        graphDatabaseMeta.setHostname(wHostname.getText());
-        graphDatabaseMeta.setUsername(wUsername.getText());
-        graphDatabaseMeta.setPassword(wPassword.getText());
-        graphDatabaseMeta.setDatabaseName(wDatabaseName.getText());
+        if(!StringUtils.isEmpty(wConnectionType.getText())){
+            graphDatabaseMeta.setPluginName(wConnectionType.getText());
+        }
+        if(!StringUtils.isEmpty(wName.getText())){
+            graphDatabaseMeta.setName(wName.getText());
+        }
+//        if(!StringUtils.isEmpty(wHostname.getText())){
+//            graphDatabaseMeta.setHostname(wHostname.getText());
+//        }
+//        if(!StringUtils.isEmpty(wUsername.getText())){
+//            graphDatabaseMeta.setUsername(wUsername.getText());
+//        }
+//        if(!StringUtils.isEmpty(wPassword.getText())){
+//            graphDatabaseMeta.setPassword(wPassword.getText());
+//        }
+//        if(!StringUtils.isEmpty(wDatabaseName.getText())){
+//            graphDatabaseMeta.setDatabaseName(wDatabaseName.getText());
+//        }
 
 
 //        graphDatabaseMeta.setAutomatic(wAutomatic.getSelection());

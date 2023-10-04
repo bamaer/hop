@@ -39,7 +39,7 @@ public class GraphDatabaseFactory implements IGraphDatabaseFactory {
             graphDatabase.disconnect();
         }
 
-        return null;
+        return report.toString();
     }
 
     @Override

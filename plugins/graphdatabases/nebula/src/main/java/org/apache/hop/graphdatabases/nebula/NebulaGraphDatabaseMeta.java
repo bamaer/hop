@@ -14,23 +14,4 @@ import org.apache.hop.core.gui.plugin.GuiPlugin;
         id = "GUI-NebulaGraphDatabaseMeta"
 )
 public class NebulaGraphDatabaseMeta extends BaseGraphDatabaseMeta implements IGraphDatabase {
-    @Override
-    public String getDatabaseName() {
-        return null;
-    }
-
-    @Override
-    public void setDatabaseName(String databaseName) {
-
-    }
-
-    @Override
-    public boolean isSupportsTimestampDataType() {
-        return false;
-    }
-
-    @Override
-    public void setSupportsTimestampDataType(boolean b) {
-
-    }
 }

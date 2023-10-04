@@ -31,15 +31,6 @@ public class Neo4jGraphDatabaseMeta extends BaseBoltGraphDatabaseMeta implements
         return "Neo4j driver";
     }
 
-    @Override
-    public String getServername() {
-        return null;
-    }
-
-    @Override
-    public void setServername(String servername) {
-
-    }
 
 //    @Override
 //    public boolean isSupportsBTreeIndex(){

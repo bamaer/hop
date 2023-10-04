@@ -142,7 +142,7 @@ public class GraphDatabaseMeta extends HopMetadataBase implements Cloneable, IHo
 
     public void setDefault(){
 //        setValues("", "NONE", "bolt", "", "", "", "", "");
-        setValues("", "NONE", "", "");
+        setValues("", "NONEGRAPH", "", "");
     }
 
     public void addOptions(){
@@ -257,6 +257,7 @@ public class GraphDatabaseMeta extends HopMetadataBase implements Cloneable, IHo
 //        setChanged(false);
     }
 
+
     public void setGraphDatabaseType(String type) {
         IGraphDatabase oldInterface = iGraphDatabase;
 
@@ -285,10 +286,16 @@ public class GraphDatabaseMeta extends HopMetadataBase implements Cloneable, IHo
         return iGraphDatabase.getPluginId();
     }
 
+    public void setPluginId(String pluginId){
+        iGraphDatabase.setPluginId(pluginId);
+    }
+
     /** @return The name of the database plugin type */
     public String getPluginName() {
         return iGraphDatabase.getPluginName();
     }
+
+    public void setPluginName(String pluginName){ iGraphDatabase.setPluginName(pluginName);}
 
     public String getHostname() {
         return iGraphDatabase.getHostname();

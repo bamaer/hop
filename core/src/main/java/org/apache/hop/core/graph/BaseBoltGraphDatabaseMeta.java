@@ -1,8 +1,11 @@
 package org.apache.hop.core.graph;
 
+import org.apache.hop.core.Const;
 import org.apache.hop.core.gui.plugin.GuiElementType;
 import org.apache.hop.core.gui.plugin.GuiWidgetElement;
 import org.apache.hop.core.logging.ILogChannel;
+import org.apache.hop.core.variables.IVariables;
+import org.apache.hop.i18n.BaseMessages;
 import org.apache.hop.metadata.api.HopMetadataProperty;
 import org.apache.hop.metadata.api.IHopMetadataProvider;
 
@@ -174,16 +177,6 @@ public class BaseBoltGraphDatabaseMeta extends BaseGraphDatabaseMeta implements 
     @Override
     public void setHostname(String hostname) {
         this.hostname = hostname;
-    }
-
-    @Override
-    public String getServername() {
-        return null;
-    }
-
-    @Override
-    public void setServername(String servername) {
-
     }
 
     @Override
@@ -442,4 +435,5 @@ public class BaseBoltGraphDatabaseMeta extends BaseGraphDatabaseMeta implements 
     public boolean isSupportsBTreeIndex() {
         return false;
     }
+
 }

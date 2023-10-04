@@ -5,6 +5,7 @@ import org.apache.hop.core.database.DatabaseMeta;
 import org.apache.hop.core.gui.plugin.GuiElementType;
 import org.apache.hop.core.gui.plugin.GuiWidgetElement;
 import org.apache.hop.core.logging.ILogChannel;
+import org.apache.hop.core.variables.IVariables;
 import org.apache.hop.metadata.api.HopMetadataProperty;
 import org.apache.hop.metadata.api.IHopMetadataProvider;
 
@@ -140,6 +141,27 @@ public abstract class BaseGraphDatabaseMeta implements Cloneable, IGraphDatabase
     }
 
     @Override
+    public String getDatabaseName() {
+        return databaseName;
+    }
+
+    @Override
+    public void setDatabaseName(String databaseName) {
+        this.databaseName = databaseName;
+    }
+
+    @Override
+    public boolean isSupportsTimestampDataType() {
+        return false;
+    }
+
+    @Override
+    public void setSupportsTimestampDataType(boolean b) {
+
+    }
+
+
+    @Override
     public Object clone() {
         BaseGraphDatabaseMeta retval = null;
         try {
@@ -180,4 +202,5 @@ public abstract class BaseGraphDatabaseMeta implements Cloneable, IGraphDatabase
         protocols.add("bolt");
         return protocols;
     }
+
 }
