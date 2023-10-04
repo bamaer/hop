@@ -38,6 +38,21 @@ public interface IGraphDatabase extends Cloneable{
     /** @param password The password to set. */
     void setPassword(String password);
 
+    /** @return Returns the hostname. */
+    String getHostname();
+
+    /** @param hostname The hostname to set. */
+    void setHostname(String hostname);
+
+    /**
+     * @return Returns the databaseName.
+     *
+     */
+    String getDatabaseName();
+
+    /** @param databaseName The databaseName to set. */
+    void setDatabaseName(String databaseName);
+
     /**
      * @return true if the database supports the Timestamp data type (nanosecond precision and all)
      */

@@ -290,13 +290,12 @@ public class GraphDatabaseMeta extends HopMetadataBase implements Cloneable, IHo
         return iGraphDatabase.getPluginName();
     }
 
-/*
-    public String getServer() {
+    public String getHostname() {
         return iGraphDatabase.getHostname();
     }
 
-    public void setServer(String server) {
-        iGraphDatabase.setHostname(server);
+    public void setHostname(String hostname) {
+        iGraphDatabase.setHostname(hostname);
     }
 
     public String getDatabaseName() {
@@ -307,6 +306,7 @@ public class GraphDatabaseMeta extends HopMetadataBase implements Cloneable, IHo
         iGraphDatabase.setDatabaseName(databaseName);
     }
 
+/*
     public String getBoltPort() {
         return iGraphDatabase.getBoltPort();
     }

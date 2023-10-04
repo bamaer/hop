@@ -129,6 +129,15 @@ public abstract class BaseGraphDatabaseMeta implements Cloneable, IGraphDatabase
         this.password = password;
     }
 
+    @Override
+    public String getHostname(){
+        return hostname;
+    }
+
+    @Override
+    public void setHostname(String hostname){
+        this.hostname = hostname;
+    }
 
     @Override
     public Object clone() {

@@ -2,7 +2,9 @@ package org.apache.hop.core.graph;
 
 import org.apache.hop.core.gui.plugin.GuiElementType;
 import org.apache.hop.core.gui.plugin.GuiWidgetElement;
+import org.apache.hop.core.logging.ILogChannel;
 import org.apache.hop.metadata.api.HopMetadataProperty;
+import org.apache.hop.metadata.api.IHopMetadataProvider;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -117,6 +119,13 @@ public class BaseBoltGraphDatabaseMeta extends BaseGraphDatabaseMeta implements 
         defaultBoltPort = "666";
         boltPort = "7687";
         automatic = true;
+    }
+
+    public List<String> getNeo4jVersions(ILogChannel log, IHopMetadataProvider metadataProvider){
+        List<String> versions = new ArrayList<>();
+        versions.add("Neo4j 4");
+        versions.add("Neo4j 5");
+        return versions;
     }
 
     public String getNeo4jVersion(){

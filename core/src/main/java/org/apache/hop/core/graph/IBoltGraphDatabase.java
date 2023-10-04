@@ -10,28 +10,6 @@ public interface IBoltGraphDatabase extends IGraphDatabase{
     void setBrowserPort(String browserPort);
 
 
-    /**
-     * @return Returns the databaseName.
-     *
-     */
-
-    String getDatabaseName();
-
-    /** @param databaseName The databaseName to set. */
-    void setDatabaseName(String databaseName);
-
-    /** @return Returns the hostname. */
-    String getHostname();
-
-    /** @param hostname The hostname to set. */
-    void setHostname(String hostname);
-
-    /** @return Returns the servername. */
-    String getServername();
-
-    /** @param servername The servername to set. */
-    void setServername(String servername);
-
     /** Set default options for all graph databases **/
     default void addDefaultOptions(){}
 

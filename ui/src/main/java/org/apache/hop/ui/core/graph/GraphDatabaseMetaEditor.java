@@ -2,10 +2,7 @@ package org.apache.hop.ui.core.graph;
 
 import org.apache.hop.core.Const;
 import org.apache.hop.core.Props;
-import org.apache.hop.core.database.BaseDatabaseMeta;
 import org.apache.hop.core.database.DatabaseMeta;
-import org.apache.hop.core.encryption.Encr;
-import org.apache.hop.core.exception.HopConfigException;
 import org.apache.hop.core.graph.BaseGraphDatabaseMeta;
 import org.apache.hop.core.graph.GraphDatabaseMeta;
 import org.apache.hop.core.graph.GraphDatabasePluginType;
@@ -18,7 +15,6 @@ import org.apache.hop.core.util.Utils;
 import org.apache.hop.core.variables.IVariables;
 import org.apache.hop.i18n.BaseMessages;
 import org.apache.hop.ui.core.PropsUi;
-import org.apache.hop.ui.core.dialog.ErrorDialog;
 import org.apache.hop.ui.core.dialog.MessageBox;
 import org.apache.hop.ui.core.dialog.ShowMessageDialog;
 import org.apache.hop.ui.core.gui.GuiCompositeWidgets;
@@ -26,9 +22,6 @@ import org.apache.hop.ui.core.gui.GuiCompositeWidgetsAdapter;
 import org.apache.hop.ui.core.gui.GuiResource;
 import org.apache.hop.ui.core.metadata.MetadataEditor;
 import org.apache.hop.ui.core.metadata.MetadataManager;
-import org.apache.hop.ui.core.widget.CheckBoxVar;
-import org.apache.hop.ui.core.widget.ColumnInfo;
-import org.apache.hop.ui.core.widget.PasswordTextVar;
 import org.apache.hop.ui.core.widget.TableView;
 import org.apache.hop.ui.core.widget.TextVar;
 import org.apache.hop.ui.hopgui.HopGui;
@@ -38,7 +31,6 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.CTabFolder;
 import org.eclipse.swt.custom.CTabItem;
 import org.eclipse.swt.custom.ScrolledComposite;
-import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.FormAttachment;
@@ -51,14 +43,12 @@ import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Shell;
-import org.eclipse.swt.widgets.TableItem;
 import org.eclipse.swt.widgets.Text;
 import org.eclipse.swt.widgets.ToolBar;
 import org.eclipse.swt.widgets.ToolItem;
-import org.neo4j.driver.Config;
-import org.neo4j.driver.Driver;
+//import org.neo4j.driver.Config;
+//import org.neo4j.driver.Driver;
 
-import java.net.URI;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -85,14 +75,16 @@ public class GraphDatabaseMetaEditor extends MetadataEditor<GraphDatabaseMeta> {
     private TextVar wUsername;
     private TextVar wPassword;
 
+    private Label wlHostname;
+    private TextVar wHostname;
+
+    private Label wlDatabaseName;
+    private TextVar wDatabaseName;
+
     /*
     private Label wlAutomatic;
     private CheckBoxVar wAutomatic;
     private TextVar wProtocol;
-    private Label wlServer;
-    private TextVar wServer;
-    private Label wlDatabaseName;
-    private TextVar wDatabaseName;
     private Label wlDatabasePort;
     private TextVar wDatabasePort;
 */
@@ -354,42 +346,42 @@ public class GraphDatabaseMetaEditor extends MetadataEditor<GraphDatabaseMeta> {
 //        wProtocol.setLayoutData(fdProtocol);
 //        lastControl = wProtocol;
 //
-//        // The server
-//        wlServer = new Label(wBasicComp, SWT.RIGHT);
-//        PropsUi.setLook(wlServer);
-//        wlServer.setText(BaseMessages.getString(PKG, "GraphConnectionEditor.Server.Label"));
-//        FormData fdlServer = new FormData();
-//        fdlServer.top = new FormAttachment(lastControl, margin);
-//        fdlServer.left = new FormAttachment(0, 0); // First one in the left top corner
-//        fdlServer.right = new FormAttachment(middle, -margin);
-//        wlServer.setLayoutData(fdlServer);
-//        wServer = new TextVar(variables, wBasicComp, SWT.SINGLE | SWT.LEFT | SWT.BORDER);
-//        PropsUi.setLook(wServer);
-//        FormData fdServer = new FormData();
-//        fdServer.top = new FormAttachment(wlServer, 0, SWT.CENTER);
-//        fdServer.left = new FormAttachment(middle, 0); // To the right of the label
-//        fdServer.right = new FormAttachment(95, 0);
-//        wServer.setLayoutData(fdServer);
-//        lastControl = wServer;
-//
-//        // The DatabaseName
-//        wlDatabaseName = new Label(wBasicComp, SWT.RIGHT);
-//        PropsUi.setLook(wlDatabaseName);
-//        wlDatabaseName.setText(BaseMessages.getString(PKG, "GraphConnectionEditor.DatabaseName.Label"));
-//        FormData fdlDatabaseName = new FormData();
-//        fdlDatabaseName.top = new FormAttachment(lastControl, margin);
-//        fdlDatabaseName.left = new FormAttachment(0, 0); // First one in the left top corner
-//        fdlDatabaseName.right = new FormAttachment(middle, -margin);
-//        wlDatabaseName.setLayoutData(fdlDatabaseName);
-//        wDatabaseName = new TextVar(variables, wBasicComp, SWT.SINGLE | SWT.LEFT | SWT.BORDER);
-//        PropsUi.setLook(wDatabaseName);
-//        FormData fdDatabaseName = new FormData();
-//        fdDatabaseName.top = new FormAttachment(wlDatabaseName, 0, SWT.CENTER);
-//        fdDatabaseName.left = new FormAttachment(middle, 0); // To the right of the label
-//        fdDatabaseName.right = new FormAttachment(95, 0);
-//        wDatabaseName.setLayoutData(fdDatabaseName);
-//        lastControl = wDatabaseName;
-//
+        // The server
+        wlHostname = new Label(wBasicComp, SWT.RIGHT);
+        PropsUi.setLook(wlHostname);
+        wlHostname.setText(BaseMessages.getString(PKG, "GraphConnectionEditor.Server.Label"));
+        FormData fdlServer = new FormData();
+        fdlServer.top = new FormAttachment(lastControl, margin);
+        fdlServer.left = new FormAttachment(0, 0); // First one in the left top corner
+        fdlServer.right = new FormAttachment(middle, -margin);
+        wlHostname.setLayoutData(fdlServer);
+        wHostname = new TextVar(variables, wBasicComp, SWT.SINGLE | SWT.LEFT | SWT.BORDER);
+        PropsUi.setLook(wHostname);
+        FormData fdServer = new FormData();
+        fdServer.top = new FormAttachment(wlHostname, 0, SWT.CENTER);
+        fdServer.left = new FormAttachment(middle, 0); // To the right of the label
+        fdServer.right = new FormAttachment(95, 0);
+        wHostname.setLayoutData(fdServer);
+        lastControl = wHostname;
+
+        // The DatabaseName
+        wlDatabaseName = new Label(wBasicComp, SWT.RIGHT);
+        PropsUi.setLook(wlDatabaseName);
+        wlDatabaseName.setText(BaseMessages.getString(PKG, "GraphConnectionEditor.DatabaseName.Label"));
+        FormData fdlDatabaseName = new FormData();
+        fdlDatabaseName.top = new FormAttachment(lastControl, margin);
+        fdlDatabaseName.left = new FormAttachment(0, 0); // First one in the left top corner
+        fdlDatabaseName.right = new FormAttachment(middle, -margin);
+        wlDatabaseName.setLayoutData(fdlDatabaseName);
+        wDatabaseName = new TextVar(variables, wBasicComp, SWT.SINGLE | SWT.LEFT | SWT.BORDER);
+        PropsUi.setLook(wDatabaseName);
+        FormData fdDatabaseName = new FormData();
+        fdDatabaseName.top = new FormAttachment(wlDatabaseName, 0, SWT.CENTER);
+        fdDatabaseName.left = new FormAttachment(middle, 0); // To the right of the label
+        fdDatabaseName.right = new FormAttachment(95, 0);
+        wDatabaseName.setLayoutData(fdDatabaseName);
+        lastControl = wDatabaseName;
+
 //        // Database port?
 //        wlDatabasePort = new Label(wBasicComp, SWT.RIGHT);
 //        PropsUi.setLook(wlDatabasePort);
@@ -981,6 +973,11 @@ public class GraphDatabaseMetaEditor extends MetadataEditor<GraphDatabaseMeta> {
     @Override
     public void getWidgetsContent(GraphDatabaseMeta graphDatabaseMeta) {
         graphDatabaseMeta.setName(wName.getText());
+        graphDatabaseMeta.setHostname(wHostname.getText());
+        graphDatabaseMeta.setUsername(wUsername.getText());
+        graphDatabaseMeta.setPassword(wPassword.getText());
+        graphDatabaseMeta.setDatabaseName(wDatabaseName.getText());
+
 
 //        graphDatabaseMeta.setAutomatic(wAutomatic.getSelection());
 //        graphDatabaseMeta.setAutomaticVariable(wAutomatic.getVariableName());
