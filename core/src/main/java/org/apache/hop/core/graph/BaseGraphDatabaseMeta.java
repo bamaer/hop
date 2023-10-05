@@ -1,11 +1,8 @@
 package org.apache.hop.core.graph;
 
-import org.apache.hop.core.database.DatabaseFactory;
-import org.apache.hop.core.database.DatabaseMeta;
 import org.apache.hop.core.gui.plugin.GuiElementType;
 import org.apache.hop.core.gui.plugin.GuiWidgetElement;
 import org.apache.hop.core.logging.ILogChannel;
-import org.apache.hop.core.variables.IVariables;
 import org.apache.hop.metadata.api.HopMetadataProperty;
 import org.apache.hop.metadata.api.IHopMetadataProvider;
 
@@ -193,7 +190,7 @@ public abstract class BaseGraphDatabaseMeta implements Cloneable, IGraphDatabase
      */
     @Override
     public String getGraphDatabaseFactoryName() {
-        return DatabaseFactory.class.getName();
+        return GraphDatabaseFactory.class.getName();
     }
 
     public List<String> getSupportedProtocols(ILogChannel log, IHopMetadataProvider metadataProvider){

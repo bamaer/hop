@@ -979,11 +979,11 @@ public class GraphDatabaseMetaEditor extends MetadataEditor<GraphDatabaseMeta> {
 
     @Override
     public void getWidgetsContent(GraphDatabaseMeta graphDatabaseMeta) {
-        if(!StringUtils.isEmpty(wConnectionType.getText())){
-            graphDatabaseMeta.setPluginName(wConnectionType.getText());
-        }
         if(!StringUtils.isEmpty(wName.getText())){
             graphDatabaseMeta.setName(wName.getText());
+        }
+        if(!StringUtils.isEmpty(wConnectionType.getText())){
+            graphDatabaseMeta.setGraphDatabaseType(wConnectionType.getText());
         }
 //        if(!StringUtils.isEmpty(wHostname.getText())){
 //            graphDatabaseMeta.setHostname(wHostname.getText());

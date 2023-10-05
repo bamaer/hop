@@ -266,15 +266,17 @@ public class GraphDatabaseMeta extends HopMetadataBase implements Cloneable, IHo
         } catch (HopGraphDatabaseException kde) {
             throw new RuntimeException("Database type [" + type + "] not found!", kde);
         }
+        setHostname(oldInterface.getHostname());
+        setUsername(oldInterface.getUsername());
+        setPassword(oldInterface.getPassword());
+        setDatabaseName(oldInterface.getDatabaseName());
+        setChanged(oldInterface.isChanged());
 
 //        setServer(oldInterface.getHostname());
 //        setDatabaseName(oldInterface.getDatabaseName());
 //        setProtocol(oldInterface.getProtocol());
 //        setBoltPort(oldInterface.getBoltPort());
-        setUsername(oldInterface.getUsername());
-        setPassword(oldInterface.getPassword());
 //        setServer(oldInterface.getHostname());
-        setChanged(oldInterface.isChanged());
     }
 
     public void setValues(GraphDatabaseMeta info) {
