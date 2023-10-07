@@ -4,6 +4,7 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.hop.core.Const;
 import org.apache.hop.core.Props;
 import org.apache.hop.core.database.DatabaseMeta;
+import org.apache.hop.core.exception.HopException;
 import org.apache.hop.core.graph.BaseGraphDatabaseMeta;
 import org.apache.hop.core.graph.GraphDatabaseMeta;
 import org.apache.hop.core.graph.GraphDatabasePluginType;
@@ -1041,9 +1042,18 @@ public class GraphDatabaseMetaEditor extends MetadataEditor<GraphDatabaseMeta> {
             Shell shell, IVariables variables, GraphDatabaseMeta graphDatabaseMeta){
         String[] remarks = graphDatabaseMeta.checkParameters();
         if(remarks.length == 0){
-            GraphDatabaseTestResults testResults = graphDatabaseMeta.testConnectionSuccess(variables);
-            String message = testResults.getMessage();
-            boolean success = testResults.isSuccess();
+            String message = "";
+            boolean success = true;
+
+            IGraphDatabase graphDatabase = graphDatabaseMeta.getIGraphDatabase();
+            try{
+                GraphDatabaseTestResults testResults = graphDatabase.testConnectionSuccess(variables);
+                message = testResults.getMessage();
+                success = testResults.isSuccess();
+            }catch(HopException e){
+                success = false;
+                message = "failed to connection to graph database " + graphDatabaseMeta.getName();
+            }
             String title =
                     success
                             ? BaseMessages.getString(PKG, "GraphDatabaseDialog.DatabaseConnectionTestSuccess.title")
@@ -1073,7 +1083,8 @@ public class GraphDatabaseMetaEditor extends MetadataEditor<GraphDatabaseMeta> {
             mb.setText(BaseMessages.getString(PKG, "GraphDatabaseDialog.ErrorParameters2.title"));
             mb.setMessage(
                     BaseMessages.getString(PKG, "GraphDatabaseDialog.ErrorParameters2.description", message));
-            mb.open();        }
+            mb.open();
+        }
     }
 
 /*

@@ -718,14 +718,17 @@ public class GraphDatabaseMeta extends HopMetadataBase implements Cloneable, IHo
         return remarks.toArray(new String[0]);
     }
 
+//    @Override
+/*
     public GraphDatabaseTestResults testConnectionSuccess(IVariables variables){
         StringBuilder report = new StringBuilder();
         GraphDatabaseTestResults testResults = new GraphDatabaseTestResults();
 
         // If the plugin needs to provide connection information, we ask the IGraphDatabase.
-        try{
-            IGraphDatabaseFactory factory = getGraphDatabaseFactory();
-            testResults = factory.getConnectionTestResults(variables, this);
+//        try{
+//            IGraphDatabaseFactory factory = getGraphDatabaseFactory();
+//            testResults = factory.getConnectionTestResults(variables, this);
+//            testResults = testC
         }catch(ClassNotFoundException e){
             report.append(
                     BaseMessages.getString(PKG, "BaseGraphDatabaseMeta.TestConnectionReportNotImplemented.Message")).append(Const.CR);
@@ -744,6 +747,7 @@ public class GraphDatabaseMeta extends HopMetadataBase implements Cloneable, IHo
         }
         return testResults;
     }
+*/
 
     public IGraphDatabaseFactory getGraphDatabaseFactory() throws Exception {
         PluginRegistry registry = PluginRegistry.getInstance();

@@ -40,9 +40,9 @@ public interface IBoltGraphDatabase extends IGraphDatabase{
 
     void setRouting(boolean routing);
 
-    boolean isRoutingVariable();
+    String isRoutingVariable();
 
-    void setRoutingVariable(boolean routingVariable);
+    void setRoutingVariable(String routingVariable);
 
     String getRoutingPolicy();
 

@@ -29,15 +29,17 @@ public class GraphDatabaseFactory implements IGraphDatabaseFactory {
 
         GraphDatabase graphDatabase = new GraphDatabase(logginObject, variables, graphDatabaseMeta);
 
-        try(Driver driver = graphDatabase.getDriver(LogChannel.GENERAL, variables)){
-            report.append(BaseMessages.getString(PKG, "GraphDatabaseMeta.report.ConnectionOK", graphDatabaseMeta.getName()) + Const.CR);
-        } catch (HopConfigException e) {
-            report.append(BaseMessages.getString(PKG, "GraphDatabaseMeta.report.ConnectionError", graphDatabaseMeta.getName()) + Const.CR);
-            report.append(Const.getStackTracker(e) + Const.CR);
-            success = false;
-        } finally {
-            graphDatabase.disconnect();
-        }
+//        GraphDatabaseTestResults result = graphDatabaseMeta.testConnectionSuccess(variables);
+
+//        try(Driver driver = graphDatabase.getDriver(LogChannel.GENERAL, variables)){
+//            report.append(BaseMessages.getString(PKG, "GraphDatabaseMeta.report.ConnectionOK", graphDatabaseMeta.getName()) + Const.CR);
+//        } catch (HopConfigException e) {
+//            report.append(BaseMessages.getString(PKG, "GraphDatabaseMeta.report.ConnectionError", graphDatabaseMeta.getName()) + Const.CR);
+//            report.append(Const.getStackTracker(e) + Const.CR);
+//            success = false;
+//        } finally {
+//            graphDatabase.disconnect();
+//        }
 
         return report.toString();
     }

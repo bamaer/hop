@@ -1,5 +1,8 @@
 package org.apache.hop.core.graph;
 
+import org.apache.hop.core.exception.HopConfigException;
+import org.apache.hop.core.exception.HopException;
+import org.apache.hop.core.variables.IVariables;
 import org.apache.hop.metadata.api.HopMetadataObject;
 
 import java.util.List;
@@ -90,5 +93,8 @@ public interface IGraphDatabase extends Cloneable{
      * @return the name of the graph database test factory to use.
      */
     String getGraphDatabaseFactoryName();
+
+    GraphDatabaseTestResults testConnectionSuccess(IVariables variables) throws HopConfigException, HopException;
+
 
 }
