@@ -29,11 +29,25 @@ import org.apache.hop.core.variables.IVariables;
 )
 public class NoneGraphDatabaseMeta extends BaseGraphDatabaseMeta implements IGraphDatabase {
 
+    private static final String serverTestQuery = "no test query";
+    private static final String serverInfoQuery = "no version query";
+
+
     @Override
     public GraphDatabaseTestResults testConnectionSuccess(IVariables variables) throws HopConfigException, HopException {
         GraphDatabaseTestResults testResults = new GraphDatabaseTestResults();
         testResults.setSuccess(true);
         testResults.setMessage("nothing to test");
         return testResults;
+    }
+
+    @Override
+    public String getServerTestQuery() {
+        return null;
+    }
+
+    @Override
+    public String getServerInfo() {
+        return null;
     }
 }

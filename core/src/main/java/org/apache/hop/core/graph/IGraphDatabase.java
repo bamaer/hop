@@ -111,6 +111,10 @@ public interface IGraphDatabase extends Cloneable{
      */
     String getGraphDatabaseFactoryName();
 
+    String getServerTestQuery();
+
+    String getServerInfo();
+
     GraphDatabaseTestResults testConnectionSuccess(IVariables variables) throws HopConfigException, HopException;
 
 

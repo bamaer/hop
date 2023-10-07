@@ -56,6 +56,8 @@ import java.util.logging.Level;
 
 public class BaseBoltGraphDatabaseMeta extends BaseGraphDatabaseMeta implements IBoltGraphDatabase{
 
+    private String driverClass = "org.neo4j.driver.Driver";
+
     @GuiWidgetElement(
             id = "neo4jVersion",
             order = "10",
@@ -154,6 +156,9 @@ public class BaseBoltGraphDatabaseMeta extends BaseGraphDatabaseMeta implements 
 
     @HopMetadataProperty private String automaticVariable;
 
+    private static final String serverTestQuery = "RETURN 0";
+    private static final String serverInfoQuery = "call dbms.components() yield name, versions, edition unwind versions as version return \"Name: \" + name + \", version: \" + version + \", edition: \" + edition;";
+
 
     public BaseBoltGraphDatabaseMeta(){
         super();
@@ -165,22 +170,35 @@ public class BaseBoltGraphDatabaseMeta extends BaseGraphDatabaseMeta implements 
 
     public List<String> getNeo4jVersions(ILogChannel log, IHopMetadataProvider metadataProvider){
         List<String> versions = new ArrayList<>();
+        versions.add("Neo4j 3");
         versions.add("Neo4j 4");
         versions.add("Neo4j 5");
+        Collections.sort(versions, Collections.reverseOrder());
         return versions;
     }
 
+    @Override
     public String getNeo4jVersion(){
         return neo4jVersion;
     }
 
+    @Override
     public void setNeo4jVersion(String neo4jVersion){
         this.neo4jVersion = neo4jVersion;
     }
 
     @Override
-    public boolean isAutomatic() {
+    public boolean isAutomatic(){
         return automatic;
+    }
+    public boolean isAutomatic(IVariables variables) {
+        if (StringUtils.isEmpty(automaticVariable)) {
+            return isAutomatic();
+        } else {
+            String automaticString = variables.resolve(automaticVariable);
+            Boolean auto = ValueMetaBase.convertStringToBoolean(automaticString);
+            return auto != null && auto;
+        }
     }
 
     @Override
@@ -276,7 +294,7 @@ public class BaseBoltGraphDatabaseMeta extends BaseGraphDatabaseMeta implements 
     }
 
     @Override
-    public String isRoutingVariable() {
+    public String getRoutingVariable() {
         return routingVariable;
     }
 
@@ -476,36 +494,68 @@ public class BaseBoltGraphDatabaseMeta extends BaseGraphDatabaseMeta implements 
     }
 
     @Override
+    public String getDriverClass(){
+        return driverClass;
+    }
+
+    @Override
+    public void setDriverClass(String driverClass){
+        this.driverClass = driverClass;
+    }
+
+
+    @Override
+    public String getServerTestQuery() {
+        return serverTestQuery;
+    }
+
+    @Override
+    public String getServerInfo() {
+        return serverInfoQuery;
+    }
+
+    @Override
     public GraphDatabaseTestResults testConnectionSuccess(IVariables variables) throws HopConfigException, HopException{
         GraphDatabaseTestResults testResults = new GraphDatabaseTestResults();
         boolean success = true;
         String message = "";
         try (Driver driver = getDriver(LogChannel.GENERAL, variables)) {
             SessionConfig.Builder builder = SessionConfig.builder();
-            if (StringUtils.isNotEmpty(databaseName)) {
+            if (StringUtils.isNotEmpty(databaseName) && !neo4jVersion.equals("Neo4j 3")) {
                 builder = builder.withDatabase(variables.resolve(databaseName));
             }
-            try (Session session = driver.session(builder.build())) {
+            try {
+                Session session = driver.session(builder.build());
                 // Do something with the session otherwise it doesn't test the connection
                 //
-                Result result = session.run("RETURN 0");
+//                Result result = session.run("RETURN 0");
+                Result result = session.run(getServerTestQuery());
                 Record record = result.next();
                 Value value = record.get(0);
                 int zero = value.asInt();
                 assert (zero == 0);
-                message += "connection to " + databaseName + " tested successfully";
+                message += "Connection to " + databaseName + " tested successfully" + Const.CR;
+                message += "Host: " + hostname + Const.CR;
+                message += "Port: " + boltPort + Const.CR;
+                message += "Database: " + databaseName + Const.CR;
+                message += "User: " + username + Const.CR;
+                result = session.run(getServerInfo());
+                record = result.next();
+                value = record.get(0);
+                String serverInfo = value.asString();
+                message += "Server info: " + serverInfo + Const.CR;
             } catch (Exception e) {
                 message += "error connecting to " + databaseName + Const.CR;
                 message += Const.getStackTracker(e) + Const.CR;
                 success = false;
-                throw new HopException(
-                        "Unable to connect to database '" + databaseName + "' : " + e.getMessage(), e);
+//                throw new HopException(
+//                        "Unable to connect to database '" + databaseName + "' : " + e.getMessage(), e);
             }
         }catch(HopConfigException e){
             message += "error getting driver for " + databaseName + Const.CR;
             message += Const.getStackTracker(e) + Const.CR;
             success = false;
-            throw new HopConfigException("Unable to get driver for " + databaseName + ". " + e.getMessage(), e);
+//            throw new HopConfigException("Unable to get driver for " + databaseName + ". " + e.getMessage(), e);
         }
         testResults.setMessage(message);
         testResults.setSuccess(success);
@@ -521,7 +571,7 @@ public class BaseBoltGraphDatabaseMeta extends BaseGraphDatabaseMeta implements 
             String realPassword = Encr.decryptPasswordOptionallyEncrypted(variables.resolve(password));
             Config.ConfigBuilder configBuilder;
 
-            if (!isAutomatic()) {
+            if (!isAutomatic(variables)) {
                 if (encryptionVariableSet(variables) || usingEncryption) {
                     configBuilder = Config.builder().withEncryption();
                     if (trustAllCertificatesVariableSet(variables) || trustAllCertificates) {
@@ -645,7 +695,7 @@ public class BaseBoltGraphDatabaseMeta extends BaseGraphDatabaseMeta implements 
          */
         String url = "";
         if (StringUtils.isEmpty(protocol)) {
-            if (isAutomatic() || isUsingRouting(variables)) {
+            if (isAutomatic(variables) || isUsingRouting(variables)) {
                 url += "neo4j";
             } else {
                 url += "bolt";
@@ -669,7 +719,7 @@ public class BaseBoltGraphDatabaseMeta extends BaseGraphDatabaseMeta implements 
 
         // We don't add these options if the automatic flag is set
         //
-        if (!isAutomatic()
+        if (!isAutomatic(variables)
                 && isUsingRouting(variables)
                 && StringUtils.isNotEmpty(routingPolicyString)) {
             try {

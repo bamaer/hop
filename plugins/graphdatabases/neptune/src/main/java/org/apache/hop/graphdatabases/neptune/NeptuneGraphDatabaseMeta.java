@@ -31,6 +31,19 @@ import org.apache.hop.core.gui.plugin.GuiPlugin;
 @GuiPlugin(id = "GUI-NeptuneGraphDatabaseMeta")
 public class NeptuneGraphDatabaseMeta extends BaseBoltGraphDatabaseMeta implements IBoltGraphDatabase {
 
+    private static final String serverTestQuery = "neptune test query";
+    private static final String serverInfoQuery = "show neptune version query";
+
+    @Override
+    public String getServerTestQuery() {
+        return null;
+    }
+
+    @Override
+    public String getServerInfo() {
+        return null;
+    }
+
 /*
     @Override
     public String getBoltPort(){

@@ -1063,13 +1063,15 @@ public class GraphDatabaseMetaEditor extends MetadataEditor<GraphDatabaseMeta> {
             boolean success = true;
 
             IGraphDatabase graphDatabase = graphDatabaseMeta.getIGraphDatabase();
+            GraphDatabaseTestResults testResults = null;
             try{
-                GraphDatabaseTestResults testResults = graphDatabase.testConnectionSuccess(variables);
+                testResults = graphDatabase.testConnectionSuccess(variables);
                 message = testResults.getMessage();
                 success = testResults.isSuccess();
             }catch(HopException e){
                 success = false;
-                message = "failed to connection to graph database " + graphDatabaseMeta.getName();
+                message = "failed to connect to graph database " + graphDatabaseMeta.getName() + Const.CR;
+                message += testResults.getMessage() + Const.CR;
             }
             String title =
                     success

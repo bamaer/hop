@@ -17,10 +17,16 @@
 
 package org.apache.hop.core.graph;
 
+import org.apache.hop.core.variables.IVariables;
+
 import java.util.List;
 import java.util.Map;
 
 public interface IBoltGraphDatabase extends IGraphDatabase{
+
+    String getNeo4jVersion();
+
+    void setNeo4jVersion(String neo4jVersion);
 
     String getBrowserPort();
 
@@ -57,7 +63,7 @@ public interface IBoltGraphDatabase extends IGraphDatabase{
 
     void setRouting(boolean routing);
 
-    String isRoutingVariable();
+    String getRoutingVariable();
 
     void setRoutingVariable(String routingVariable);
 

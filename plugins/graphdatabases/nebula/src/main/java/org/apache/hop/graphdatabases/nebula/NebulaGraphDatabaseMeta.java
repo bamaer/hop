@@ -36,6 +36,10 @@ import org.apache.hop.core.variables.IVariables;
 )
 public class NebulaGraphDatabaseMeta extends BaseGraphDatabaseMeta implements IGraphDatabase {
 
+    private static final String serverTestQuery = "test query";
+    private static final String serverInfoQuery = "show version query";
+
+
     @Override
     public GraphDatabaseTestResults testConnectionSuccess(IVariables variables) throws HopConfigException, HopException {
         GraphDatabaseTestResults testResults = new GraphDatabaseTestResults();
@@ -43,4 +47,15 @@ public class NebulaGraphDatabaseMeta extends BaseGraphDatabaseMeta implements IG
         testResults.setMessage("Nebula Graph test to be implemented");
         return testResults;
     }
+
+    @Override
+    public String getServerTestQuery() {
+        return serverTestQuery;
+    }
+
+    @Override
+    public String getServerInfo() {
+        return serverInfoQuery;
+    }
+
 }

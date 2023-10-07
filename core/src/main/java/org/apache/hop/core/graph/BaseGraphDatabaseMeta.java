@@ -37,7 +37,7 @@ public abstract class BaseGraphDatabaseMeta implements Cloneable, IGraphDatabase
     public static final String ID_PASSWORD_LABEL = "password-label";
     public static final String ID_PASSWORD_WIDGET = "password-widget";
 
-    private String driverClass = "org.neo4j.driver.Driver";
+    private String driverClass = "no driver";
 
 
     @HopMetadataProperty
@@ -78,6 +78,7 @@ public abstract class BaseGraphDatabaseMeta implements Cloneable, IGraphDatabase
             label = "i18n:org.apache.hop.ui.core.graph:GraphDatabaseDialog.Password.Label",
             type = GuiElementType.TEXT,
             variables = true,
+            password = true,
             parentId = GraphDatabaseMeta.GUI_PLUGIN_ELEMENT_PARENT_ID
     )
     protected String password;

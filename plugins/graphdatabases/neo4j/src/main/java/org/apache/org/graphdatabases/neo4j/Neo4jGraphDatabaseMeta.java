@@ -43,10 +43,6 @@ public class Neo4jGraphDatabaseMeta extends BaseBoltGraphDatabaseMeta implements
 
     private static final Class<?> PKG = Neo4jGraphDatabaseMeta.class; // For Translator
 
-    @Override
-    public String getDriverClass(){
-        return "Neo4j driver";
-    }
 
 
 //    @Override

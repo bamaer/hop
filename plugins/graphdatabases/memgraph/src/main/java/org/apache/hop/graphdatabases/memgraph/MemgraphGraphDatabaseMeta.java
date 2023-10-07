@@ -32,4 +32,10 @@ import org.apache.hop.core.gui.plugin.GuiPlugin;
 @GuiPlugin(id = "GUI-MemgraphGraphDatabaseMeta")
 public class MemgraphGraphDatabaseMeta  extends BaseBoltGraphDatabaseMeta implements IBoltGraphDatabase {
 
+    private static final String serverInfoQuery = "SHOW VERSION";
+    @Override
+    public String getServerInfo(){
+        return serverInfoQuery;
+    }
+
 }
