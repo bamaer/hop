@@ -17,7 +17,6 @@
 
 package org.apache.hop.graphdatabases.neptune;
 
-
 import org.apache.hop.core.graph.BaseBoltGraphDatabaseMeta;
 import org.apache.hop.core.graph.GraphDatabaseMetaPlugin;
 import org.apache.hop.core.graph.IBoltGraphDatabase;
@@ -44,10 +43,4 @@ public class NeptuneGraphDatabaseMeta extends BaseBoltGraphDatabaseMeta implemen
         return null;
     }
 
-/*
-    @Override
-    public String getBoltPort(){
-        return "8183";
-    }
-*/
 }

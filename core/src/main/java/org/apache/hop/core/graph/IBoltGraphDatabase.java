@@ -17,8 +17,6 @@
 
 package org.apache.hop.core.graph;
 
-import org.apache.hop.core.variables.IVariables;
-
 import java.util.List;
 import java.util.Map;
 

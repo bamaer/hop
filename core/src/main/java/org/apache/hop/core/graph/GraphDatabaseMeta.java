@@ -18,7 +18,6 @@
 package org.apache.hop.core.graph;
 
 import org.apache.commons.lang.StringUtils;
-import org.apache.hop.core.Const;
 import org.apache.hop.core.exception.HopPluginException;
 import org.apache.hop.core.exception.HopXmlException;
 import org.apache.hop.core.logging.ILogChannel;
@@ -117,23 +116,14 @@ public class GraphDatabaseMeta extends HopMetadataBase implements Cloneable, IHo
      *
      * @param name The graph database name
      * @param type The graph database type
-//     * @param protocol The graph database connection protocol to use
-//     * @param host The hostname or IP address
-//     * @param db The graph database name
-//     * @param port The port on which the graph database listens
      * @param user The username
      * @param pass The password
      */
     public GraphDatabaseMeta(
             String name,
             String type,
-//            String protocol,
-//            String host,
-//            String db,
-//            String port,
             String user,
             String pass){
-//        setValues(name, type, protocol, host, db, port, user, pass);
         setValues(name, type, user, pass);
         addOptions();
     }
@@ -163,9 +153,6 @@ public class GraphDatabaseMeta extends HopMetadataBase implements Cloneable, IHo
     }
 
     public void addOptions(){
-//        iGraphDatabase.addDefaultOptions();
-//        setSupportsBooleanDataType(true);
-//        setSupportsTimestampDataType(true);
     }
 
     public GraphDatabaseMeta(GraphDatabaseMeta graphDatabaseMeta){
@@ -235,13 +222,8 @@ public class GraphDatabaseMeta extends HopMetadataBase implements Cloneable, IHo
         this.setValues(
                 graphDatabaseMeta.getName(),
                 graphDatabaseMeta.getPluginId(),
-//                graphDatabaseMeta.getProtocol(),
-//                graphDatabaseMeta.getServer(),
-//                graphDatabaseMeta.getDatabaseName(),
-//                graphDatabaseMeta.getBoltPort(),
                 graphDatabaseMeta.getUsername(),
                 graphDatabaseMeta.getPassword());
-//        this.setServer(graphDatabaseMeta.getServer());
 
         this.iGraphDatabase = (IGraphDatabase) graphDatabaseMeta.iGraphDatabase.clone();
 
@@ -251,10 +233,6 @@ public class GraphDatabaseMeta extends HopMetadataBase implements Cloneable, IHo
     public void setValues(
             String name,
             String type,
-//            String protocol,
-//            String host,
-//            String db,
-//            String port,
             String user,
             String pass) {
         try {
@@ -262,16 +240,10 @@ public class GraphDatabaseMeta extends HopMetadataBase implements Cloneable, IHo
         } catch (HopGraphDatabaseException kde) {
             throw new RuntimeException("Graph database type not found!", kde);
         }
-
         setName(name);
         setGraphDatabaseType(type);
-//        setServer(host);
-//        setDatabaseName(db);
-//        setBoltPort(port);
         setUsername(user);
         setPassword(pass);
-//        setServer(null);
-//        setChanged(false);
     }
 
 
@@ -288,12 +260,6 @@ public class GraphDatabaseMeta extends HopMetadataBase implements Cloneable, IHo
         setPassword(oldInterface.getPassword());
         setDatabaseName(oldInterface.getDatabaseName());
         setChanged(oldInterface.isChanged());
-
-//        setServer(oldInterface.getHostname());
-//        setDatabaseName(oldInterface.getDatabaseName());
-//        setProtocol(oldInterface.getProtocol());
-//        setBoltPort(oldInterface.getBoltPort());
-//        setServer(oldInterface.getHostname());
     }
 
     public void setValues(GraphDatabaseMeta info) {
@@ -332,48 +298,6 @@ public class GraphDatabaseMeta extends HopMetadataBase implements Cloneable, IHo
         iGraphDatabase.setDatabaseName(databaseName);
     }
 
-/*
-    public String getBoltPort() {
-        return iGraphDatabase.getBoltPort();
-    }
-
-    public void setBoltPort(String boltPort) {
-        iGraphDatabase.setBoltPort(boltPort);
-    }
-
-    public String getBrowserPort() {
-        return iGraphDatabase.getBrowserPort();
-    }
-
-    public void setBrowserPort(String browserPort) {
-        iGraphDatabase.setBrowserPort(browserPort);
-    }
-
-    public boolean isRouting() {
-        return iGraphDatabase.isRouting();
-    }
-
-    public void setRouting(boolean routing) {
-        iGraphDatabase.setRouting(routing);
-    }
-
-    public boolean getRoutingVariable() {
-        return iGraphDatabase.isRoutingVariable();
-    }
-
-    public void setRoutingVariable(boolean routingVariable) {
-        iGraphDatabase.setRoutingVariable(routingVariable);
-    }
-
-    public String getRoutingPolicy() {
-        return iGraphDatabase.getRoutingPolicy();
-    }
-
-    public void setRoutingPolicy(String routingPolicy) {
-        iGraphDatabase.setRoutingPolicy(routingPolicy);
-    }
-*/
-
     public String getUsername() {
         return iGraphDatabase.getUsername();
     }
@@ -390,128 +314,6 @@ public class GraphDatabaseMeta extends HopMetadataBase implements Cloneable, IHo
         iGraphDatabase.setPassword(password);
     }
 
-/*
-    public boolean isUsingEncryption() {
-        return iGraphDatabase.isUsingEncryption();
-    }
-
-    public void setUsingEncryption(boolean usingEncryption) {
-        iGraphDatabase.setUsingEncryption(usingEncryption);
-    }
-
-    public String getUsingEncryptionVariable() {
-        return iGraphDatabase.getUsingEncryptionVariable();
-    }
-
-    public void setUsingEncryptionVariable(String usingEncryptionVariable) {
-        iGraphDatabase.setUsingEncryptionVariable(usingEncryptionVariable);
-    }
-
-    public boolean isTrustAllCertificates() {
-        return iGraphDatabase.isTrustAllCertificates();
-    }
-
-    public void setTrustAllCertificates(boolean trustAllCertificates) {
-        iGraphDatabase.setTrustAllCertificates(trustAllCertificates);
-    }
-
-    public String getTrustAllCertificatesVariable() {
-        return iGraphDatabase.getTrustAllCertificatesVariable();
-    }
-
-    public void setTrustAllCertificatesVariable(String trustAllCertificatesVariable) {
-        iGraphDatabase.setTrustAllCertificatesVariable(trustAllCertificatesVariable);
-    }
-
-    public String getConnectionLivenessCheckTimeout() {
-        return iGraphDatabase.getConnectionLivenessCheckTimeout();
-    }
-
-    public void setConnectionLivenessCheckTimeout(String connectionLivenessCheckTimeout) {
-        iGraphDatabase.setConnectionLivenessCheckTimeout(connectionLivenessCheckTimeout);
-    }
-
-    public String getMaxConnectionLifetime() {
-        return iGraphDatabase.getMaxConnectionLifetime();
-    }
-
-    public void setMaxConnectionLifetime(String maxConnectionLifetime) {
-        iGraphDatabase.setMaxConnectionLifetime(maxConnectionLifetime);
-    }
-
-    public String getMaxConnectionPoolSize() {
-        return iGraphDatabase.getMaxConnectionPoolSize();
-    }
-
-    public void setMaxConnectionPoolSize(String maxConnectionPoolSize) {
-        iGraphDatabase.setMaxConnectionPoolSize(maxConnectionPoolSize);
-    }
-
-    public String getConnectionAcquisitionTimeout() {
-        return iGraphDatabase.getConnectionAcquisitionTimeout();
-    }
-
-    public void setConnectionAcquisitionTimeout(String connectionAcquisitionTimeout) {
-        iGraphDatabase.setConnectionAcquisitionTimeout(connectionAcquisitionTimeout);
-    }
-
-    public String getConnectionTimeout() {
-        return iGraphDatabase.getConnectionTimeout();
-    }
-
-    public void setConnectionTimeout(String connectionTimeout) {
-        iGraphDatabase.setConnectionTimeout(connectionTimeout);
-    }
-
-    public String getMaxTransactionRetryTime() {
-        return iGraphDatabase.getMaxTransactionRetryTime();
-    }
-
-    public void setMaxTransactionRetryTime(String maxTransactionRetryTime) {
-        iGraphDatabase.setMaxTransactionRetryTime(maxTransactionRetryTime);
-    }
-
-    public boolean isVersion4() {
-        return iGraphDatabase.isVersion4();
-    }
-
-    public void setVersion4(boolean version4) {
-        iGraphDatabase.setVersion4(version4);
-    }
-
-    public String getVersion4Variable() {
-        return iGraphDatabase.getVersion4Variable();
-    }
-
-    public void setVersion4Variable(String version4Variable) {
-        iGraphDatabase.setVersion4Variable(version4Variable);
-    }
-
-    public boolean isAutomatic() {
-        return iGraphDatabase.isAutomatic();
-    }
-
-    public void setAutomatic(boolean automatic) {
-        iGraphDatabase.setAutomatic(automatic);
-    }
-
-    public String getAutomaticVariable() {
-        return iGraphDatabase.getAutomaticVariable();
-    }
-
-    public void setAutomaticVariable(String automaticVariable) {
-        iGraphDatabase.setAutomaticVariable(automaticVariable);
-    }
-
-    public String getProtocol() {
-        return iGraphDatabase.getProtocol();
-    }
-
-    public void setProtocol(String protocol) {
-        iGraphDatabase.setProtocol(protocol);
-    }
-*/
-
     public void setChanged() {
         setChanged(true);
     }
@@ -527,58 +329,6 @@ public class GraphDatabaseMeta extends HopMetadataBase implements Cloneable, IHo
     public void clearChanged() {
         iGraphDatabase.setChanged(false);
     }
-
-/*
-    */
-/** @return true if the database supports a boolean, bit, logical, ... datatype *//*
-
-    public boolean supportsBooleanDataType() {
-        return iGraphDatabase.isSupportsBooleanDataType();
-    }
-
-    */
-/** @param b Set to true if the database supports a boolean, bit, logical, ... datatype *//*
-
-    public void setSupportsBooleanDataType(boolean b) {
-        iGraphDatabase.setSupportsBooleanDataType(b);
-    }
-
-    */
-/**
-     * @return true if the database supports the Timestamp data type (nanosecond precision and all)
-     *//*
-
-    public boolean supportsTimestampDataType() {
-        return iGraphDatabase.isSupportsTimestampDataType();
-    }
-
-    */
-/**
-     * @param b Set to true if the database supports the Timestamp data type (nanosecond precision and
-     *     all)
-     *//*
-
-    public void setSupportsTimestampDataType(boolean b) {
-        iGraphDatabase.setSupportsTimestampDataType(b);
-    }
-
-    */
-/** @return A manually entered URL which will be used over the internally generated one *//*
-
-    public List<String> getManualUrls() {
-        return iGraphDatabase.getManualUrls();
-    }
-
-    */
-/**
-     * @param manualUrls A manually entered URL which will be used over the internally generated one
-     *//*
-
-    public void setManualUrls(List<String> manualUrls) {
-        iGraphDatabase.setManualUrls(manualUrls);
-    }
-*/
-
 
     @Override
     public String toString() {
@@ -734,37 +484,6 @@ public class GraphDatabaseMeta extends HopMetadataBase implements Cloneable, IHo
 
         return remarks.toArray(new String[0]);
     }
-
-//    @Override
-/*
-    public GraphDatabaseTestResults testConnectionSuccess(IVariables variables){
-        StringBuilder report = new StringBuilder();
-        GraphDatabaseTestResults testResults = new GraphDatabaseTestResults();
-
-        // If the plugin needs to provide connection information, we ask the IGraphDatabase.
-//        try{
-//            IGraphDatabaseFactory factory = getGraphDatabaseFactory();
-//            testResults = factory.getConnectionTestResults(variables, this);
-//            testResults = testC
-        }catch(ClassNotFoundException e){
-            report.append(
-                    BaseMessages.getString(PKG, "BaseGraphDatabaseMeta.TestConnectionReportNotImplemented.Message")).append(Const.CR);
-            report.append(BaseMessages.getString(PKG, "GraphDatabaseMeta.report.ConnectionError", getName()) + e.toString() + Const.CR);
-            report.append(Const.getStackTracker(e) + Const.CR);
-            testResults.setMessage(report.toString());
-            testResults.setSuccess(false);
-        }catch(Exception e){
-            report.append(
-                    BaseMessages.getString(PKG, "GraphDatabaseMeta.report.ConnectionError", getName())
-                    + e.toString()
-                    + Const.CR);
-            report.append(Const.getStackTracker(e) + Const.CR);
-            testResults.setMessage(report.toString());
-            testResults.setSuccess(false);
-        }
-        return testResults;
-    }
-*/
 
     public IGraphDatabaseFactory getGraphDatabaseFactory() throws Exception {
         PluginRegistry registry = PluginRegistry.getInstance();

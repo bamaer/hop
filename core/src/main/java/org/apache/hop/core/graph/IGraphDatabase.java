@@ -22,9 +22,6 @@ import org.apache.hop.core.exception.HopException;
 import org.apache.hop.core.variables.IVariables;
 import org.apache.hop.metadata.api.HopMetadataObject;
 
-import java.util.List;
-import java.util.Map;
-
 @HopMetadataObject(objectFactory = GraphDatabaseMetaObjectFactory.class)
 public interface IGraphDatabase extends Cloneable{
 

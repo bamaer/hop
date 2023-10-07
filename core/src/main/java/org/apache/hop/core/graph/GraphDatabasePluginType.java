@@ -17,7 +17,6 @@
 
 package org.apache.hop.core.graph;
 
-import org.apache.hop.core.database.DatabaseMetaPlugin;
 import org.apache.hop.core.plugins.BasePluginType;
 
 import java.util.Map;

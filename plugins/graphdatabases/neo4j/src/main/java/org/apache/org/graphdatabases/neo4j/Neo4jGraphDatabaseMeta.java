@@ -18,20 +18,9 @@
 package org.apache.org.graphdatabases.neo4j;
 
 import org.apache.hop.core.graph.BaseBoltGraphDatabaseMeta;
-import org.apache.hop.core.graph.BaseGraphDatabaseMeta;
-import org.apache.hop.core.graph.GraphDatabaseMeta;
 import org.apache.hop.core.graph.GraphDatabaseMetaPlugin;
 import org.apache.hop.core.graph.IBoltGraphDatabase;
-import org.apache.hop.core.graph.IGraphDatabase;
-import org.apache.hop.core.gui.plugin.GuiElementType;
 import org.apache.hop.core.gui.plugin.GuiPlugin;
-import org.apache.hop.core.gui.plugin.GuiWidgetElement;
-import org.apache.hop.core.logging.ILogChannel;
-import org.apache.hop.metadata.api.HopMetadataProperty;
-import org.apache.hop.metadata.api.IHopMetadataProvider;
-
-import java.util.ArrayList;
-import java.util.List;
 
 @GraphDatabaseMetaPlugin(
         type = "NEO4J",
@@ -42,13 +31,5 @@ import java.util.List;
 public class Neo4jGraphDatabaseMeta extends BaseBoltGraphDatabaseMeta implements IBoltGraphDatabase {
 
     private static final Class<?> PKG = Neo4jGraphDatabaseMeta.class; // For Translator
-
-
-
-//    @Override
-//    public boolean isSupportsBTreeIndex(){
-//        return true;
-//    }
-
 
 }

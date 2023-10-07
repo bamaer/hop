@@ -29,7 +29,6 @@ import org.apache.hop.core.logging.LogChannel;
 import org.apache.hop.core.row.value.ValueMetaBase;
 import org.apache.hop.core.util.Utils;
 import org.apache.hop.core.variables.IVariables;
-import org.apache.hop.i18n.BaseMessages;
 import org.apache.hop.metadata.api.HopMetadataProperty;
 import org.apache.hop.metadata.api.IHopMetadataProvider;
 import org.neo4j.driver.AuthTokens;
@@ -48,7 +47,6 @@ import java.net.URISyntaxException;
 import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -107,16 +105,6 @@ public class BaseBoltGraphDatabaseMeta extends BaseGraphDatabaseMeta implements 
     private String defaultBoltPort;
 
     @HopMetadataProperty
-/*
-    @GuiWidgetElement(
-            id = "routing",
-            order = "",
-            label = "i18n:org.apache.hop.ui.core.graphdatabase:GraphDatabaseDialog.label.Routing",
-            type = GuiElementType.TEXT,
-            variables = true,
-            parentId = GraphDatabaseMeta.GUI_PLUGIN_ELEMENT_PARENT_ID
-    )
-*/
     private boolean routing;
 
     @HopMetadataProperty
@@ -252,7 +240,6 @@ public class BaseBoltGraphDatabaseMeta extends BaseGraphDatabaseMeta implements 
 
     @Override
     public void setSupportsTimestampDataType(boolean b) {
-
     }
 
     @Override
@@ -528,7 +515,6 @@ public class BaseBoltGraphDatabaseMeta extends BaseGraphDatabaseMeta implements 
                 Session session = driver.session(builder.build());
                 // Do something with the session otherwise it doesn't test the connection
                 //
-//                Result result = session.run("RETURN 0");
                 Result result = session.run(getServerTestQuery());
                 Record record = result.next();
                 Value value = record.get(0);
@@ -548,14 +534,11 @@ public class BaseBoltGraphDatabaseMeta extends BaseGraphDatabaseMeta implements 
                 message += "error connecting to " + databaseName + Const.CR;
                 message += Const.getStackTracker(e) + Const.CR;
                 success = false;
-//                throw new HopException(
-//                        "Unable to connect to database '" + databaseName + "' : " + e.getMessage(), e);
             }
         }catch(HopConfigException e){
             message += "error getting driver for " + databaseName + Const.CR;
             message += Const.getStackTracker(e) + Const.CR;
             success = false;
-//            throw new HopConfigException("Unable to get driver for " + databaseName + ". " + e.getMessage(), e);
         }
         testResults.setMessage(message);
         testResults.setSuccess(success);
