@@ -405,6 +405,10 @@ under the License.
 ** xref:database/databases/teradata.adoc[Teradata]
 ** xref:database/databases/vectorwise.adoc[Vectorwise]
 ** xref:database/databases/vertica.adoc[Vertica]
+* xref:graphdatabase/index.adoc[Graph Databases]
+** xref:graphdatabase/graphdatabases/aws-neptune.adoc[AWS Neptune]
+** xref:graphdatabase/graphdatabases/memgraph.adoc[Memgraph]
+** xref:graphdatabase/graphdatabases/neo4j.adoc[Neo4j]
 //::=END AUTO GENERATED LINKS DATABASES
 * xref:logging/logging-basics.adoc[Logging basics]
 ** xref:logging/logging-reflection.adoc[Logging reflection]
