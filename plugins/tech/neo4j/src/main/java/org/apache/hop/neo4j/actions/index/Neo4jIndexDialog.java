@@ -17,8 +17,11 @@
 
 package org.apache.hop.neo4j.actions.index;
 
+import com.google.common.graph.Graph;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hop.core.Const;
+import org.apache.hop.core.Props;
+import org.apache.hop.core.graph.GraphDatabaseMeta;
 import org.apache.hop.core.util.Utils;
 import org.apache.hop.core.variables.IVariables;
 import org.apache.hop.i18n.BaseMessages;
@@ -27,6 +30,7 @@ import org.apache.hop.ui.core.PropsUi;
 import org.apache.hop.ui.core.dialog.BaseDialog;
 import org.apache.hop.ui.core.dialog.ErrorDialog;
 import org.apache.hop.ui.core.dialog.MessageBox;
+import org.apache.hop.ui.core.widget.CheckBoxVar;
 import org.apache.hop.ui.core.widget.ColumnInfo;
 import org.apache.hop.ui.core.widget.MetaSelectionLine;
 import org.apache.hop.ui.core.widget.TableView;
@@ -59,6 +63,7 @@ public class Neo4jIndexDialog extends ActionDialog implements IActionDialog {
 
   private Text wName;
   private MetaSelectionLine<NeoConnection> wConnection;
+  private MetaSelectionLine<GraphDatabaseMeta> wGraphConnection;
   private TableView wUpdates;
 
   public Neo4jIndexDialog(
@@ -122,15 +127,72 @@ public class Neo4jIndexDialog extends ActionDialog implements IActionDialog {
     PropsUi.setLook(wConnection);
     wConnection.addModifyListener(lsMod);
     FormData fdConnection = new FormData();
+    fdConnection.top = new FormAttachment(lastControl, margin);
     fdConnection.left = new FormAttachment(0, 0);
     fdConnection.right = new FormAttachment(100, 0);
-    fdConnection.top = new FormAttachment(lastControl, margin);
     wConnection.setLayoutData(fdConnection);
     try {
       wConnection.fillItems();
     } catch (Exception e) {
       new ErrorDialog(shell, "Error", "Error getting list of connections", e);
     }
+//    lastControl = wConnection;
+
+    wGraphConnection = new MetaSelectionLine<>(
+            variables,
+            getMetadataProvider(),
+            GraphDatabaseMeta.class,
+            shell,
+            SWT.SINGLE|SWT.LEFT|SWT.BORDER,
+            "Graph Connection",
+            "Graph connection"
+    );
+    PropsUi.setLook(wGraphConnection);
+    FormData fdGraphConnection = new FormData();
+    fdGraphConnection.top = new FormAttachment(lastControl, margin);
+    fdGraphConnection.left = new FormAttachment(0, 0);
+    fdGraphConnection.right = new FormAttachment(100, 0);
+    wGraphConnection.setLayoutData(fdGraphConnection);
+    try{
+      wGraphConnection.fillItems();
+    }catch(Exception e){
+      new ErrorDialog(shell, "Error", "Error getting list of graph connections", e);
+    }
+    lastControl = wGraphConnection;
+
+
+    Label wlConnTypeCheckbox = new Label(shell, SWT.RIGHT);
+    wlConnTypeCheckbox.setText("Use graph database connection");
+    PropsUi.setLook(wlConnTypeCheckbox);
+    FormData fdlConnTypeCheckbox = new FormData();
+    fdlConnTypeCheckbox.top = new FormAttachment(lastControl, margin);
+    fdlConnTypeCheckbox.left = new FormAttachment(0, 0);
+    fdlConnTypeCheckbox.right = new FormAttachment(middle, -margin);
+    wlConnTypeCheckbox.setLayoutData(fdlConnTypeCheckbox);
+
+    CheckBoxVar wConnTypeCheckbox = new CheckBoxVar(variables, shell, SWT.CHECK);
+    wConnTypeCheckbox.setToolTipText("use graph database connection");
+    PropsUi.setLook(wConnTypeCheckbox);
+    FormData fdConnTypeCheckbox = new FormData();
+    fdConnTypeCheckbox.top = new FormAttachment(lastControl, margin);
+    fdConnTypeCheckbox.left = new FormAttachment(middle, 0);
+    fdConnTypeCheckbox.right = new FormAttachment(100, 0);
+    wConnTypeCheckbox.setLayoutData(fdConnTypeCheckbox);
+    wConnTypeCheckbox.addListener(SWT.Selection, e -> {
+      if(wConnTypeCheckbox.getSelection()){
+        wConnection.setEnabled(false);
+        wConnection.setVisible(false);
+        wGraphConnection.setEnabled(true);
+        wGraphConnection.setVisible(true);
+      }else{
+        wConnection.setEnabled(true);
+        wConnection.setVisible(true);
+        wGraphConnection.setEnabled(false);
+        wGraphConnection.setVisible(false);
+      }
+    });
+    lastControl = wConnTypeCheckbox;
+
 
     // Add buttons first, then the script field can use dynamic sizing
     //
@@ -147,7 +209,7 @@ public class Neo4jIndexDialog extends ActionDialog implements IActionDialog {
     FormData fdlCypher = new FormData();
     fdlCypher.left = new FormAttachment(0, 0);
     fdlCypher.right = new FormAttachment(100, 0);
-    fdlCypher.top = new FormAttachment(wConnection, margin);
+    fdlCypher.top = new FormAttachment(lastControl, margin);
     wlUpdates.setLayoutData(fdlCypher);
 
     // The columns
