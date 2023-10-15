@@ -3434,6 +3434,19 @@
 
     <dependency>
       <groupId>org.apache.hop</groupId>
+      <artifactId>hop-assemblies-plugins-graphdatabases-arangodb</artifactId>
+      <version>${project.version}</version>
+      <type>zip</type>
+      <exclusions>
+        <exclusion>
+          <groupId>*</groupId>
+          <artifactId>*</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+
+    <dependency>
+      <groupId>org.apache.hop</groupId>
       <artifactId>hop-assemblies-plugins-graphdatabases-memgraph</artifactId>
       <version>${project.version}</version>
       <type>zip</type>

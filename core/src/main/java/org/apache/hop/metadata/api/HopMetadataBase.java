@@ -97,4 +97,8 @@ public class HopMetadataBase implements IHopMetadata {
   public void setMetadataProviderName(String metadataProviderName) {
     this.metadataProviderName = metadataProviderName;
   }
+
+  public void runStatement(String statement){
+  }
+
 }

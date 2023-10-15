@@ -271,6 +271,11 @@ public class BaseBoltGraphDatabaseMeta extends BaseGraphDatabaseMeta implements 
     public String getBoltPort(){ return boltPort; }
 
     @Override
+    public void setPort(String port){ this.port = port; }
+    @Override
+    public String getPort(){ return port;}
+
+    @Override
     public boolean isRouting() {
         return routing;
     }
@@ -438,16 +443,6 @@ public class BaseBoltGraphDatabaseMeta extends BaseGraphDatabaseMeta implements 
     @Override
     public void setProtocol(String protocol) {
         this.protocol = protocol;
-    }
-
-    @Override
-    public Map<String, String> getAttributes() {
-        return attributes;
-    }
-
-    @Override
-    public void setAttributes(Map<String, String> attributes) {
-        this.attributes = attributes;
     }
 
     @Override

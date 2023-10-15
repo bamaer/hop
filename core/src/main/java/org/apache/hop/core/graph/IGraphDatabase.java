@@ -22,6 +22,8 @@ import org.apache.hop.core.exception.HopException;
 import org.apache.hop.core.variables.IVariables;
 import org.apache.hop.metadata.api.HopMetadataObject;
 
+import java.util.Map;
+
 @HopMetadataObject(objectFactory = GraphDatabaseMetaObjectFactory.class)
 public interface IGraphDatabase extends Cloneable{
 
@@ -61,6 +63,8 @@ public interface IGraphDatabase extends Cloneable{
     /** @param hostname The hostname to set. */
     void setHostname(String hostname);
 
+    String getPort();
+    void setPort(String port);
     /**
      * @return Returns the databaseName.
      *
@@ -81,6 +85,10 @@ public interface IGraphDatabase extends Cloneable{
      */
 
     void setSupportsTimestampDataType(boolean b);
+
+    Map<String, String> getAttributes();
+
+    void setAttributes(Map<String, String> attributes);
 
     /**
      * Clone this graph database interface: copy all info to a new object

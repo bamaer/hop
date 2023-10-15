@@ -76,6 +76,7 @@
                 </property>
             </activation>
             <modules>
+                <module>arangodb</module>
                 <module>memgraph</module>
                 <module>nebula</module>
                 <module>neo4j</module>

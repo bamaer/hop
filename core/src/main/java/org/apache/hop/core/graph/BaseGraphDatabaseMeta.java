@@ -46,8 +46,20 @@ public abstract class BaseGraphDatabaseMeta implements Cloneable, IGraphDatabase
             label = "i18n:org.apache.hop.ui.core.graph:GraphDatabaseDialog.ServerHostname.Label",
             type = GuiElementType.TEXT,
             variables = true,
-            parentId = GraphDatabaseMeta.GUI_PLUGIN_ELEMENT_PARENT_ID)
+            parentId = GraphDatabaseMeta.GUI_PLUGIN_ELEMENT_PARENT_ID
+    )
     protected String hostname;
+
+    @HopMetadataProperty
+    @GuiWidgetElement(
+            id = "port",
+            order = "04",
+            label = "port",
+            type = GuiElementType.TEXT,
+            variables = true,
+            parentId = GraphDatabaseMeta.GUI_PLUGIN_ELEMENT_PARENT_ID
+    )
+    protected String port;
 
     @HopMetadataProperty
     @GuiWidgetElement(
@@ -56,7 +68,8 @@ public abstract class BaseGraphDatabaseMeta implements Cloneable, IGraphDatabase
             label = "i18n:org.apache.hop.ui.core.graph:GraphDatabaseDialog.DatabaseName.Label",
             type = GuiElementType.TEXT,
             variables = true,
-            parentId = GraphDatabaseMeta.GUI_PLUGIN_ELEMENT_PARENT_ID)
+            parentId = GraphDatabaseMeta.GUI_PLUGIN_ELEMENT_PARENT_ID
+    )
     protected String databaseName;
 
     @HopMetadataProperty
@@ -156,6 +169,11 @@ public abstract class BaseGraphDatabaseMeta implements Cloneable, IGraphDatabase
     }
 
     @Override
+    public String getPort(){ return port; }
+
+    @Override
+    public void setPort(String port){ this.port = port; }
+    @Override
     public String getDatabaseName() {
         return databaseName;
     }
@@ -174,7 +192,15 @@ public abstract class BaseGraphDatabaseMeta implements Cloneable, IGraphDatabase
     public void setSupportsTimestampDataType(boolean b) {
 
     }
+    @Override
+    public Map<String, String> getAttributes() {
+        return attributes;
+    }
 
+    @Override
+    public void setAttributes(Map<String, String> attributes) {
+        this.attributes = attributes;
+    }
 
     @Override
     public Object clone() {
