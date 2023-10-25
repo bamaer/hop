@@ -67,7 +67,7 @@ public class GraphNodeData {
       Value propertyValue = node.get(propertyKey);
       Object propertyObject = propertyValue.asObject();
       GraphPropertyDataType propertyType =
-          GraphPropertyDataType.getTypeFromNeo4jValue(propertyObject);
+          GraphPropertyDataType.getTypeFromGraphDatbaseValue(propertyObject);
       properties.add(new GraphPropertyData(propertyKey, propertyObject, propertyType, false));
     }
     this.propertySetId = propertySet.toString();

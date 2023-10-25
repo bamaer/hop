@@ -184,7 +184,7 @@ public class GraphOutput extends BaseGraphTransform<GraphOutputMeta, GraphOutput
       // Create a session
       //
       if (meta.isReturningGraph()) {
-        log.logBasic("Writing to output graph field, not to Neo4j");
+        log.logBasic("Writing to output graph field, not to graph database");
       } else {
 //        data.driver = data.graphDatabaseMeta.getDriver(log, this);
 //        data.session = data.graphDatabaseMeta.getSession(log, data.driver, this);
@@ -207,7 +207,7 @@ public class GraphOutput extends BaseGraphTransform<GraphOutputMeta, GraphOutput
     }
 
     if (meta.isReturningGraph()) {
-      // Let the next transform handle writing to Neo4j
+      // Let the next transform handle writing to graph database
       //
       outputGraphValue(getInputRowMeta(), row);
 
@@ -507,7 +507,7 @@ public class GraphOutput extends BaseGraphTransform<GraphOutputMeta, GraphOutput
       //
       data.unwindList.clear();
     } catch (Exception e) {
-      throw new HopException("Error writing unwind statement to Neo4j", e);
+      throw new HopException("Error writing unwind statement to graph database", e);
     }
   }
 
@@ -791,10 +791,10 @@ public class GraphOutput extends BaseGraphTransform<GraphOutputMeta, GraphOutput
   public boolean init() {
     if (!meta.isReturningGraph()) {
 
-      // Connect to Neo4j using info metastore Neo4j Connection metadata
+      // Connect to graph database using info metastore graph database connection metadata
       //
       if (StringUtils.isEmpty(resolve(meta.getConnection()))) {
-        log.logError("You need to specify a Neo4j connection to use in this transform");
+        log.logError("You need to specify a graph datbase connection to use in this transform");
         return false;
       }
 
@@ -812,7 +812,7 @@ public class GraphOutput extends BaseGraphTransform<GraphOutputMeta, GraphOutput
 //        data.version4 = data.graphDatabaseMeta.isVersion4();
       } catch (HopException e) {
         log.logError(
-            "Could not gencsv Neo4j connection '"
+            "Could not gencsv graph database connection '"
                 + resolve(meta.getConnection())
                 + "' from the metastore",
             e);

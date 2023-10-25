@@ -45,15 +45,15 @@ import org.w3c.dom.Node;
 import java.util.List;
 
 @Transform(
-    id = "Neo4JOutput",
-    image = "neo4j_output.svg",
-    name = "i18n::Neo4JOutput.Transform.Name",
-    description = "i18n::Neo4JOutput.Transform.Description",
-    categoryDescription = "i18n::Neo4JOutput.Transform.Category",
-    keywords = "i18n::Neo4JOutputMeta.keyword",
-    documentationUrl = "/pipeline/transforms/neo4j-output.html")
+    id = "GraphOutput",
+    image = "graph_output.svg",
+    name = "i18n::GraphOutput.Transform.Name",
+    description = "i18n::GraphOutput.Transform.Description",
+    categoryDescription = "i18n::GraphOutput.Transform.Category",
+    keywords = "i18n::GraphOutputMeta.keyword",
+    documentationUrl = "/pipeline/transforms/graph-output.html")
 @InjectionSupported(
-    localizationPrefix = "Neo4JOutput.Injection.",
+    localizationPrefix = "GraphOutput.Injection.",
     groups = {"FROM_NODE_PROPS", "FROM_LABELS", "TO_NODE_PROPS", "TO_LABELS", "REL_PROPS"})
 public class GraphOutputMeta extends BaseTransformMeta<GraphOutput, GraphOutputData> {
 

@@ -18,8 +18,8 @@
 package org.apache.hop.graphdatabases.utils;
 
 import org.apache.hop.graphdatabases.core.types.Value;
-import org.neo4j.driver.internal.util.Iterables;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Function;
 
@@ -42,7 +42,7 @@ public final class Extract {
                 var head = data.entrySet().iterator().next();
                 return singletonMap(head.getKey(), mapFunction.apply(head.getValue()));
             } else {
-                Map<String, T> map = Iterables.newLinkedHashMapWithSize(size);
+                Map<String, T> map = new LinkedHashMap<>();
                 for (var entry : data.entrySet()) {
                     map.put(entry.getKey(), mapFunction.apply(entry.getValue()));
                 }

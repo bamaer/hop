@@ -79,7 +79,7 @@ public enum GraphPropertyType {
   }
 
   /**
-   * Convert the given Hop value to a Neo4j data type
+   * Convert the given Hop value to a graph database data type
    *
    * @param valueMeta
    * @param valueData
@@ -132,7 +132,7 @@ public enum GraphPropertyType {
       case Duration:
       default:
         throw new HopValueException(
-            "Data conversion to Neo4j type '"
+            "Data conversion to graph database type '"
                 + name()
                 + "' from value '"
                 + valueMeta.toStringMeta()

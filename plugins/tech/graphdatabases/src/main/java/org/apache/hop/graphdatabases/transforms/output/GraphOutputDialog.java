@@ -122,14 +122,14 @@ public class GraphOutputDialog extends BaseTransformDialog implements ITransform
     formLayout.marginHeight = PropsUi.getFormMargin();
 
     shell.setLayout(formLayout);
-    shell.setText(BaseMessages.getString(PKG, "Neo4JOutputDialog.Shell.Title"));
+    shell.setText(BaseMessages.getString(PKG, "GraphOutputDialog.Shell.Title"));
 
     int middle = props.getMiddlePct();
     int margin = PropsUi.getMargin();
 
     // TransformName line
     wlTransformName = new Label(shell, SWT.RIGHT);
-    wlTransformName.setText(BaseMessages.getString(PKG, "Neo4JOutputDialog.StepName.Label"));
+    wlTransformName.setText(BaseMessages.getString(PKG, "GraphOutputDialog.StepName.Label"));
     PropsUi.setLook(wlTransformName);
     fdlTransformName = new FormData();
     fdlTransformName.left = new FormAttachment(0, 0);
@@ -154,8 +154,8 @@ public class GraphOutputDialog extends BaseTransformDialog implements ITransform
             GraphDatabaseMeta.class,
             shell,
             SWT.SINGLE | SWT.LEFT | SWT.BORDER,
-            "Neo4j Connection",
-            "The name of the Neo4j connection to use");
+            "Graph Connection",
+            "The name of the Graph connection to use");
     PropsUi.setLook(wConnection);
     wConnection.addModifyListener(lsMod);
     FormData fdConnection = new FormData();
@@ -308,7 +308,7 @@ public class GraphOutputDialog extends BaseTransformDialog implements ITransform
      */
     CTabItem wFromTab = new CTabItem(wTabFolder, SWT.NONE);
     wFromTab.setFont(GuiResource.getInstance().getFontDefault());
-    wFromTab.setText(BaseMessages.getString(PKG, "Neo4JOutputDialog.FromTab"));
+    wFromTab.setText(BaseMessages.getString(PKG, "GraphOutputDialog.FromTab"));
 
     FormLayout fromLayout = new FormLayout();
     fromLayout.marginWidth = 3;
@@ -322,7 +322,7 @@ public class GraphOutputDialog extends BaseTransformDialog implements ITransform
     //
     wReadOnlyFromNode = new Button(wFromComp, SWT.CHECK);
     wReadOnlyFromNode.setText(
-        BaseMessages.getString(PKG, "Neo4JOutputDialog.LabelsField.ReadOnlyFromNode"));
+        BaseMessages.getString(PKG, "GraphOutputDialog.LabelsField.ReadOnlyFromNode"));
     PropsUi.setLook(wReadOnlyFromNode);
     FormData fdReadOnlyFromNode = new FormData();
     fdReadOnlyFromNode.left = new FormAttachment(middle, margin);
@@ -333,7 +333,7 @@ public class GraphOutputDialog extends BaseTransformDialog implements ITransform
 
     // Labels
     Label wlFromLabel = new Label(wFromComp, SWT.RIGHT);
-    wlFromLabel.setText(BaseMessages.getString(PKG, "Neo4JOutputDialog.LabelsField.FromLabel"));
+    wlFromLabel.setText(BaseMessages.getString(PKG, "GraphOutputDialog.LabelsField.FromLabel"));
     PropsUi.setLook(wlFromLabel);
     FormData fdlFromLabels = new FormData();
     fdlFromLabels.left = new FormAttachment(0, 0);
@@ -345,11 +345,11 @@ public class GraphOutputDialog extends BaseTransformDialog implements ITransform
     ColumnInfo[] fromLabelInf =
         new ColumnInfo[] {
           new ColumnInfo(
-              BaseMessages.getString(PKG, "Neo4JOutputDialog.FromLabelsTable.FromFields"),
+              BaseMessages.getString(PKG, "GraphOutputDialog.FromLabelsTable.FromFields"),
               ColumnInfo.COLUMN_TYPE_CCOMBO,
               fieldNames),
           new ColumnInfo(
-              BaseMessages.getString(PKG, "Neo4JOutputDialog.FromLabelsTable.FromValues"),
+              BaseMessages.getString(PKG, "GraphOutputDialog.FromLabelsTable.FromValues"),
               ColumnInfo.COLUMN_TYPE_TEXT,
               false,
               false),
@@ -367,7 +367,7 @@ public class GraphOutputDialog extends BaseTransformDialog implements ITransform
     PropsUi.setLook(wFromLabelGrid);
 
     Button wGetFromLabel = new Button(wFromComp, SWT.PUSH);
-    wGetFromLabel.setText(BaseMessages.getString(PKG, "Neo4JOutputDialog.GetFields.Button"));
+    wGetFromLabel.setText(BaseMessages.getString(PKG, "GraphOutputDialog.GetFields.Button"));
     wGetFromLabel.addSelectionListener(
         new SelectionAdapter() {
           @Override
@@ -392,7 +392,7 @@ public class GraphOutputDialog extends BaseTransformDialog implements ITransform
 
     // Node properties
     Label wlFromFields = new Label(wFromComp, SWT.RIGHT);
-    wlFromFields.setText(BaseMessages.getString(PKG, "Neo4JOutputDialog.FromFields.Properties"));
+    wlFromFields.setText(BaseMessages.getString(PKG, "GraphOutputDialog.FromFields.Properties"));
     PropsUi.setLook(wlFromFields);
     FormData fdlFromFields = new FormData();
     fdlFromFields.left = new FormAttachment(0, 0);
@@ -404,22 +404,22 @@ public class GraphOutputDialog extends BaseTransformDialog implements ITransform
     ColumnInfo[] colinf =
         new ColumnInfo[] {
           new ColumnInfo(
-              BaseMessages.getString(PKG, "Neo4JOutputDialog.FromFieldsTable.FromPropFields"),
+              BaseMessages.getString(PKG, "GraphOutputDialog.FromFieldsTable.FromPropFields"),
               ColumnInfo.COLUMN_TYPE_CCOMBO,
               fieldNames,
               false),
           new ColumnInfo(
-              BaseMessages.getString(PKG, "Neo4JOutputDialog.FromFieldsTable.FromPropFieldsName"),
+              BaseMessages.getString(PKG, "GraphOutputDialog.FromFieldsTable.FromPropFieldsName"),
               ColumnInfo.COLUMN_TYPE_TEXT,
               fieldNames,
               false),
           new ColumnInfo(
-              BaseMessages.getString(PKG, "Neo4JOutputDialog.PropType"),
+              BaseMessages.getString(PKG, "GraphOutputDialog.PropType"),
               ColumnInfo.COLUMN_TYPE_CCOMBO,
               GraphPropertyType.getNames(),
               false),
           new ColumnInfo(
-              BaseMessages.getString(PKG, "Neo4JOutputDialog.PropPrimary"),
+              BaseMessages.getString(PKG, "GraphOutputDialog.PropPrimary"),
               ColumnInfo.COLUMN_TYPE_CCOMBO,
               new String[] {"Y", "N"},
               false),
@@ -436,7 +436,7 @@ public class GraphOutputDialog extends BaseTransformDialog implements ITransform
     PropsUi.setLook(wFromPropsGrid);
 
     Button wGetFromProps = new Button(wFromComp, SWT.PUSH);
-    wGetFromProps.setText(BaseMessages.getString(PKG, "Neo4JOutputDialog.GetFields.Button"));
+    wGetFromProps.setText(BaseMessages.getString(PKG, "GraphOutputDialog.GetFields.Button"));
     wGetFromProps.addSelectionListener(
         new SelectionAdapter() {
           @Override
@@ -473,7 +473,7 @@ public class GraphOutputDialog extends BaseTransformDialog implements ITransform
 
     CTabItem wToTab = new CTabItem(wTabFolder, SWT.NONE);
     wToTab.setFont(GuiResource.getInstance().getFontDefault());
-    wToTab.setText(BaseMessages.getString(PKG, "Neo4JOutputDialog.ToTab"));
+    wToTab.setText(BaseMessages.getString(PKG, "GraphOutputDialog.ToTab"));
 
     FormLayout toLayout = new FormLayout();
     toLayout.marginWidth = 3;
@@ -487,7 +487,7 @@ public class GraphOutputDialog extends BaseTransformDialog implements ITransform
     //
     wReadOnlyToNode = new Button(wToComp, SWT.CHECK);
     wReadOnlyToNode.setText(
-        BaseMessages.getString(PKG, "Neo4JOutputDialog.LabelsField.ReadOnlyToNode"));
+        BaseMessages.getString(PKG, "GraphOutputDialog.LabelsField.ReadOnlyToNode"));
     PropsUi.setLook(wReadOnlyToNode);
     FormData fdReadOnlyToNode = new FormData();
     fdReadOnlyToNode.left = new FormAttachment(middle, margin);
@@ -498,7 +498,7 @@ public class GraphOutputDialog extends BaseTransformDialog implements ITransform
 
     // Labels
     Label wlToLabel = new Label(wToComp, SWT.RIGHT);
-    wlToLabel.setText(BaseMessages.getString(PKG, "Neo4JOutputDialog.LabelsField.ToLabel"));
+    wlToLabel.setText(BaseMessages.getString(PKG, "GraphOutputDialog.LabelsField.ToLabel"));
     PropsUi.setLook(wlToLabel);
     FormData fdlToLabels = new FormData();
     fdlToLabels.left = new FormAttachment(0, 0);
@@ -509,11 +509,11 @@ public class GraphOutputDialog extends BaseTransformDialog implements ITransform
     ColumnInfo[] toLabelInf =
         new ColumnInfo[] {
           new ColumnInfo(
-              BaseMessages.getString(PKG, "Neo4JOutputDialog.ToLabelsTable.ToFields"),
+              BaseMessages.getString(PKG, "GraphOutputDialog.ToLabelsTable.ToFields"),
               ColumnInfo.COLUMN_TYPE_CCOMBO,
               fieldNames),
           new ColumnInfo(
-              BaseMessages.getString(PKG, "Neo4JOutputDialog.ToLabelsTable.ToValues"),
+              BaseMessages.getString(PKG, "GraphOutputDialog.ToLabelsTable.ToValues"),
               ColumnInfo.COLUMN_TYPE_TEXT,
               false,
               false),
@@ -532,7 +532,7 @@ public class GraphOutputDialog extends BaseTransformDialog implements ITransform
     PropsUi.setLook(wToLabelGrid);
 
     Button wGetToLabel = new Button(wToComp, SWT.PUSH);
-    wGetToLabel.setText(BaseMessages.getString(PKG, "Neo4JOutputDialog.GetFields.Button"));
+    wGetToLabel.setText(BaseMessages.getString(PKG, "GraphOutputDialog.GetFields.Button"));
     wGetToLabel.addSelectionListener(
         new SelectionAdapter() {
           @Override
@@ -556,7 +556,7 @@ public class GraphOutputDialog extends BaseTransformDialog implements ITransform
 
     // Node properties
     Label wlToFields = new Label(wToComp, SWT.RIGHT);
-    wlToFields.setText(BaseMessages.getString(PKG, "Neo4JOutputDialog.ToFields.Properties"));
+    wlToFields.setText(BaseMessages.getString(PKG, "GraphOutputDialog.ToFields.Properties"));
     PropsUi.setLook(wlToFields);
     FormData fdlToFields = new FormData();
     fdlToFields.left = new FormAttachment(0, 0);
@@ -567,21 +567,21 @@ public class GraphOutputDialog extends BaseTransformDialog implements ITransform
     ColumnInfo[] toColinf =
         new ColumnInfo[] {
           new ColumnInfo(
-              BaseMessages.getString(PKG, "Neo4JOutputDialog.ToFieldsTable.ToFields"),
+              BaseMessages.getString(PKG, "GraphOutputDialog.ToFieldsTable.ToFields"),
               ColumnInfo.COLUMN_TYPE_CCOMBO,
               fieldNames,
               false),
           new ColumnInfo(
-              BaseMessages.getString(PKG, "Neo4JOutputDialog.ToFieldsTable.ToFieldsName"),
+              BaseMessages.getString(PKG, "GraphOutputDialog.ToFieldsTable.ToFieldsName"),
               ColumnInfo.COLUMN_TYPE_TEXT,
               false),
           new ColumnInfo(
-              BaseMessages.getString(PKG, "Neo4JOutputDialog.PropType"),
+              BaseMessages.getString(PKG, "GraphOutputDialog.PropType"),
               ColumnInfo.COLUMN_TYPE_CCOMBO,
               GraphPropertyType.getNames(),
               false),
           new ColumnInfo(
-              BaseMessages.getString(PKG, "Neo4JOutputDialog.PropPrimary"),
+              BaseMessages.getString(PKG, "GraphOutputDialog.PropPrimary"),
               ColumnInfo.COLUMN_TYPE_CCOMBO,
               new String[] {"Y", "N"},
               false),
@@ -600,7 +600,7 @@ public class GraphOutputDialog extends BaseTransformDialog implements ITransform
     PropsUi.setLook(wToPropsGrid);
 
     Button wGetToProps = new Button(wToComp, SWT.PUSH);
-    wGetToProps.setText(BaseMessages.getString(PKG, "Neo4JOutputDialog.GetFields.Button"));
+    wGetToProps.setText(BaseMessages.getString(PKG, "GraphOutputDialog.GetFields.Button"));
     wGetToProps.addSelectionListener(
         new SelectionAdapter() {
           @Override
@@ -635,7 +635,7 @@ public class GraphOutputDialog extends BaseTransformDialog implements ITransform
      */
     CTabItem wRelationshipsTab = new CTabItem(wTabFolder, SWT.NONE);
     wRelationshipsTab.setFont(GuiResource.getInstance().getFontDefault());
-    wRelationshipsTab.setText(BaseMessages.getString(PKG, "Neo4JOutputDialog.RelationshipsTab"));
+    wRelationshipsTab.setText(BaseMessages.getString(PKG, "GraphOutputDialog.RelationshipsTab"));
 
     FormLayout relationshipsLayout = new FormLayout();
     relationshipsLayout.marginWidth = 3;
@@ -647,7 +647,7 @@ public class GraphOutputDialog extends BaseTransformDialog implements ITransform
 
     // Relationship field
     Label wlRel = new Label(wRelationshipsComp, SWT.RIGHT);
-    wlRel.setText(BaseMessages.getString(PKG, "Neo4JOutputDialog.Relationship.Label"));
+    wlRel.setText(BaseMessages.getString(PKG, "GraphOutputDialog.Relationship.Label"));
     PropsUi.setLook(wlRel);
     FormData fdlRel = new FormData();
     fdlRel.left = new FormAttachment(0, 0);
@@ -667,7 +667,7 @@ public class GraphOutputDialog extends BaseTransformDialog implements ITransform
 
     // Relationship value field
     Label wlRelValue = new Label(wRelationshipsComp, SWT.RIGHT);
-    wlRelValue.setText(BaseMessages.getString(PKG, "Neo4JOutputDialog.RelationshipValue.Label"));
+    wlRelValue.setText(BaseMessages.getString(PKG, "GraphOutputDialog.RelationshipValue.Label"));
     PropsUi.setLook(wlRelValue);
     FormData fdlRelValue = new FormData();
     fdlRelValue.left = new FormAttachment(0, 0);
@@ -687,7 +687,7 @@ public class GraphOutputDialog extends BaseTransformDialog implements ITransform
     // Relationship properties
     Label wlRelProps = new Label(wRelationshipsComp, SWT.RIGHT);
     wlRelProps.setText(
-        BaseMessages.getString(PKG, "Neo4JOutputDialog.RelationshipProperties.Label"));
+        BaseMessages.getString(PKG, "GraphOutputDialog.RelationshipProperties.Label"));
     PropsUi.setLook(wlRelProps);
     FormData fdlRelProps = new FormData();
     fdlRelProps.left = new FormAttachment(0, 0);
@@ -699,16 +699,16 @@ public class GraphOutputDialog extends BaseTransformDialog implements ITransform
     ColumnInfo[] relPropsInf =
         new ColumnInfo[] {
           new ColumnInfo(
-              BaseMessages.getString(PKG, "Neo4JOutputDialog.RelPropsTable.PropertiesField"),
+              BaseMessages.getString(PKG, "GraphOutputDialog.RelPropsTable.PropertiesField"),
               ColumnInfo.COLUMN_TYPE_CCOMBO,
               fieldNames,
               false),
           new ColumnInfo(
-              BaseMessages.getString(PKG, "Neo4JOutputDialog.RelPropsTable.PropertiesFieldName"),
+              BaseMessages.getString(PKG, "GraphOutputDialog.RelPropsTable.PropertiesFieldName"),
               ColumnInfo.COLUMN_TYPE_TEXT,
               false),
           new ColumnInfo(
-              BaseMessages.getString(PKG, "Neo4JOutputDialog.PropType"),
+              BaseMessages.getString(PKG, "GraphOutputDialog.PropType"),
               ColumnInfo.COLUMN_TYPE_CCOMBO,
               GraphPropertyType.getNames(),
               false),
@@ -725,7 +725,7 @@ public class GraphOutputDialog extends BaseTransformDialog implements ITransform
     PropsUi.setLook(wRelPropsGrid);
 
     Button wbRelProps = new Button(wRelationshipsComp, SWT.PUSH);
-    wbRelProps.setText(BaseMessages.getString(PKG, "Neo4JOutputDialog.GetFields.Button"));
+    wbRelProps.setText(BaseMessages.getString(PKG, "GraphOutputDialog.GetFields.Button"));
     wbRelProps.addSelectionListener(
         new SelectionAdapter() {
           @Override
@@ -963,7 +963,7 @@ public class GraphOutputDialog extends BaseTransformDialog implements ITransform
   }
 
   public static final String STRING_DYNAMIC_LABELS_WARNING =
-      "NEO4J_OUTPUT_SHOW_DYNAMIC_LABELS_WARNING";
+      "GRAPH_OUTPUT_SHOW_DYNAMIC_LABELS_WARNING";
 
   private void validateAndWarn(GraphOutputMeta input) {
     StringBuffer message = new StringBuffer();
@@ -974,13 +974,13 @@ public class GraphOutputDialog extends BaseTransformDialog implements ITransform
     if (dynamicFrom) {
       message.append(Const.CR);
       message.append(
-          BaseMessages.getString(PKG, "Neo4JOutputDialog.Warning.SortDynamicFromLabels", Const.CR));
+          BaseMessages.getString(PKG, "GraphOutputDialog.Warning.SortDynamicFromLabels", Const.CR));
     }
     boolean dynamicTo = input.dynamicToLabels() && input.isUsingCreate();
     if (dynamicTo) {
       message.append(Const.CR);
       message.append(
-          BaseMessages.getString(PKG, "Neo4JOutputDialog.Warning.SortDynamicToLabels", Const.CR));
+          BaseMessages.getString(PKG, "GraphOutputDialog.Warning.SortDynamicToLabels", Const.CR));
     }
     if (input.isOnlyCreatingRelationships()
         && input.isCreatingRelationships()
@@ -988,7 +988,7 @@ public class GraphOutputDialog extends BaseTransformDialog implements ITransform
       message.append(Const.CR);
       message.append(
           BaseMessages.getString(
-              PKG, "Neo4JOutputDialog.Warning.SortDynamicRelationshipLabel", Const.CR));
+              PKG, "GraphOutputDialog.Warning.SortDynamicRelationshipLabel", Const.CR));
     }
 
     // Verify that the defined connection is available
@@ -1002,13 +1002,13 @@ public class GraphOutputDialog extends BaseTransformDialog implements ITransform
         message.append(
             BaseMessages.getString(
                 PKG,
-                "Neo4JOutputDialog.Warning.ReferencedNeo4jConnectionDoesntExist",
+                    "GraphOutputDialog.Warning.ReferencedGraphConnectionDoesntExist",
                 input.getConnection(),
                 Const.CR));
       }
     } catch (Exception e) {
       message
-          .append("There was an error verifying the existence of the used Neo4j connection")
+          .append("There was an error verifying the existence of the used graph connection")
           .append(Const.CR)
           .append(Const.getStackTracker(e))
           .append(Const.CR);
@@ -1020,7 +1020,7 @@ public class GraphOutputDialog extends BaseTransformDialog implements ITransform
       message.append(Const.CR);
       message.append(
           BaseMessages.getString(
-              PKG, "Neo4JOutputDialog.Warning.CreateIndexesIsLimited", Const.CR));
+              PKG, "GraphOutputDialog.Warning.CreateIndexesIsLimited", Const.CR));
     }
 
     if (message.length() > 0
@@ -1029,13 +1029,13 @@ public class GraphOutputDialog extends BaseTransformDialog implements ITransform
       MessageDialogWithToggle md =
           new MessageDialogWithToggle(
               shell,
-              BaseMessages.getString(PKG, "Neo4JOutputDialog.DynamicLabelsWarning.DialogTitle"),
+              BaseMessages.getString(PKG, "GraphOutputDialog.DynamicLabelsWarning.DialogTitle"),
               message + Const.CR,
               SWT.ICON_WARNING,
               new String[] {
-                BaseMessages.getString(PKG, "Neo4JOutputDialog.DynamicLabelsWarning.Understood")
+                BaseMessages.getString(PKG, "GraphOutputDialog.DynamicLabelsWarning.Understood")
               },
-              BaseMessages.getString(PKG, "Neo4JOutputDialog.DynamicLabelsWarning.HideNextTime"),
+              BaseMessages.getString(PKG, "GraphOutputDialog.DynamicLabelsWarning.HideNextTime"),
               "N".equalsIgnoreCase(props.getCustomParameter(STRING_DYNAMIC_LABELS_WARNING, "Y")));
       md.open();
       props.setCustomParameter(STRING_DYNAMIC_LABELS_WARNING, md.getToggleState() ? "N" : "Y");
@@ -1122,7 +1122,7 @@ public class GraphOutputDialog extends BaseTransformDialog implements ITransform
       //   My_Silly_Column --> mySillyColumn
       //
       // TODO: implement
-//      String propertyName = Neo4jUtil.standardizePropertyName(valueMeta);
+//      String propertyName = GraphUtil.standardizePropertyName(valueMeta);
 //      item.setText(nameColumn, propertyName);
     }
 

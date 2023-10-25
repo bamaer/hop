@@ -104,7 +104,7 @@ public class GraphRelationshipData {
       Value propertyValue = relationship.get(propertyKey);
       Object propertyObject = propertyValue.asObject();
       GraphPropertyDataType propertyType =
-          GraphPropertyDataType.getTypeFromNeo4jValue(propertyObject);
+          GraphPropertyDataType.getTypeFromGraphDatbaseValue(propertyObject);
       properties.add(new GraphPropertyData(propertyKey, propertyObject, propertyType, false));
     }
   }

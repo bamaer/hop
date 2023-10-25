@@ -89,7 +89,7 @@ public enum GraphPropertyDataType {
     return names;
   }
 
-  public static GraphPropertyDataType getTypeFromNeo4jValue(Object object) {
+  public static GraphPropertyDataType getTypeFromGraphDatbaseValue(Object object) {
     if (object == null) {
       return null;
     }
@@ -126,7 +126,7 @@ public enum GraphPropertyDataType {
   }
 
   /**
-   * Convert the given Hop value to a Neo4j data type
+   * Convert the given Hop value to a graph database data type
    *
    * @param valueMeta
    * @param valueData
@@ -169,7 +169,7 @@ public enum GraphPropertyDataType {
       case List:
       default:
         throw new HopValueException(
-            "Data conversion to Neo4j type '"
+            "Data conversion to graph database type '"
                 + name()
                 + "' from value '"
                 + valueMeta.toStringMeta()
@@ -206,7 +206,7 @@ public enum GraphPropertyDataType {
       case LocalTime:
       default:
         throw new HopValueException(
-            "Data conversion to Neo4j type '" + name() + "' is not supported yet");
+            "Data conversion to graph database type '" + name() + "' is not supported yet");
     }
   }
 
