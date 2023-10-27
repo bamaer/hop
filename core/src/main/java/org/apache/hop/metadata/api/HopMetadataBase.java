@@ -98,7 +98,4 @@ public class HopMetadataBase implements IHopMetadata {
     this.metadataProviderName = metadataProviderName;
   }
 
-  public void runStatement(String statement){
-  }
-
 }

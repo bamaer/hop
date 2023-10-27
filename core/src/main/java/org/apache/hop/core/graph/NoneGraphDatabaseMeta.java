@@ -22,6 +22,9 @@ import org.apache.hop.core.exception.HopConfigException;
 import org.apache.hop.core.exception.HopException;
 import org.apache.hop.core.variables.IVariables;
 
+import java.util.List;
+import java.util.Map;
+
 @GraphDatabaseMetaPlugin(
         type = "NONEGRAPH",
         typeDescription = "No graph connection type",
@@ -49,5 +52,18 @@ public class NoneGraphDatabaseMeta extends BaseGraphDatabaseMeta implements IGra
     @Override
     public String getServerInfo() {
         return null;
+    }
+
+    @Override
+    public String getCreateIndexStatement(List<String> labels, String property) {
+        return null;
+    }
+
+    @Override
+    public void runStatement(IVariables variables, String statement) {
+    }
+
+    @Override
+    public void writeData(IVariables variables, String query, Map<String, Object> properties) {
     }
 }

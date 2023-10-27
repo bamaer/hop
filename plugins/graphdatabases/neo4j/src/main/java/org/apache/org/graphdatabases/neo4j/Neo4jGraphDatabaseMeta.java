@@ -22,6 +22,8 @@ import org.apache.hop.core.graph.GraphDatabaseMetaPlugin;
 import org.apache.hop.core.graph.IBoltGraphDatabase;
 import org.apache.hop.core.gui.plugin.GuiPlugin;
 
+import java.util.List;
+
 @GraphDatabaseMetaPlugin(
         type = "NEO4J",
         typeDescription = "Neo4j",
@@ -31,5 +33,15 @@ import org.apache.hop.core.gui.plugin.GuiPlugin;
 public class Neo4jGraphDatabaseMeta extends BaseBoltGraphDatabaseMeta implements IBoltGraphDatabase {
 
     private static final Class<?> PKG = Neo4jGraphDatabaseMeta.class; // For Translator
+
+    @Override
+    public String getCreateIndexStatement(List<String> labels, String property) {
+        String indexStmt = "";
+        if(this.getNeo4jVersion().equals("Neo4j 3")){
+            indexStmt = "CREATE INDEX on :" + labels.get(0) + "(" + property + ")";
+        }
+
+        return indexStmt;
+    }
 
 }

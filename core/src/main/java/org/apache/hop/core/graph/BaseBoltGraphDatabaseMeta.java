@@ -147,6 +147,8 @@ public class BaseBoltGraphDatabaseMeta extends BaseGraphDatabaseMeta implements 
     private static final String serverTestQuery = "RETURN 0";
     private static final String serverInfoQuery = "call dbms.components() yield name, versions, edition unwind versions as version return \"Name: \" + name + \", version: \" + version + \", edition: \" + edition;";
 
+    private Driver driver;
+    private Session session;
 
     public BaseBoltGraphDatabaseMeta(){
         super();
@@ -154,6 +156,20 @@ public class BaseBoltGraphDatabaseMeta extends BaseGraphDatabaseMeta implements 
         defaultBoltPort = "666";
         boltPort = "7687";
         automatic = true;
+
+    }
+
+    private void connect(IVariables variables){
+        try{
+            driver = getDriver(LogChannel.GENERAL, variables);
+            SessionConfig.Builder builder = SessionConfig.builder();
+            if (StringUtils.isNotEmpty(databaseName) && !neo4jVersion.equals("Neo4j 3")) {
+                builder = builder.withDatabase(variables.resolve(databaseName));
+            }
+            session = driver.session(builder.build());
+        }catch(HopConfigException e){
+            e.printStackTrace();
+        }
     }
 
     public List<String> getNeo4jVersions(ILogChannel log, IHopMetadataProvider metadataProvider){
@@ -741,4 +757,30 @@ public class BaseBoltGraphDatabaseMeta extends BaseGraphDatabaseMeta implements 
         }
         return routing;
     }
+
+    @Override
+    public String getCreateIndexStatement(List<String> labels, String property) {
+        return "CREATE CONSTRAINT IF NOT EXISTS FOR (n"
+                        + String.join(":", labels )
+                        + ") REQUIRE n."
+                        + property
+                        + " IS UNIQUE;";
+    }
+
+    @Override
+    public void runStatement(IVariables variables, String statement){
+        if(session == null){
+            connect(variables);
+        }
+        session.run(statement);
+    }
+
+    @Override
+    public void writeData(IVariables variables, String query, Map<String, Object> properties){
+        if(session == null){
+            connect(variables);
+        }
+        session.writeTransaction(tx -> tx.run(query, properties));
+    }
+
 }

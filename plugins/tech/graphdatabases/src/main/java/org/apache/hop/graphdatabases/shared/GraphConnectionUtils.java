@@ -18,16 +18,19 @@
 package org.apache.hop.graphdatabases.shared;
 
 import org.apache.hop.core.graph.GraphDatabaseMeta;
+import org.apache.hop.core.graph.IGraphDatabase;
 import org.apache.hop.core.logging.ILogChannel;
+import org.apache.hop.core.variables.IVariables;
 
 import java.util.List;
+import java.util.Map;
 
 public class GraphConnectionUtils {
   private static final Class<?> PKG =
       GraphConnectionUtils.class; // for i18n purposes, needed by Translator2!!
 
   public static final void createNodeIndex(
-          ILogChannel log, GraphDatabaseMeta graphDatabaseMeta, List<String> labels, List<String> keyProperties) {
+          ILogChannel log, IVariables variables, GraphDatabaseMeta graphDatabaseMeta, List<String> labels, List<String> keyProperties) {
 
     // If we have no properties or labels, we have nothing to do here
     //
@@ -40,21 +43,24 @@ public class GraphConnectionUtils {
 
     // We only use the first label for index or constraint
     //
-    String labelsClause = ":" + labels.get(0);
+//    String labelsClause = ":" + labels.get(0);
+    IGraphDatabase graphDatabase = graphDatabaseMeta.getIGraphDatabase();
+    String labelsClause = labels.get(0);
 
     // CREATE CONSTRAINT FOR (n:NodeLabel) REQUIRE n.property1 IS UNIQUE
     //
     if (keyProperties.size() == 1) {
       String property = keyProperties.get(0);
-      String constraintCypher =
-          "CREATE CONSTRAINT IF NOT EXISTS FOR (n"
-              + labelsClause
-              + ") REQUIRE n."
-              + property
-              + " IS UNIQUE;";
+      String constraintStmt = graphDatabase.getCreateIndexStatement(labels, property);
+//      String constraintCypher =
+//          "CREATE CONSTRAINT IF NOT EXISTS FOR (n"
+//              + labelsClause
+//              + ") REQUIRE n."
+//              + property
+//              + " IS UNIQUE;";
 
-      log.logDetailed("Creating constraint : " + constraintCypher);
-      graphDatabaseMeta.runStatement(constraintCypher);
+      log.logDetailed("Creating constraint : " + constraintStmt);
+      graphDatabase.runStatement(variables, constraintStmt);
 
       // This creates an index, no need to go further here...
       //
@@ -81,6 +87,6 @@ public class GraphConnectionUtils {
     indexCypher += ")";
 
     log.logDetailed("Creating index : " + indexCypher);
-    graphDatabaseMeta.runStatement(indexCypher);
+    graphDatabase.runStatement(variables, indexCypher);
   }
 }

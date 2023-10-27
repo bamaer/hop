@@ -21,6 +21,10 @@ import org.apache.hop.core.graph.BaseBoltGraphDatabaseMeta;
 import org.apache.hop.core.graph.GraphDatabaseMetaPlugin;
 import org.apache.hop.core.graph.IBoltGraphDatabase;
 import org.apache.hop.core.gui.plugin.GuiPlugin;
+import org.apache.hop.core.variables.IVariables;
+
+import java.util.List;
+import java.util.Map;
 
 @GraphDatabaseMetaPlugin(
         type = "MEMGRAPH",
@@ -36,4 +40,16 @@ public class MemgraphGraphDatabaseMeta  extends BaseBoltGraphDatabaseMeta implem
         return serverInfoQuery;
     }
 
+    @Override
+    public String getCreateIndexStatement(List<String> labels, String property) {
+        return null;
+    }
+
+    @Override
+    public void runStatement(IVariables variables, String statement){
+    }
+
+    @Override
+    public void writeData(IVariables variables, String query, Map<String, Object> properties) {
+    }
 }

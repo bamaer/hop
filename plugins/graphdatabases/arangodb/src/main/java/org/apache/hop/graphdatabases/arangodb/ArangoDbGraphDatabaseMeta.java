@@ -27,6 +27,9 @@ import org.apache.hop.core.graph.IGraphDatabase;
 import org.apache.hop.core.gui.plugin.GuiPlugin;
 import org.apache.hop.core.variables.IVariables;
 
+import java.util.List;
+import java.util.Map;
+
 @GraphDatabaseMetaPlugin(
     type = "ARANGODB",
     typeDescription = "ArangoDB",
@@ -69,4 +72,18 @@ public class ArangoDbGraphDatabaseMeta extends BaseGraphDatabaseMeta implements 
         }
         return testResults;
     }
+
+    @Override
+    public String getCreateIndexStatement(List<String> labels, String property) {
+        return null;
+    }
+
+    @Override
+    public void runStatement(IVariables variables, String statement) {
+    }
+
+    @Override
+    public void writeData(IVariables variables, String query, Map<String, Object> properties) {
+    }
+
 }

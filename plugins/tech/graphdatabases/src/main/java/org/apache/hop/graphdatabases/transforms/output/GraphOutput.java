@@ -22,6 +22,7 @@ import org.apache.hop.core.Const;
 import org.apache.hop.core.exception.HopException;
 import org.apache.hop.core.exception.HopValueException;
 import org.apache.hop.core.graph.GraphDatabaseMeta;
+import org.apache.hop.core.graph.IGraphDatabase;
 import org.apache.hop.core.row.IRowMeta;
 import org.apache.hop.core.row.IValueMeta;
 import org.apache.hop.core.row.RowDataUtil;
@@ -498,8 +499,8 @@ public class GraphOutput extends BaseGraphTransform<GraphOutputMeta, GraphOutput
       // Run it always without beginTransaction()...
       //
       // TODO: implement Apache Hop equivalent
-//      Result result = data.graphDatabaseMeta.writeTransaction(tx -> tx.run(data.cypher, properties));
-//      processSummary(result);
+      IGraphDatabase graphDatabase = data.graphDatabaseMeta.getIGraphDatabase();
+      graphDatabase.writeData(variables, data.cypher, properties);
 
       setLinesOutput(getLinesOutput() + data.unwindList.size());
 
@@ -986,10 +987,12 @@ public class GraphOutput extends BaseGraphTransform<GraphOutputMeta, GraphOutput
 
       if (label != null && primaryProperties.size() > 0) {
         GraphConnectionUtils.createNodeIndex(
-            log, data.graphDatabaseMeta, Collections.singletonList(label), primaryProperties);
+            log, variables, data.graphDatabaseMeta, Collections.singletonList(label), primaryProperties);
       }
     }
   }
+
+
 
   @Override
   public void batchComplete() throws HopException {

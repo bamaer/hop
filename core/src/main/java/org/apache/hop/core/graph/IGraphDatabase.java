@@ -22,6 +22,7 @@ import org.apache.hop.core.exception.HopException;
 import org.apache.hop.core.variables.IVariables;
 import org.apache.hop.metadata.api.HopMetadataObject;
 
+import java.util.List;
 import java.util.Map;
 
 @HopMetadataObject(objectFactory = GraphDatabaseMetaObjectFactory.class)
@@ -122,5 +123,10 @@ public interface IGraphDatabase extends Cloneable{
 
     GraphDatabaseTestResults testConnectionSuccess(IVariables variables) throws HopConfigException, HopException;
 
+    String getCreateIndexStatement(List<String> labels, String property);
+
+    void runStatement(IVariables variables, String statement);
+
+    void writeData(IVariables variables, String query, Map<String, Object> properties);
 
 }
