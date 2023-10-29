@@ -102,6 +102,8 @@ public abstract class BaseGraphDatabaseMeta implements Cloneable, IGraphDatabase
 
     @HopMetadataProperty protected String pluginId;
     @HopMetadataProperty protected String pluginName;
+    @HopMetadataProperty protected boolean isSupportsBatch;
+    @HopMetadataProperty protected boolean isSupportsUnwind;
 
     public BaseGraphDatabaseMeta(){
         attributes = Collections.synchronizedMap(new HashMap<>());
@@ -190,8 +192,28 @@ public abstract class BaseGraphDatabaseMeta implements Cloneable, IGraphDatabase
 
     @Override
     public void setSupportsTimestampDataType(boolean b) {
-
     }
+
+    @Override
+    public boolean isSupportsUnwind(){
+        return isSupportsUnwind;
+    }
+
+    @Override
+    public void setSupportsUnwind(boolean supportsUnwind){
+        this.isSupportsUnwind = supportsUnwind;
+    }
+
+    @Override
+    public boolean isSupportsBatch(){
+        return isSupportsBatch;
+    }
+
+    @Override
+    public void setSupportsBatch(boolean supportsBatch){
+        this.isSupportsBatch = supportsBatch;
+    }
+
     @Override
     public Map<String, String> getAttributes() {
         return attributes;

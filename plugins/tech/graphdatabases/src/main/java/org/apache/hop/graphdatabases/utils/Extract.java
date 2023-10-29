@@ -17,7 +17,7 @@
 
 package org.apache.hop.graphdatabases.utils;
 
-import org.apache.hop.graphdatabases.core.types.Value;
+import org.apache.hop.core.row.IValueMeta;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -33,7 +33,7 @@ public final class Extract {
         throw new UnsupportedOperationException();
     }
 
-    public static<T> Map<String, T> map(Map<String, Value> data, Function<Value, T> mapFunction){
+    public static<T> Map<String, T> map(Map<String, IValueMeta> data, Function<IValueMeta, T> mapFunction){
         if (data.isEmpty()) {
             return emptyMap();
         } else {

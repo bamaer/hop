@@ -783,4 +783,37 @@ public class BaseBoltGraphDatabaseMeta extends BaseGraphDatabaseMeta implements 
         session.writeTransaction(tx -> tx.run(query, properties));
     }
 
+
+    /**
+     * The OpenCypher UNWIND clause makes it possible to transform any list back into individual rows.
+     * These lists can be parameters that were passed in, previously collect-ed result, or other list expressions.
+     * @param properties the list of properties to include in the unwind clause.
+     * @param fromOperationType
+     * @param fromNodePropIndexes
+     * @param fromLabelsClause
+     * @param fromPropNames
+     * @param fromPropPrimary,
+     * @param toOperationType
+     * @param toNodePropIndexes
+     * @param toLabelsClause
+     * @param toPropNames
+     * @param toPropPrimary
+     *
+     */
+    public void writeUnwindData(
+            Map<String, Object> properties,
+            String fromOperationType,
+            int[] fromNodePropIndexes,
+            String fromLabelsClause,
+            String[] fromPropNames,
+            boolean[] fromPropPrimary,
+            String toOperationType,
+            int[] toNodePropIndexes,
+            String toLabelsClause,
+            String[] toPropNames,
+            boolean[] toPropPrimary
+    ){
+
+    }
+
 }

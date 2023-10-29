@@ -87,6 +87,15 @@ public interface IGraphDatabase extends Cloneable{
 
     void setSupportsTimestampDataType(boolean b);
 
+    boolean isSupportsUnwind();
+
+    void setSupportsUnwind(boolean b);
+
+    boolean isSupportsBatch();
+
+    void setSupportsBatch(boolean b);
+
+
     Map<String, String> getAttributes();
 
     void setAttributes(Map<String, String> attributes);

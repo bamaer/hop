@@ -32,7 +32,6 @@ import org.apache.hop.core.row.IRowMeta;
 import org.apache.hop.core.row.IValueMeta;
 import org.apache.hop.core.variables.IVariables;
 import org.apache.hop.core.xml.XmlHandler;
-import org.apache.hop.graphdatabases.core.value.ValueMetaGraph;
 import org.apache.hop.metadata.api.IHopMetadataProvider;
 import org.apache.hop.pipeline.PipelineMeta;
 import org.apache.hop.pipeline.transform.BaseTransformMeta;
@@ -447,9 +446,9 @@ public class GraphOutputMeta extends BaseTransformMeta<GraphOutput, GraphOutputD
       IHopMetadataProvider metadataProvider)
       throws HopTransformException {
     if (returningGraph) {
-      IValueMeta valueMetaGraph = new ValueMetaGraph(Const.NVL(returnGraphField, "graph"));
-      valueMetaGraph.setOrigin(name);
-      inputRowMeta.addValueMeta(valueMetaGraph);
+//      IValueMeta valueMetaGraph = new ValueMetaGraph(Const.NVL(returnGraphField, "graph"));
+//      valueMetaGraph.setOrigin(name);
+//      inputRowMeta.addValueMeta(valueMetaGraph);
     }
   }
 

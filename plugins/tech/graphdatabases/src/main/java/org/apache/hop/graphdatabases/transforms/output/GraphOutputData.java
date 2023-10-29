@@ -30,9 +30,7 @@ import java.util.Map;
 public class GraphOutputData extends BaseGraphTransformData implements ITransformData {
 
   public IRowMeta outputRowMeta;
-
   public String[] fieldNames;
-
   public GraphDatabaseMeta graphDatabaseMeta;
   public String url;
   public long batchSize;
@@ -46,36 +44,28 @@ public class GraphOutputData extends BaseGraphTransformData implements ITransfor
   public GraphPropertyType[] fromNodePropTypes;
   public GraphPropertyType[] toNodePropTypes;
   public GraphPropertyType[] relPropTypes;
-
   public List<Map<String, Object>> unwindList;
-
   public String fromLabelsClause;
   public String toLabelsClause;
   public String[] fromLabelValues;
   public String[] toLabelValues;
   public String relationshipLabelValue;
-
   public String previousFromLabelsClause;
   public String previousToLabelsClause;
-
   public boolean dynamicFromLabels;
   public boolean dynamicToLabels;
   public boolean dynamicRelLabel;
-
   public List<String> previousFromLabels;
   public List<String> fromLabels;
   public List<String> previousToLabels;
   public List<String> toLabels;
   public String previousRelationshipLabel;
   public String relationshipLabel;
-
   public OperationType fromOperationType;
   public OperationType toOperationType;
   public OperationType relOperationType;
-
   public String cypher;
   public boolean version4;
-  
   public GraphOutputData() {
     super();
   }
