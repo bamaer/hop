@@ -10,21 +10,14 @@ import java.util.Map;
 
 public abstract class GraphEntity implements IGraphEntity{
 
-    private final String elementId;
     private final Map<String, IValueMeta> propertiesMeta;
 
     public GraphEntity(String elementId){
-        this(elementId, Collections.emptyMap());
+        this(Collections.emptyMap());
     }
 
-    public GraphEntity(String elementId, Map<String, IValueMeta> propertiesMeta) {
-        this.elementId = elementId;
+    public GraphEntity(Map<String, IValueMeta> propertiesMeta) {
         this.propertiesMeta = propertiesMeta;
-    }
-
-    @Override
-    public String elementId() {
-        return elementId;
     }
 
     @Override

@@ -15,7 +15,7 @@ public class GraphRelationship extends GraphEntity implements IGraphRelationship
             String endElementId,
             String type,
             Map<String, IValueMeta> properties) {
-        super(elementId, properties);
+        super(properties);
         this.startElementId = startElementId;
         this.endElementId = endElementId;
         this.type = type;

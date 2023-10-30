@@ -6,7 +6,5 @@ import java.util.Map;
 
 public interface IGraphEntity {
 
-    String elementId();
-
     Map<String, IValueMeta> getPropertiesMeta();
 }

@@ -56,6 +56,14 @@ public class GraphOutput extends BaseGraphTransform<GraphOutputMeta, GraphOutput
   private List<GraphNode> toNodes;
   private Map<String, IValueMeta> toNodeProps;
 
+  private GraphNode fromNode, toNode;
+
+  int[] newFromIndexes;
+  int[] newToIndexes;
+
+  private List<Map<String, Object>> fromList, toList;
+
+
   public GraphOutput(
       TransformMeta s,
       GraphOutputMeta meta,
@@ -68,6 +76,9 @@ public class GraphOutput extends BaseGraphTransform<GraphOutputMeta, GraphOutput
     toNodes = new ArrayList<>();
     fromNodeProps = new HashMap<>();
     toNodeProps = new HashMap<>();
+
+    fromList = new ArrayList<>();
+    toList = new ArrayList<>();
   }
 
   @Override
@@ -94,24 +105,48 @@ public class GraphOutput extends BaseGraphTransform<GraphOutputMeta, GraphOutput
       String[] fromNodeLabelsArr = meta.getFromNodeLabels();
       String[] fromNodePropsArray = meta.getFromNodeProps();
       String[] fromNodePropTypesArr = meta.getFromNodePropTypes();
+      boolean[] fromPrimaryPropsArr = meta.getFromNodePropPrimary();
+      List<String> fromRelProps = new ArrayList<>();
 
       String[] toNodeLabelsArr = meta.getToNodeLabels();
       String[] toNodePropsArray = meta.getToNodeProps();
       String[] toNodePropTypesArr = meta.getToNodePropTypes();
+      boolean[] toPrimaryPropsArr = meta.getToNodePropPrimary();
+      List<String> toRelProps = new ArrayList<>();
 
       // update createNodeProps to inspect property types first, then just dump without checking and fail spectacularly if types don't match.
       // do not put right away, create list of props + data types, walk through
       fromNodeProps = createNodeProps(fromNodeProps, fromNodePropsArray, fromNodePropTypesArr);
       toNodeProps = createNodeProps(toNodeProps, toNodePropsArray, toNodePropTypesArr);
 
-      GraphNode fromNode = new GraphNode("1", Arrays.asList(fromNodeLabelsArr), fromNodeProps);
-      GraphNode toNode = new GraphNode("2", Arrays.asList(toNodeLabelsArr), toNodeProps);
 
+      for(int i=0; i < fromNodePropsArray.length; i++){
+        if(fromPrimaryPropsArr[i]){
+          fromRelProps.add(fromNodePropsArray[i]);
+        }
+      }
 
+      for(int i=0; i < toNodePropsArray.length; i++){
+        if(toPrimaryPropsArr[i]){
+          toRelProps.add(toNodePropsArray[i]);
+        }
+      }
 
+      fromNode = new GraphNode(Arrays.asList(fromNodeLabelsArr), fromNodeProps, fromRelProps);
+      toNode = new GraphNode(Arrays.asList(toNodeLabelsArr), toNodeProps, toRelProps);
 
+      newFromIndexes = new int[meta.getFromNodeProps().length];
+      newToIndexes = new int[meta.getToNodeProps().length];
+      for(int i=0; i < meta.getFromNodeProps().length; i++ ){
+        newFromIndexes[i] = data.outputRowMeta.indexOfValue(meta.getFromNodeProps()[i]);
+      }
+      for(int i=0; i < meta.getToNodeProps().length; i++){
+        newToIndexes[i] = data.outputRowMeta.indexOfValue(meta.getToNodeProps()[i]);
+      }
 
-
+      /**
+       * OLD CODE STARTS HERE
+       */
       data.fromNodePropIndexes = new int[meta.getFromNodeProps().length];
       data.fromNodePropTypes = new GraphPropertyType[meta.getFromNodeProps().length];
       for (int i = 0; i < meta.getFromNodeProps().length; i++) {
@@ -251,6 +286,30 @@ public class GraphOutput extends BaseGraphTransform<GraphOutputMeta, GraphOutput
       if (changedLabel || data.unwindList.size() >= data.batchSize) {
         emptyUnwindList();
       }
+
+
+      Map<String, Object> fromData = new HashMap<>();
+      Map<String, Object> toData = new HashMap<>();
+
+      IRowMeta rowMeta = getInputRowMeta();
+      String[] fieldNames = rowMeta.getFieldNames();
+
+      for(int i=0; i < newFromIndexes.length; i++){
+        fromData.put(fieldNames[newFromIndexes[i]], row[i]);
+      }
+      for(int i=0; i < newToIndexes.length; i++){
+        toData.put(fieldNames[newToIndexes[i]], row[i]);
+      }
+
+
+      fromList.add(fromData);
+      toList.add(toData);
+
+
+
+      /**
+       * OLD CODE STARTS HERE
+       */
 
       // Add rows to the UNWIND list.  Just put all the properties from the nodes and relationship
       // in there
