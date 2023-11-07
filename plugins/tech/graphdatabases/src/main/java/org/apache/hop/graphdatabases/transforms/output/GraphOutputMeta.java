@@ -32,6 +32,7 @@ import org.apache.hop.core.row.IRowMeta;
 import org.apache.hop.core.row.IValueMeta;
 import org.apache.hop.core.variables.IVariables;
 import org.apache.hop.core.xml.XmlHandler;
+import org.apache.hop.metadata.api.HopMetadataProperty;
 import org.apache.hop.metadata.api.IHopMetadataProvider;
 import org.apache.hop.pipeline.PipelineMeta;
 import org.apache.hop.pipeline.transform.BaseTransformMeta;
@@ -57,36 +58,170 @@ import java.util.List;
 public class GraphOutputMeta extends BaseTransformMeta<GraphOutput, GraphOutputData> {
 
   private static final String STRING_CONNECTION = "connection";
-  private static final String STRING_BATCH_SIZE = "batch_size";
-  private static final String STRING_KEY = "key";
-  private static final String STRING_FROM = "from";
-  private static final String STRING_LABELS = "labels";
-  private static final String STRING_LABEL = "label";
-  private static final String STRING_VALUE = "value";
-  private static final String STRING_PROPERTIES = "properties";
-  private static final String STRING_PROPERTY = "property";
-  private static final String STRING_PROPERTY_NAME = "name";
-  private static final String STRING_PROPERTY_VALUE = "value";
-  private static final String STRING_PROPERTY_TYPE = "type";
-  private static final String STRING_PROPERTY_PRIMARY = "primary";
-  private static final String STRING_TO = "to";
-  private static final String STRING_RELATIONSHIP = "relationship";
-  private static final String STRING_RELATIONSHIP_VALUE = "relationship_value";
-  private static final String STRING_RELPROPS = "relprops";
-  private static final String STRING_RELPROP = "relprop";
-  private static final String STRING_CREATE_INDEXES = "create_indexes";
-  private static final String STRING_USE_CREATE = "use_create";
-  private static final String STRING_ONLY_CREATE_RELATIONSHIPS = "only_create_relationships";
-  private static final String STRING_READ_ONLY_FROM_NODE = "read_only_from_node";
-  private static final String STRING_READ_ONLY_TO_NODE = "read_only_to_node";
 
+  private static final String STRING_BATCH_SIZE = "batch_size";
+  @HopMetadataProperty(
+          key = "key",
+          injectionKey = "KEY",
+          injectionKeyDescription = ""
+  )
+  private static final String STRING_KEY = "key";
+
+  @HopMetadataProperty(
+          key = "from",
+          injectionKey = "FROM",
+          injectionKeyDescription = ""
+  )
+  private static final String STRING_FROM = "from";
+
+  @HopMetadataProperty(
+          key = "labels",
+          injectionKey = "LABELS",
+          injectionKeyDescription = ""
+  )
+  private static final String STRING_LABELS = "labels";
+
+  @HopMetadataProperty(
+          key = "label",
+          injectionKey = "LABEL",
+          injectionKeyDescription = ""
+  )
+  private static final String STRING_LABEL = "label";
+
+  @HopMetadataProperty(
+          key = "value",
+          injectionKey = "VALUE",
+          injectionKeyDescription = ""
+  )
+  private static final String STRING_VALUE = "value";
+
+  @HopMetadataProperty(
+          key = "properties",
+          injectionKey = "PROPERTIES",
+          injectionKeyDescription = ""
+  )
+  private static final String STRING_PROPERTIES = "properties";
+
+  @HopMetadataProperty(
+          key = "property",
+          injectionKey = "PROPERTY",
+          injectionKeyDescription = ""
+  )
+  private static final String STRING_PROPERTY = "property";
+  @HopMetadataProperty(
+          key = "name",
+          injectionKey = "NAME",
+          injectionKeyDescription = ""
+  )
+  private static final String STRING_PROPERTY_NAME = "name";
+
+  @HopMetadataProperty(
+          key = "value",
+          injectionKey = "VALUE",
+          injectionKeyDescription = ""
+  )
+  private static final String STRING_PROPERTY_VALUE = "value";
+
+  @HopMetadataProperty(
+          key = "type",
+          injectionKey = "TYPE",
+          injectionKeyDescription = ""
+  )
+  private static final String STRING_PROPERTY_TYPE = "type";
+
+  @HopMetadataProperty(
+          key = "primary",
+          injectionKey = "PRIMARY",
+          injectionKeyDescription = ""
+  )
+  private static final String STRING_PROPERTY_PRIMARY = "primary";
+  @HopMetadataProperty(
+          key = "to",
+          injectionKey = "TO",
+          injectionKeyDescription = ""
+  )
+  private static final String STRING_TO = "to";
+
+  @HopMetadataProperty(
+          key = "relationship",
+          injectionKey = "RELATIONSHIP",
+          injectionKeyDescription = ""
+  )
+  private static final String STRING_RELATIONSHIP = "relationship";
+
+  @HopMetadataProperty(
+          key = "relationship_value",
+          injectionKey = "RELATIONSHIP_VALUE",
+          injectionKeyDescription = ""
+  )
+  private static final String STRING_RELATIONSHIP_VALUE = "relationship_value";
+  @HopMetadataProperty(
+          key = "relprops",
+          injectionKey = "RELPROPS",
+          injectionKeyDescription = ""
+  )
+  private static final String STRING_RELPROPS = "relprops";
+  @HopMetadataProperty(
+          key = "relpro",
+          injectionKey = "RELPROPS",
+          injectionKeyDescription = ""
+  )
+  private static final String STRING_RELPROP = "relprop";
+  @HopMetadataProperty(
+          key = "create_indexes",
+          injectionKey = "CREATE_INDEXES",
+          injectionKeyDescription = ""
+  )
+  private static final String STRING_CREATE_INDEXES = "create_indexes";
+  @HopMetadataProperty(
+          key = "use_create",
+          injectionKey = "USE_CREATE",
+          injectionKeyDescription = ""
+  )
+  private static final String STRING_USE_CREATE = "use_create";
+  @HopMetadataProperty(
+          key = "only_create_relationships",
+          injectionKey = "ONLY_CREATE_RELATIONSHIPS",
+          injectionKeyDescription = ""
+  )
+  private static final String STRING_ONLY_CREATE_RELATIONSHIPS = "only_create_relationships";
+  @HopMetadataProperty(
+          key = "read_only_from_node",
+          injectionKey = "READ_ONLY_FROM_NODE",
+          injectionKeyDescription = ""
+  )
+  private static final String STRING_READ_ONLY_FROM_NODE = "read_only_from_node";
+  @HopMetadataProperty(
+          key = "read_only_to_node",
+          injectionKey = "READ_ONLY_TO_NODE",
+          injectionKeyDescription = ""
+  )
+  private static final String STRING_READ_ONLY_TO_NODE = "read_only_to_node";
+  @HopMetadataProperty(
+          key = "returning_graph",
+          injectionKey = "RETURNING_GRAPH",
+          injectionKeyDescription = ""
+  )
   private static final String STRING_RETURNING_GRAPH = "returning_graph";
+  @HopMetadataProperty(
+          key = "return_graph_field",
+          injectionKey = "RETURN_GRAPH_FIELD",
+          injectionKeyDescription = ""
+  )
   private static final String STRING_RETURN_GRAPH_FIELD = "return_graph_field";
 
-  @Injection(name = "CONNECTION")
+  @HopMetadataProperty(
+          key = "connection",
+          injectionKey = "CONNECTION",
+          injectionKeyDescription = ""
+  )
   private String connection;
 
-  @Injection(name = "BATCH_SIZE")
+  @HopMetadataProperty(
+          key = "batch_size",
+          injectionKey = "BATCH_SIZE",
+          injectionKeyDescription = ""
+  )
   private String batchSize;
 
   @Injection(name = "CREATE_INDEXES")

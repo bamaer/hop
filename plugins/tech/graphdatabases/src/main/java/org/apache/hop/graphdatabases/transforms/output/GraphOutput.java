@@ -30,6 +30,9 @@ import org.apache.hop.core.row.value.ValueMetaDate;
 import org.apache.hop.core.row.value.ValueMetaInteger;
 import org.apache.hop.core.row.value.ValueMetaString;
 import org.apache.hop.core.util.StringUtil;
+import org.apache.hop.graphdatabases.core.GraphNodePropertiesMeta;
+import org.apache.hop.graphdatabases.core.GraphRelationship;
+import org.apache.hop.graphdatabases.core.GraphRelationshipPropertiesMeta;
 import org.apache.hop.graphdatabases.core.GraphUsage;
 import org.apache.hop.graphdatabases.core.GraphNode;
 import org.apache.hop.graphdatabases.model.GraphPropertyType;
@@ -51,18 +54,27 @@ import java.util.stream.Collectors;
 
 public class GraphOutput extends BaseGraphTransform<GraphOutputMeta, GraphOutputData> {
 
-  private List<GraphNode> fromNodes;
-  private Map<String, IValueMeta> fromNodeProps;
-  private List<GraphNode> toNodes;
-  private Map<String, IValueMeta> toNodeProps;
+  private GraphNodePropertiesMeta fromNodePropertiesMeta, toNodePropertiesMeta;
+  private GraphRelationshipPropertiesMeta relationshipPropertiesMeta;
+  private List<GraphNode> fromNodes, toNodes;
+  private List<GraphRelationship> relationships;
+  private String[] fromNodePropertyNames, toNodePropertyNames;
+  private Object[] fromNodePropertyValues, toNodePropertyValues;
+//  private Map<String, IValueMeta> fromNodeProps;
+//  private Map<String, IValueMeta> toNodeProps;
 
   private GraphNode fromNode, toNode;
 
-  int[] newFromIndexes;
-  int[] newToIndexes;
+  private List<Object[]> fromNodePropertyObjects, toNodePropertyObjects, relationshipPropertyObjects;
+  private int[] fromNodePropertiesIndexes, toNodePropertiesIndexes;
+  private int[] fromLabelsIndexes, toLabelsIndexes;
+  private int[] relationshipPropertiesIndexes;
+//  int[] newFromIndexes;
+//  int[] newToIndexes;
 
   private List<Map<String, Object>> fromList, toList;
 
+  private List<String> fromLabels, toLabels;
 
   public GraphOutput(
       TransformMeta s,
@@ -74,11 +86,16 @@ public class GraphOutput extends BaseGraphTransform<GraphOutputMeta, GraphOutput
     super(s, meta, data, c, t, dis);
     fromNodes = new ArrayList<>();
     toNodes = new ArrayList<>();
-    fromNodeProps = new HashMap<>();
-    toNodeProps = new HashMap<>();
-
-    fromList = new ArrayList<>();
-    toList = new ArrayList<>();
+//    fromNodeProps = new HashMap<>();
+//    toNodeProps = new HashMap<>();
+//
+//    fromList = new ArrayList<>();
+//    toList = new ArrayList<>();
+    fromNodePropertyObjects = new ArrayList<>();
+    toNodePropertyObjects = new ArrayList<>();
+    relationshipPropertyObjects = new ArrayList<>();
+    fromLabels = new ArrayList<>();
+    toLabels = new ArrayList<>();
   }
 
   @Override
@@ -102,47 +119,124 @@ public class GraphOutput extends BaseGraphTransform<GraphOutputMeta, GraphOutput
       // node properties
       // properties to check or create index
 
-      String[] fromNodeLabelsArr = meta.getFromNodeLabels();
-      String[] fromNodePropsArray = meta.getFromNodeProps();
-      String[] fromNodePropTypesArr = meta.getFromNodePropTypes();
-      boolean[] fromPrimaryPropsArr = meta.getFromNodePropPrimary();
-      List<String> fromRelProps = new ArrayList<>();
+//      fromNodePropertyNames = meta.getFromNodePropNames();
+//      toNodePropertyNames = meta.getToNodePropNames();
 
-      String[] toNodeLabelsArr = meta.getToNodeLabels();
-      String[] toNodePropsArray = meta.getToNodeProps();
-      String[] toNodePropTypesArr = meta.getToNodePropTypes();
-      boolean[] toPrimaryPropsArr = meta.getToNodePropPrimary();
-      List<String> toRelProps = new ArrayList<>();
+
+      /**
+       * Node and relationship property metadata is static.
+       * Build that first.
+       */
+      fromNodePropertiesMeta = new GraphNodePropertiesMeta(meta.getFromNodePropNames(),
+              getPropertyTypesArray(meta.getFromNodePropTypes()),
+              getPrimaryPropertyNames(meta.getFromNodePropNames(), meta.getFromNodePropPrimary()));
+
+      toNodePropertiesMeta = new GraphNodePropertiesMeta(meta.getToNodePropNames(),
+              getPropertyTypesArray(meta.getToNodePropTypes()),
+              getPrimaryPropertyNames(meta.getToNodePropNames(), meta.getToNodePropPrimary()));
+
+      relationshipPropertiesMeta
+              = new GraphRelationshipPropertiesMeta(
+                      meta.getRelPropNames(),
+                      getPropertyTypesArray(meta.getRelPropTypes()),
+                      getPrimaryPropertyNames(meta.getToNodePropNames(), meta.getFromNodePropPrimary()),
+                      getPrimaryPropertyNames(meta.getFromNodePropNames(), meta.getToNodePropPrimary())
+      );
+
+      fromNodePropertiesIndexes = new int[meta.getFromNodeProps().length];
+      for(int i=0; i < meta.getFromNodeProps().length; i++){
+        fromNodePropertiesIndexes[i] = data.outputRowMeta.indexOfValue(meta.getFromNodeProps()[i]);
+      }
+
+      toNodePropertiesIndexes = new int[meta.getToNodeProps().length];
+      for(int i=0; i < meta.getToNodeProps().length; i++){
+        toNodePropertiesIndexes[i] = data.outputRowMeta.indexOfValue(meta.getToNodeProps()[i]);
+      }
+      int nbFromNodeLabelFields = meta.getFromNodeLabels().length;
+      if(nbFromNodeLabelFields > 0){
+        fromLabelsIndexes = new int[meta.getFromNodeLabels().length];
+        for(int i=0; i < meta.getFromNodeLabels().length; i++){
+          if(!StringUtils.isEmpty(meta.getFromNodeLabels()[i])){
+            fromLabelsIndexes[i] = data.outputRowMeta.indexOfValue(meta.getFromNodeLabels()[i]);
+          }
+        }
+      }
+      if(meta.getToNodeLabels().length > 0){
+        toLabelsIndexes = new int[meta.getToNodeLabels().length];
+        for(int i=0; i < meta.getToNodeLabels().length; i++){
+          if(!StringUtils.isEmpty(meta.getToNodeLabels()[i])){
+            toLabelsIndexes[i] = data.outputRowMeta.indexOfValue(meta.getToNodeLabels()[i]);
+          }
+        }
+      }
+      relationshipPropertiesIndexes = new int[meta.getRelProps().length];
+      for(int i=0; i < meta.getRelProps().length; i++){
+        relationshipPropertiesIndexes[i] = data.outputRowMeta.indexOfValue(meta.getRelProps()[i]);
+      }
+
+      // add static labels first
+      if(meta.getFromNodeLabelValues().length >0){
+        for(String label : meta.getFromNodeLabelValues()){
+          fromLabels.add(label);
+        }
+      }
+      if(meta.getToNodeLabelValues().length > 0){
+        for(String label : meta.getToNodeLabelValues()){
+          toLabels.add(label);
+        }
+      }
+
+
+
+  //      for(int i=0; i < meta.getFromNodeProps().length; i++ ){
+//        newFromIndexes[i] = data.outputRowMeta.indexOfValue(meta.getFromNodeProps()[i]);
+//      }
+
+
+
+
+//      String[] fromNodeLabelsArr = meta.getFromNodeLabels();
+//      String[] fromNodePropsArray = meta.getFromNodeProps();
+//      String[] fromNodePropTypesArr = meta.getFromNodePropTypes();
+//      boolean[] fromPrimaryPropsArr = meta.getFromNodePropPrimary();
+//      List<String> fromRelProps = new ArrayList<>();
+//
+//      String[] toNodeLabelsArr = meta.getToNodeLabels();
+//      String[] toNodePropsArray = meta.getToNodeProps();
+//      String[] toNodePropTypesArr = meta.getToNodePropTypes();
+//      boolean[] toPrimaryPropsArr = meta.getToNodePropPrimary();
+//      List<String> toRelProps = new ArrayList<>();
 
       // update createNodeProps to inspect property types first, then just dump without checking and fail spectacularly if types don't match.
       // do not put right away, create list of props + data types, walk through
-      fromNodeProps = createNodeProps(fromNodeProps, fromNodePropsArray, fromNodePropTypesArr);
-      toNodeProps = createNodeProps(toNodeProps, toNodePropsArray, toNodePropTypesArr);
+//      fromNodeProps = createNodeProps(fromNodeProps, fromNodePropsArray, fromNodePropTypesArr);
+//      toNodeProps = createNodeProps(toNodeProps, toNodePropsArray, toNodePropTypesArr);
+//
+//      for(int i=0; i < fromNodePropsArray.length; i++){
+//        if(fromPrimaryPropsArr[i]){
+//          fromRelProps.add(fromNodePropsArray[i]);
+//        }
+//      }
+//
+//      for(int i=0; i < toNodePropsArray.length; i++){
+//        if(toPrimaryPropsArr[i]){
+//          toRelProps.add(toNodePropsArray[i]);
+//        }
+//      }
+//
+//      fromNode = new GraphNode(Arrays.asList(fromNodeLabelsArr), fromNodeProps, fromRelProps);
+//      toNode = new GraphNode(Arrays.asList(toNodeLabelsArr), toNodeProps, toRelProps);
+//
+//      newFromIndexes = new int[meta.getFromNodeProps().length];
+//      newToIndexes = new int[meta.getToNodeProps().length];
+//      for(int i=0; i < meta.getFromNodeProps().length; i++ ){
+//        newFromIndexes[i] = data.outputRowMeta.indexOfValue(meta.getFromNodeProps()[i]);
+//      }
+//      for(int i=0; i < meta.getToNodeProps().length; i++){
+//        newToIndexes[i] = data.outputRowMeta.indexOfValue(meta.getToNodeProps()[i]);
+//      }
 
 
-      for(int i=0; i < fromNodePropsArray.length; i++){
-        if(fromPrimaryPropsArr[i]){
-          fromRelProps.add(fromNodePropsArray[i]);
-        }
-      }
-
-      for(int i=0; i < toNodePropsArray.length; i++){
-        if(toPrimaryPropsArr[i]){
-          toRelProps.add(toNodePropsArray[i]);
-        }
-      }
-
-      fromNode = new GraphNode(Arrays.asList(fromNodeLabelsArr), fromNodeProps, fromRelProps);
-      toNode = new GraphNode(Arrays.asList(toNodeLabelsArr), toNodeProps, toRelProps);
-
-      newFromIndexes = new int[meta.getFromNodeProps().length];
-      newToIndexes = new int[meta.getToNodeProps().length];
-      for(int i=0; i < meta.getFromNodeProps().length; i++ ){
-        newFromIndexes[i] = data.outputRowMeta.indexOfValue(meta.getFromNodeProps()[i]);
-      }
-      for(int i=0; i < meta.getToNodeProps().length; i++){
-        newToIndexes[i] = data.outputRowMeta.indexOfValue(meta.getToNodeProps()[i]);
-      }
 
       /**
        * OLD CODE STARTS HERE
@@ -275,6 +369,52 @@ public class GraphOutput extends BaseGraphTransform<GraphOutputMeta, GraphOutput
       validateConfiguration();
     }
 
+    /**
+     * NEW CODE AFTER FIRST
+     */
+    Object[] fromNodeProperties = new Object[meta.getFromNodeProps().length];
+    for(int i=0; i < fromNodeProperties.length; i++){
+      fromNodeProperties[i] = row[fromNodePropertiesIndexes[i]];
+    }
+    Object[] toNodeProperties = new Object[meta.getToNodeProps().length];
+    for(int i=0; i < toNodeProperties.length; i++){
+      toNodeProperties[i] = row[toNodePropertiesIndexes[i]];
+    }
+    Object[] relationshipProperties = new Object[meta.getRelProps().length];
+    for(int i=0; i < relationshipProperties.length; i++){
+      relationshipProperties[i] = row[relationshipPropertiesIndexes[i]];
+    }
+
+    fromNodePropertyObjects.add(fromNodeProperties);
+    toNodePropertyObjects.add(toNodeProperties);
+    relationshipPropertyObjects.add(relationshipProperties);
+
+    // only build labels list dynamically if taken from fields.
+    // build labels list from first row if static values.
+    if(meta.getFromNodeLabels().length > 0){
+      for(int i=0; i < fromLabelsIndexes.length; i++){
+        fromLabels.add((String)row[fromLabelsIndexes[i]]);
+      }
+    }
+    if(meta.getToNodeLabels().length > 0){
+      for(int i=0; i < toLabelsIndexes.length; i++){
+        fromLabels.add((String)row[toLabelsIndexes[i]]);
+      }
+    }
+
+    GraphNode fromGraphNode = new GraphNode(fromLabels, fromNodePropertyObjects);
+    GraphNode toGraphNode = new GraphNode(toLabels, toNodePropertyObjects);
+    GraphRelationship relationship = new GraphRelationship(fromGraphNode, toGraphNode, meta.getRelationship(), relationshipPropertyObjects);
+
+    fromNodes.add(fromGraphNode);
+    toNodes.add(toGraphNode);
+    relationships.add(relationship);
+
+
+    /**
+     * OLD CODE AFTER FIRST ROW
+     */
+
     if (meta.isReturningGraph()) {
       // Let the next transform handle writing to graph database
       //
@@ -294,16 +434,16 @@ public class GraphOutput extends BaseGraphTransform<GraphOutputMeta, GraphOutput
       IRowMeta rowMeta = getInputRowMeta();
       String[] fieldNames = rowMeta.getFieldNames();
 
-      for(int i=0; i < newFromIndexes.length; i++){
-        fromData.put(fieldNames[newFromIndexes[i]], row[i]);
-      }
-      for(int i=0; i < newToIndexes.length; i++){
-        toData.put(fieldNames[newToIndexes[i]], row[i]);
-      }
+//      for(int i=0; i < newFromIndexes.length; i++){
+//        fromData.put(fieldNames[newFromIndexes[i]], row[i]);
+//      }
+//      for(int i=0; i < newToIndexes.length; i++){
+//        toData.put(fieldNames[newToIndexes[i]], row[i]);
+//      }
 
 
-      fromList.add(fromData);
-      toList.add(toData);
+//      fromList.add(fromData);
+//      toList.add(toData);
 
 
 
@@ -1133,7 +1273,43 @@ public class GraphOutput extends BaseGraphTransform<GraphOutputMeta, GraphOutput
     }
   }
 
-  private Map<String, IValueMeta> createNodeProps(
+  /**
+   * move to GraphNodePropertiesMeta?
+   */
+  private IValueMeta[] getPropertyTypesArray(String[] nodePropertyTypesArray){
+    IValueMeta nodePropertiesMeta[] = new IValueMeta[nodePropertyTypesArray.length];
+    for(int i=0; i < nodePropertyTypesArray.length; i++){
+      switch(nodePropertyTypesArray[i]){
+        case "String":
+          nodePropertiesMeta[i] = new ValueMetaString();
+          break;
+        case "Integer":
+          nodePropertiesMeta[i] = new ValueMetaInteger();
+          break;
+        case "Date":
+          nodePropertiesMeta[i] = new ValueMetaDate();
+        default:
+          nodePropertiesMeta[i] = new ValueMetaString();
+          break;
+      }
+    }
+    return nodePropertiesMeta;
+  }
+
+  /**
+   * move to GraphNodePropertiesMeta?
+   */
+  private List<String> getPrimaryPropertyNames(String[] propertyNames, boolean[] primaryProperties){
+    List<String> primaryPropertyNames = new ArrayList<>();
+    for(int i=0; i < propertyNames.length; i++){
+      if(primaryProperties[i]){
+        primaryPropertyNames.add(propertyNames[i]);
+      }
+    }
+    return primaryPropertyNames;
+  }
+
+/*  private Map<String, IValueMeta> createNodeProps(
           Map<String, IValueMeta> nodeProps,
           String[] nodePropsArr,
           String[] nodePropTypesArr){
@@ -1153,5 +1329,5 @@ public class GraphOutput extends BaseGraphTransform<GraphOutputMeta, GraphOutput
       }
     }
     return nodeProps;
-  }
+  }*/
 }

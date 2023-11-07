@@ -8,13 +8,13 @@ import java.util.Map;
 
 public class GraphNode extends GraphEntity implements IGraphNode{
 
-    private final Collection<String> labels;
-    private List<String> relProps;
+    private List<String> labels;
+//    private List<String> relProps;
 
-    public GraphNode(Collection<String> labels, Map<String, IValueMeta> propertiesMeta, List<String> relProps) {
-        super(propertiesMeta);
+    public GraphNode(List<String> labels, List<Object[]> properties) {
+        super(properties);
         this.labels = labels;
-        this.relProps = relProps;
+//        this.relProps = relProps;
     }
 
     @Override
@@ -27,12 +27,12 @@ public class GraphNode extends GraphEntity implements IGraphNode{
         return labels.contains(label);
     }
 
-    public List<String> getRelationshipProperties(){
-        return relProps;
-    }
-
-    public void setRelationshipProperties(List<String> relProps){
-        this.relProps = relProps;
-    }
+//    public List<String> getRelationshipProperties(){
+//        return relProps;
+//    }
+//
+//    public void setRelationshipProperties(List<String> relProps){
+//        this.relProps = relProps;
+//    }
 
 }

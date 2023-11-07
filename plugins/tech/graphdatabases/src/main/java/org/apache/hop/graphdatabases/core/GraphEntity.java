@@ -10,19 +10,18 @@ import java.util.Map;
 
 public abstract class GraphEntity implements IGraphEntity{
 
-    private final Map<String, IValueMeta> propertiesMeta;
+    private List<Object[]> properties;
 
     public GraphEntity(String elementId){
-        this(Collections.emptyMap());
     }
 
-    public GraphEntity(Map<String, IValueMeta> propertiesMeta) {
-        this.propertiesMeta = propertiesMeta;
+    public GraphEntity(List<Object[]> properties) {
+        this.properties = properties;
     }
 
     @Override
-    public Map<String, IValueMeta> getPropertiesMeta(){
-        return propertiesMeta;
+    public List<Object[]> getProperties(){
+        return properties;
     }
 
 }
