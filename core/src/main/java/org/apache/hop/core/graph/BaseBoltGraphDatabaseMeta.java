@@ -22,6 +22,8 @@ import org.apache.hop.core.Const;
 import org.apache.hop.core.encryption.Encr;
 import org.apache.hop.core.exception.HopConfigException;
 import org.apache.hop.core.exception.HopException;
+import org.apache.hop.core.graph.model.GraphNode;
+import org.apache.hop.core.graph.model.GraphRelationship;
 import org.apache.hop.core.gui.plugin.GuiElementType;
 import org.apache.hop.core.gui.plugin.GuiWidgetElement;
 import org.apache.hop.core.logging.ILogChannel;
@@ -41,7 +43,6 @@ import org.neo4j.driver.Result;
 import org.neo4j.driver.Session;
 import org.neo4j.driver.SessionConfig;
 import org.neo4j.driver.Value;
-
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLEncoder;
@@ -813,6 +814,30 @@ public class BaseBoltGraphDatabaseMeta extends BaseGraphDatabaseMeta implements 
             String[] toPropNames,
             boolean[] toPropPrimary
     ){
+    }
+
+    @Override
+    public void writeToGraph(
+            List<GraphNode> fromNodes,
+            List<GraphNode> toNodes,
+            List<Object[]> fromNodeProperties,
+            List<Object[]> toNodeProperties,
+            List<GraphRelationship> graphRelationships,
+            List<Object[]> relationshipProperties
+    ){
+        String dummy = "";
+    }
+
+    @Override
+    public void writeNode(
+            List<GraphNode> fromNodes,
+            List<Object[]> fromNodeProperties
+    ){
+        StringBuilder cypher = new StringBuilder();
+
+        cypher.append("CREATE(");
+
+
 
     }
 

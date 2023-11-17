@@ -1,4 +1,4 @@
-package org.apache.hop.graphdatabases.core;
+package org.apache.hop.core.graph.model;
 
 public interface IGraphNode extends IGraphEntity{
 

@@ -25,16 +25,14 @@ import org.apache.hop.core.graph.GraphDatabaseMeta;
 import org.apache.hop.core.graph.IGraphDatabase;
 import org.apache.hop.core.row.IRowMeta;
 import org.apache.hop.core.row.IValueMeta;
-import org.apache.hop.core.row.RowDataUtil;
 import org.apache.hop.core.row.value.ValueMetaDate;
 import org.apache.hop.core.row.value.ValueMetaInteger;
 import org.apache.hop.core.row.value.ValueMetaString;
-import org.apache.hop.core.util.StringUtil;
-import org.apache.hop.graphdatabases.core.GraphNodePropertiesMeta;
-import org.apache.hop.graphdatabases.core.GraphRelationship;
-import org.apache.hop.graphdatabases.core.GraphRelationshipPropertiesMeta;
-import org.apache.hop.graphdatabases.core.GraphUsage;
-import org.apache.hop.graphdatabases.core.GraphNode;
+import org.apache.hop.core.graph.model.GraphNodePropertiesMeta;
+import org.apache.hop.core.graph.model.GraphRelationship;
+import org.apache.hop.core.graph.model.GraphRelationshipPropertiesMeta;
+import org.apache.hop.core.graph.model.GraphUsage;
+import org.apache.hop.core.graph.model.GraphNode;
 import org.apache.hop.graphdatabases.model.GraphPropertyType;
 import org.apache.hop.graphdatabases.shared.GraphConnectionUtils;
 import org.apache.hop.graphdatabases.transforms.BaseGraphTransform;
@@ -58,6 +56,7 @@ public class GraphOutput extends BaseGraphTransform<GraphOutputMeta, GraphOutput
   private GraphRelationshipPropertiesMeta relationshipPropertiesMeta;
   private List<GraphNode> fromNodes, toNodes;
   private List<GraphRelationship> relationships;
+  private GraphOutputMeta meta;
   private String[] fromNodePropertyNames, toNodePropertyNames;
   private Object[] fromNodePropertyValues, toNodePropertyValues;
 //  private Map<String, IValueMeta> fromNodeProps;
@@ -86,6 +85,8 @@ public class GraphOutput extends BaseGraphTransform<GraphOutputMeta, GraphOutput
     super(s, meta, data, c, t, dis);
     fromNodes = new ArrayList<>();
     toNodes = new ArrayList<>();
+    relationships = new ArrayList<>();
+    this.meta = meta;
 //    fromNodeProps = new HashMap<>();
 //    toNodeProps = new HashMap<>();
 //
@@ -422,8 +423,10 @@ public class GraphOutput extends BaseGraphTransform<GraphOutputMeta, GraphOutput
 
     } else {
 
+
       boolean changedLabel = calculateLabelsAndDetectChanges(row);
       if (changedLabel || data.unwindList.size() >= data.batchSize) {
+        writeToGraph();
         emptyUnwindList();
       }
 
@@ -547,6 +550,20 @@ public class GraphOutput extends BaseGraphTransform<GraphOutputMeta, GraphOutput
     }
   }
 
+  private void writeToGraph() throws HopException {
+
+    IGraphDatabase graphDatabase = data.graphDatabaseMeta.getIGraphDatabase();
+    graphDatabase.writeNode(fromNodes, fromNodePropertyObjects);
+//    graphDatabase.writeToGraph(
+//            fromNodes,
+//            toNodes,
+//            fromNodePropertyObjects,
+//            toNodePropertyObjects,
+//            relationships,
+//            relationshipPropertyObjects
+//    );
+
+  }
   private void emptyUnwindList() throws HopException {
 
     try {
@@ -1240,6 +1257,7 @@ public class GraphOutput extends BaseGraphTransform<GraphOutputMeta, GraphOutput
 
     if (!isStopped()) {
       if (data.unwindList != null && data.unwindList.size() > 0) {
+        writeToGraph();
         emptyUnwindList(); // force write!
       }
     }

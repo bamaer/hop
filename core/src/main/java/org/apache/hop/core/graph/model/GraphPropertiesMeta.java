@@ -1,7 +1,6 @@
-package org.apache.hop.graphdatabases.core;
+package org.apache.hop.core.graph.model;
 
 import org.apache.hop.core.row.IValueMeta;
-import org.apache.hop.core.variables.IVariables;
 
 public abstract class GraphPropertiesMeta implements IGraphProperties{
 

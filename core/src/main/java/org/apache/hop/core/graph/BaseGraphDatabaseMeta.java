@@ -17,6 +17,8 @@
 
 package org.apache.hop.core.graph;
 
+import org.apache.hop.core.graph.model.GraphNode;
+import org.apache.hop.core.graph.model.GraphRelationship;
 import org.apache.hop.core.gui.plugin.GuiElementType;
 import org.apache.hop.core.gui.plugin.GuiWidgetElement;
 import org.apache.hop.core.logging.ILogChannel;
@@ -242,6 +244,23 @@ public abstract class BaseGraphDatabaseMeta implements Cloneable, IGraphDatabase
         protocols.add("neo4j");
         protocols.add("bolt");
         return protocols;
+    }
+
+    @Override
+    public void writeToGraph(
+            List<GraphNode> fromNodes,
+            List<GraphNode> toNodes,
+            List<Object[]> fromNodeProperties,
+            List<Object[]> toNodeProperties,
+            List<GraphRelationship> graphRelationships,
+            List<Object[]> relationshipProperties
+    ){}
+
+    @Override
+    public void writeNode(
+            List<GraphNode> nodes,
+            List<Object[]> nodeProperties
+    ){
     }
 
 }

@@ -1,9 +1,6 @@
-package org.apache.hop.graphdatabases.core;
-
-import org.apache.hop.core.row.IValueMeta;
+package org.apache.hop.core.graph.model;
 
 import java.util.List;
-import java.util.Map;
 
 public class GraphRelationship extends GraphEntity implements IGraphRelationship {
 

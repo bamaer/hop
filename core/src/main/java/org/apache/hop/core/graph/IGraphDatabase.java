@@ -19,6 +19,8 @@ package org.apache.hop.core.graph;
 
 import org.apache.hop.core.exception.HopConfigException;
 import org.apache.hop.core.exception.HopException;
+import org.apache.hop.core.graph.model.GraphNode;
+import org.apache.hop.core.graph.model.GraphRelationship;
 import org.apache.hop.core.variables.IVariables;
 import org.apache.hop.metadata.api.HopMetadataObject;
 
@@ -129,4 +131,17 @@ public interface IGraphDatabase extends Cloneable{
 
     void writeData(IVariables variables, String query, Map<String, Object> properties);
 
+    void writeToGraph(
+            List<GraphNode> fromNodes,
+            List<GraphNode> toNodes,
+            List<Object[]> fromNodeProperties,
+            List<Object[]> toNodeProperties,
+            List<GraphRelationship> graphRelationships,
+            List<Object[]> relationshipProperties
+    );
+
+    void writeNode(
+            List<GraphNode> nodes,
+            List<Object[]> nodeProperties
+    );
 }
