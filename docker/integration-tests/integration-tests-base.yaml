@@ -23,9 +23,9 @@ services:
       dockerfile: docker/integration-tests/Dockerfile.unit-tests
       args:
         - JENKINS_USER=jenkins
-        - JENKINS_UID=1005
+        - JENKINS_UID=1000
         - JENKINS_GROUP=jenkins
-        - JENKINS_GID=1005
+        - JENKINS_GID=1000
         - GCP_KEY_FILE=./docker/integration-tests/resource/dummyfile
     volumes:
       - ../../integration-tests/:/files
