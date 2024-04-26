@@ -28,8 +28,8 @@ ENV VOLUME_MOUNT_POINT=/files
 #Jenkins user an group
 ARG JENKINS_USER=hop
 ARG JENKINS_GROUP=hop
-ARG JENKINS_UID=1000
-ARG JENKINS_GID=1000
+ARG JENKINS_UID=1005
+ARG JENKINS_GID=1005
 ARG GCP_KEY_FILE=
 # Set system properties
 ENV DEBIAN_FRONTEND=noninteractive
@@ -69,7 +69,7 @@ ENV LC_ALL en_US.UTF-8
 
 # Install parquet-tools from Python
 
-RUN pip3 install parquet-tools
+RUN pip install parquet-tools
 
 # Copy the hop package from the local resources folder to the container image directory
 

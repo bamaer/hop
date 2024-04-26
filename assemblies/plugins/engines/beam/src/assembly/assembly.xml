@@ -146,6 +146,7 @@
                 <include>net.sf.py4j:py4j</include>
                 <include>org.apache.avro:avro-ipc</include>
                 <include>org.apache.avro:avro-mapred</include>
+                <include>org.apache.beam:beam-sdks-java-core</include>
                 <include>org.apache.beam:beam-model-fn-execution</include>
                 <include>org.apache.beam:beam-runners-core-construction-java</include>
                 <include>org.apache.beam:beam-runners-core-java</include>
@@ -157,6 +158,7 @@
                 <include>org.apache.beam:beam-sdks-java-expansion-service</include>
                 <include>org.apache.beam:beam-sdks-java-extensions-protobuf</include>
                 <include>org.apache.beam:beam-sdks-java-extensions-google-cloud-platform-core</include>
+                <include>org.apache.beam:beam-sdks-java-extensions-avro</include>
                 <include>org.apache.beam:beam-sdks-java-extensions-join-library</include>
                 <include>org.apache.beam:beam-sdks-java-fn-execution</include>
                 <include>org.apache.beam:beam-sdks-java-io-google-cloud-platform</include>
