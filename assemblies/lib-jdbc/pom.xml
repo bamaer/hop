@@ -119,6 +119,12 @@
             <groupId>io.crate</groupId>
             <artifactId>crate-jdbc</artifactId>
             <version>${cratedb-jdbc.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-api</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
     </dependencies>
 

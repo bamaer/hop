@@ -188,6 +188,7 @@ public class FatJarBuilder {
                     || jarFileBaseName.startsWith("scala-")
                     || jarFileBaseName.startsWith("flink-runtime")
                     || jarFileBaseName.startsWith("beam-sdks-java-io")
+                    || jarFileBaseName.startsWith("beam-sdks-java-harness")
                     || jarFileBaseName.startsWith("beam-runners-spark")
                     || jarFileBaseName.startsWith("beam-runners-direct")
                     || jarFileBaseName.startsWith("beam-runners-flink")
