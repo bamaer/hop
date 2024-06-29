@@ -203,6 +203,9 @@ public class HopGui
   public static final String ID_MAIN_TOOLBAR_SAVE = "toolbar-10040-save";
   public static final String ID_MAIN_TOOLBAR_SAVE_AS = "toolbar-10050-save-as";
 
+  // Status bar
+  public static final String ID_STATUSBAR = "Status-Bar";
+
   public static final String GUI_PLUGIN_PERSPECTIVES_PARENT_ID = "HopGui-Perspectives";
 
   public static final String DEFAULT_HOP_GUI_NAMESPACE = "hop-gui";
@@ -237,6 +240,9 @@ public class HopGui
 
   private ToolBar mainToolbar;
   private GuiToolbarWidgets mainToolbarWidgets;
+
+  private ToolBar statusBar;
+  private GuiToolbarWidgets statusBarWidgets;
 
   private ToolBar perspectivesToolbar;
   private Composite mainPerspectivesComposite;
@@ -393,6 +399,7 @@ public class HopGui
     PropsUi.setLook(shell);
 
     shell.setText(BaseMessages.getString(PKG, "HopGui.Application.Name"));
+    addStatusBar();
     addMainMenu();
     addMainToolbar();
     addPerspectivesToolbar();
@@ -1194,6 +1201,23 @@ public class HopGui
     mainToolbar.pack();
   }
 
+  protected void addStatusBar() {
+    statusBar = new ToolBar(shell, SWT.WRAP | SWT.RIGHT | SWT.HORIZONTAL);
+    ToolItem item = new ToolItem(statusBar, SWT.PUSH);
+    item.setText("wdfdsffdsadsdfsdfsdfsasfsddsafsdfa");
+    FormData fdStatusBar = new FormData();
+    fdStatusBar.left = new FormAttachment(0, 0);
+    fdStatusBar.bottom = new FormAttachment(100, 0);
+    fdStatusBar.right = new FormAttachment(100, 0);
+    PropsUi.setLook(statusBar, Props.WIDGET_STYLE_TOOLBAR);
+    statusBar.setLayoutData(fdStatusBar);
+
+    statusBarWidgets = new GuiToolbarWidgets();
+    statusBarWidgets.registerGuiPluginObject(this);
+    statusBarWidgets.createToolbarWidgets(statusBar, ID_STATUSBAR);
+    statusBar.pack();
+  }
+
   protected void addPerspectivesToolbar() {
     // We can't mix horizontal and vertical toolbars so we need to add a composite.
     //
@@ -1204,7 +1228,7 @@ public class HopGui
     formData.left = new FormAttachment(0, 0);
     formData.right = new FormAttachment(100, 0);
     formData.top = new FormAttachment(mainToolbar, 0);
-    formData.bottom = new FormAttachment(100, 0);
+    formData.bottom = new FormAttachment(statusBar, 0);
     mainHopGuiComposite.setLayoutData(formData);
 
     perspectivesToolbar = new ToolBar(mainHopGuiComposite, SWT.WRAP | SWT.RIGHT | SWT.VERTICAL);
@@ -1212,7 +1236,7 @@ public class HopGui
     FormData fdToolBar = new FormData();
     fdToolBar.left = new FormAttachment(0, 0);
     fdToolBar.top = new FormAttachment(0, 0);
-    fdToolBar.bottom = new FormAttachment(100, 0);
+    fdToolBar.bottom = new FormAttachment(100, -0);
     perspectivesToolbar.setLayoutData(fdToolBar);
   }
 
