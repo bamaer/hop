@@ -54,6 +54,7 @@ import org.apache.hop.core.util.Utils;
 import org.apache.hop.core.vfs.HopVfs;
 import org.apache.hop.core.xml.XmlHandler;
 import org.apache.hop.i18n.BaseMessages;
+import org.apache.hop.mail.metadata.MailServerConnection;
 import org.apache.hop.pipeline.Pipeline;
 import org.apache.hop.pipeline.PipelineMeta;
 import org.apache.hop.pipeline.transform.BaseTransform;
@@ -64,6 +65,8 @@ public class Mail extends BaseTransform<MailMeta, MailData> {
 
   private static final Class<?> PKG = MailMeta.class;
   public static final String CONST_MAIL = "mail.";
+
+  private MailServerConnection connection;
 
   public Mail(
       TransformMeta transformMeta,
@@ -143,12 +146,12 @@ public class Mail extends BaseTransform<MailMeta, MailData> {
             throw new HopException(
                 BaseMessages.getString(PKG, "Mail.Log.AuthenticationUserFieldEmpty"));
           }
-        }
 
-        // check authentication pass
-        if (Utils.isEmpty(meta.getAuthenticationPassword())) {
-          throw new HopException(
-              BaseMessages.getString(PKG, "Mail.Log.AuthenticationPasswordFieldEmpty"));
+          // check authentication pass
+          if (Utils.isEmpty(meta.getAuthenticationPassword())) {
+            throw new HopException(
+                BaseMessages.getString(PKG, "Mail.Log.AuthenticationPasswordFieldEmpty"));
+          }
         }
       }
 
@@ -237,6 +240,7 @@ public class Mail extends BaseTransform<MailMeta, MailData> {
                   PKG, "Mail.Exception.CouldnotFindContactPersonField", realContactPerson));
         }
       }
+
       // Contact Phone
       if (!Utils.isEmpty(meta.getContactPhone()) && data.indexOfContactPhone < 0) {
         // cache the position of the destination field
@@ -249,6 +253,7 @@ public class Mail extends BaseTransform<MailMeta, MailData> {
                   PKG, "Mail.Exception.CouldnotFindContactPhoneField", realContactPhone));
         }
       }
+
       // cache the position of the Server field
       if (data.indexOfServer < 0) {
         String realServer = meta.getServer();
@@ -258,47 +263,54 @@ public class Mail extends BaseTransform<MailMeta, MailData> {
               BaseMessages.getString(PKG, "Mail.Exception.CouldnotFindServerField", realServer));
         }
       }
+
       // Port
-      if (!Utils.isEmpty(meta.getPort()) && data.indexOfPort < 0) {
-        // cache the position of the port field
+      if (StringUtils.isEmpty(meta.getConnectionName())) {
+        if (!Utils.isEmpty(meta.getPort()) && data.indexOfPort < 0) {
+          // cache the position of the port field
 
-        String realPort = meta.getPort();
-        data.indexOfPort = data.previousRowMeta.indexOfValue(realPort);
-        if (data.indexOfPort < 0) {
-          throw new HopException(
-              BaseMessages.getString(PKG, "Mail.Exception.CouldnotFindPortField", realPort));
+          String realPort = meta.getPort();
+          data.indexOfPort = data.previousRowMeta.indexOfValue(realPort);
+          if (data.indexOfPort < 0) {
+            throw new HopException(
+                BaseMessages.getString(PKG, "Mail.Exception.CouldnotFindPortField", realPort));
+          }
         }
       }
+
       // Authentication
-      if (meta.isUsingAuthentication()) {
-        // cache the position of the Authentication user field
-        if (data.indexOfAuthenticationUser < 0) {
-          String realAuthenticationUser = meta.getAuthenticationUser();
-          data.indexOfAuthenticationUser =
-              data.previousRowMeta.indexOfValue(realAuthenticationUser);
+      if (StringUtils.isEmpty(meta.getConnectionName())) {
+        if (meta.isUsingAuthentication()) {
+          // cache the position of the Authentication user field
           if (data.indexOfAuthenticationUser < 0) {
-            throw new HopException(
-                BaseMessages.getString(
-                    PKG,
-                    "Mail.Exception.CouldnotFindAuthenticationUserField",
-                    realAuthenticationUser));
+            String realAuthenticationUser = meta.getAuthenticationUser();
+            data.indexOfAuthenticationUser =
+                data.previousRowMeta.indexOfValue(realAuthenticationUser);
+            if (data.indexOfAuthenticationUser < 0) {
+              throw new HopException(
+                  BaseMessages.getString(
+                      PKG,
+                      "Mail.Exception.CouldnotFindAuthenticationUserField",
+                      realAuthenticationUser));
+            }
           }
-        }
 
-        // cache the position of the Authentication password field
-        if (data.indexOfAuthenticationPass < 0) {
-          String realAuthenticationPassword = meta.getAuthenticationPassword();
-          data.indexOfAuthenticationPass =
-              data.previousRowMeta.indexOfValue(realAuthenticationPassword);
+          // cache the position of the Authentication password field
           if (data.indexOfAuthenticationPass < 0) {
-            throw new HopException(
-                BaseMessages.getString(
-                    PKG,
-                    "Mail.Exception.CouldnotFindAuthenticationPassField",
-                    realAuthenticationPassword));
+            String realAuthenticationPassword = meta.getAuthenticationPassword();
+            data.indexOfAuthenticationPass =
+                data.previousRowMeta.indexOfValue(realAuthenticationPassword);
+            if (data.indexOfAuthenticationPass < 0) {
+              throw new HopException(
+                  BaseMessages.getString(
+                      PKG,
+                      "Mail.Exception.CouldnotFindAuthenticationPassField",
+                      realAuthenticationPassword));
+            }
           }
         }
       }
+
       // Mail Subject
       if (!Utils.isEmpty(meta.getSubject()) && data.indexOfSubject < 0) {
         // cache the position of the subject field
@@ -309,6 +321,7 @@ public class Mail extends BaseTransform<MailMeta, MailData> {
               BaseMessages.getString(PKG, "Mail.Exception.CouldnotFindSubjectField", realSubject));
         }
       }
+
       // Mail Comment
       if (!Utils.isEmpty(meta.getComment()) && data.indexOfComment < 0) {
         // cache the position of the comment field
@@ -335,6 +348,7 @@ public class Mail extends BaseTransform<MailMeta, MailData> {
               BaseMessages.getString(
                   PKG, "Mail.Exception.CouldnotFindAttachedContentField", attachedContentField));
         }
+
         // Attached content filename
         String attachedContentFileNameField = meta.getAttachContentFileNameField();
         if (Utils.isEmpty(attachedContentFileNameField)) {
@@ -499,14 +513,19 @@ public class Mail extends BaseTransform<MailMeta, MailData> {
       }
 
       String authuser = null;
-      if (data.indexOfAuthenticationUser > -1) {
-        authuser = data.previousRowMeta.getString(r, data.indexOfAuthenticationUser);
+      if (StringUtils.isEmpty(meta.getConnectionName())) {
+        if (data.indexOfAuthenticationUser > -1) {
+          authuser = data.previousRowMeta.getString(r, data.indexOfAuthenticationUser);
+        }
       }
+
       String authpass = null;
-      if (data.indexOfAuthenticationPass > -1) {
-        authpass =
-            Utils.resolvePassword(
-                variables, data.previousRowMeta.getString(r, data.indexOfAuthenticationPass));
+      if (StringUtils.isEmpty(meta.getConnectionName())) {
+        if (data.indexOfAuthenticationPass > -1) {
+          authpass =
+              Utils.resolvePassword(
+                  variables, data.previousRowMeta.getString(r, data.indexOfAuthenticationPass));
+        }
       }
 
       String subject = null;
@@ -589,46 +608,57 @@ public class Mail extends BaseTransform<MailMeta, MailData> {
       String replyToAddresses)
       throws Exception {
 
-    // Send an e-mail...
-    // create some properties and get the default Session
+    Session session = null;
+    String protocol = null;
+    if (!StringUtils.isEmpty(meta.getConnectionName())) {
+      connection =
+          getMetadataProvider()
+              .getSerializer(MailServerConnection.class)
+              .load(meta.getConnectionName());
+      session = connection.getSession(variables);
+    } else {
+      // Send an e-mail...
+      // create some properties and get the default Session
 
-    String protocol = "smtp";
-    if (meta.isUsingSecureAuthentication()) {
-      if (meta.isUsexoauth2()) {
-        data.props.put("mail.smtp.ssl.enable", "true");
-        data.props.put("mail.smtp.auth.mechanisms", "XOAUTH2");
+      protocol = "smtp";
+      if (meta.isUsingSecureAuthentication()) {
+        if (meta.isUsexoauth2()) {
+          data.props.put("mail.smtp.ssl.enable", "true");
+          data.props.put("mail.smtp.auth.mechanisms", "XOAUTH2");
+        }
+        if (meta.getSecureConnectionType().equals("TLS")) {
+          // Allow TLS authentication
+          data.props.put("mail.smtp.starttls.enable", "true");
+        } else if (meta.getSecureConnectionType().equals("TLS 1.2")) {
+          // Allow TLS 1.2 authentication
+          data.props.put("mail.smtp.starttls.enable", "true");
+          data.props.put("mail.smtp.ssl.protocols", "TLSv1.2");
+        } else {
+          protocol = "smtps";
+          // required to get rid of a SSL exception :
+          // nested exception is:
+          // javax.net.ssl.SSLException: Unsupported record version Unknown
+          data.props.put("mail.smtps.quitwait", "false");
+        }
       }
-      if (meta.getSecureConnectionType().equals("TLS")) {
-        // Allow TLS authentication
-        data.props.put("mail.smtp.starttls.enable", "true");
-      } else if (meta.getSecureConnectionType().equals("TLS 1.2")) {
-        // Allow TLS 1.2 authentication
-        data.props.put("mail.smtp.starttls.enable", "true");
-        data.props.put("mail.smtp.ssl.protocols", "TLSv1.2");
-      } else {
-        protocol = "smtps";
-        // required to get rid of a SSL exception :
-        // nested exception is:
-        // javax.net.ssl.SSLException: Unsupported record version Unknown
-        data.props.put("mail.smtps.quitwait", "false");
+      data.props.put(CONST_MAIL + protocol + ".host", server);
+      if (port != -1) {
+        data.props.put(
+            CONST_MAIL + protocol + ".port",
+            "" + port); // needs to be supplied as a string, not as an integer
       }
-    }
-    data.props.put(CONST_MAIL + protocol + ".host", server);
-    if (port != -1) {
-      data.props.put(
-          CONST_MAIL + protocol + ".port",
-          "" + port); // needs to be supplied as a string, not as an integer
+
+      if (isDebug()) {
+        data.props.put("mail.debug", "true");
+      }
+
+      if (meta.isUsingAuthentication()) {
+        data.props.put(CONST_MAIL + protocol + ".auth", "true");
+      }
+
+      session = Session.getInstance(data.props);
     }
 
-    if (isDebug()) {
-      data.props.put("mail.debug", "true");
-    }
-
-    if (meta.isUsingAuthentication()) {
-      data.props.put(CONST_MAIL + protocol + ".auth", "true");
-    }
-
-    Session session = Session.getInstance(data.props);
     session.setDebug(isDebug());
 
     // create a message
@@ -792,22 +822,26 @@ public class Mail extends BaseTransform<MailMeta, MailData> {
 
     Transport transport = null;
     try {
-      transport = session.getTransport(protocol);
-      if (meta.isUsingAuthentication()) {
-        if (port != -1) {
-          transport.connect(
-              Const.NVL(server, ""),
-              port,
-              Const.NVL(authenticationUser, ""),
-              Const.NVL(authenticationPassword, ""));
-        } else {
-          transport.connect(
-              Const.NVL(server, ""),
-              Const.NVL(authenticationUser, ""),
-              Const.NVL(authenticationPassword, ""));
-        }
+      if (connection != null) {
+        transport = connection.getTransport();
       } else {
-        transport.connect();
+        transport = session.getTransport(protocol);
+        if (meta.isUsingAuthentication()) {
+          if (port != -1) {
+            transport.connect(
+                Const.NVL(server, ""),
+                port,
+                Const.NVL(authenticationUser, ""),
+                Const.NVL(authenticationPassword, ""));
+          } else {
+            transport.connect(
+                Const.NVL(server, ""),
+                Const.NVL(authenticationUser, ""),
+                Const.NVL(authenticationPassword, ""));
+          }
+        } else {
+          transport.connect();
+        }
       }
       transport.sendMessage(msg, msg.getAllRecipients());
     } finally {

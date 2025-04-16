@@ -19,6 +19,7 @@ package org.apache.hop.mail.pipeline.transforms.mail;
 
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import org.apache.commons.lang.StringUtils;
 import org.apache.hop.core.Const;
 import org.apache.hop.core.Props;
 import org.apache.hop.core.exception.HopException;
@@ -2509,7 +2510,9 @@ public class MailDialog extends BaseTransformDialog {
   /** Copy information from the meta-data input to the dialog fields. */
   public void getData() {
 
-    wConnectionLine.setText(input.getConnectionName());
+    if (!StringUtils.isEmpty(input.getConnectionName())) {
+      wConnectionLine.setText(input.getConnectionName());
+    }
 
     wIncludeMessageInOutput.setSelection(input.isAddMessageToOutput());
     wIsAttachContentField.setSelection(input.isAttachContentFromField());
