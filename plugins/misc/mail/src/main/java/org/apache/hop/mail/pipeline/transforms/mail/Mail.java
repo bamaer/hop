@@ -255,12 +255,14 @@ public class Mail extends BaseTransform<MailMeta, MailData> {
       }
 
       // cache the position of the Server field
-      if (data.indexOfServer < 0) {
-        String realServer = meta.getServer();
-        data.indexOfServer = data.previousRowMeta.indexOfValue(realServer);
+      if (StringUtils.isEmpty(meta.getConnectionName())) {
         if (data.indexOfServer < 0) {
-          throw new HopException(
-              BaseMessages.getString(PKG, "Mail.Exception.CouldnotFindServerField", realServer));
+          String realServer = meta.getServer();
+          data.indexOfServer = data.previousRowMeta.indexOfValue(realServer);
+          if (data.indexOfServer < 0) {
+            throw new HopException(
+                BaseMessages.getString(PKG, "Mail.Exception.CouldnotFindServerField", realServer));
+          }
         }
       }
 
@@ -503,28 +505,32 @@ public class Mail extends BaseTransform<MailMeta, MailData> {
         contactphone = data.previousRowMeta.getString(r, data.indexOfContactPhone);
       }
 
-      String servername = data.previousRowMeta.getString(r, data.indexOfServer);
-      if (Utils.isEmpty(servername)) {
-        throw new HopException("Mail.Error.MailServerEmpty");
-      }
+      String servername = null;
       int port = -1;
-      if (data.indexOfPort > -1) {
-        port = Const.toInt("" + data.previousRowMeta.getInteger(r, data.indexOfPort), -1);
-      }
-
       String authuser = null;
-      if (StringUtils.isEmpty(meta.getConnectionName())) {
-        if (data.indexOfAuthenticationUser > -1) {
-          authuser = data.previousRowMeta.getString(r, data.indexOfAuthenticationUser);
-        }
-      }
-
       String authpass = null;
       if (StringUtils.isEmpty(meta.getConnectionName())) {
-        if (data.indexOfAuthenticationPass > -1) {
-          authpass =
-              Utils.resolvePassword(
-                  variables, data.previousRowMeta.getString(r, data.indexOfAuthenticationPass));
+        servername = data.previousRowMeta.getString(r, data.indexOfServer);
+        if (Utils.isEmpty(servername)) {
+          throw new HopException("Mail.Error.MailServerEmpty");
+        }
+
+        if (data.indexOfPort > -1) {
+          port = Const.toInt("" + data.previousRowMeta.getInteger(r, data.indexOfPort), -1);
+        }
+
+        if (StringUtils.isEmpty(meta.getConnectionName())) {
+          if (data.indexOfAuthenticationUser > -1) {
+            authuser = data.previousRowMeta.getString(r, data.indexOfAuthenticationUser);
+          }
+        }
+
+        if (StringUtils.isEmpty(meta.getConnectionName())) {
+          if (data.indexOfAuthenticationPass > -1) {
+            authpass =
+                Utils.resolvePassword(
+                    variables, data.previousRowMeta.getString(r, data.indexOfAuthenticationPass));
+          }
         }
       }
 
