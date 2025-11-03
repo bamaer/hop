@@ -270,6 +270,12 @@ public class HopGuiFileDelegate {
     //
     hopGui.auditDelegate.writeLastOpenFiles();
 
+    // Save all open terminal tabs
+    //
+    if (hopGui.getTerminalPanel() != null) {
+      hopGui.getTerminalPanel().saveTerminalsOnShutdown();
+    }
+
     return true;
   }
 
