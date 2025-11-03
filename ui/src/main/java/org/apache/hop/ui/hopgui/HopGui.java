@@ -476,6 +476,10 @@ public class HopGui
             auditDelegate.openLastFiles();
           }
 
+          // NOTE: Terminal restoration is handled by the Projects plugin when it activates a
+          // project
+          // If projects aren't enabled, terminals will be restored after this block
+
           // We need to start tracking file history again.
           //
           reOpeningFiles = false;
@@ -633,7 +637,42 @@ public class HopGui
           item.setSelection(true);
         }
       }
+
       perspectivesToolbar.pack();
+
+      // Create bottom toolbar for terminal button (anchored to bottom of screen)
+      ToolBar bottomToolbar =
+          new ToolBar(
+              (Composite) perspectivesToolbar.getParent(), SWT.WRAP | SWT.RIGHT | SWT.VERTICAL);
+      PropsUi.setLook(bottomToolbar, Props.WIDGET_STYLE_TOOLBAR);
+      FormData fdBottomToolbar = new FormData();
+      fdBottomToolbar.left = new FormAttachment(0, 0);
+      fdBottomToolbar.bottom = new FormAttachment(100, 0);
+      bottomToolbar.setLayoutData(fdBottomToolbar);
+
+      // Execution results toggle button (show/hide logging/metrics/problems)
+      ToolItem executionResultsButton = new ToolItem(bottomToolbar, SWT.PUSH);
+      executionResultsButton.setImage(GuiResource.getInstance().getImageShowResults());
+      executionResultsButton.setToolTipText("Toggle Execution Results (Logging/Metrics/Problems)");
+      executionResultsButton.addListener(
+          SWT.Selection,
+          event -> {
+            toggleExecutionResults();
+          });
+
+      // Terminal toggle button
+      ToolItem terminalButton = new ToolItem(bottomToolbar, SWT.PUSH);
+      terminalButton.setImage(GuiResource.getInstance().getImageTerminal());
+      terminalButton.setToolTipText("Toggle Terminal Panel");
+      terminalButton.addListener(
+          SWT.Selection,
+          event -> {
+            if (terminalPanel != null) {
+              terminalPanel.toggleTerminal();
+            }
+          });
+
+      bottomToolbar.pack();
     } catch (Exception e) {
       new ErrorDialog(shell, "Error", "Error loading perspectives", e);
     }
@@ -963,6 +1002,16 @@ public class HopGui
   @GuiKeyboardShortcut(control = true, key = 'c')
   @GuiOsxKeyboardShortcut(command = true, key = 'c')
   public void menuEditCopySelected() {
+    // Check if the focused widget is the terminal with selected text
+    Control focusControl = display.getFocusControl();
+    if (focusControl instanceof org.eclipse.swt.custom.StyledText styledText) {
+      if (styledText.getSelectionCount() > 0) {
+        // Let the terminal's own copy handler deal with it
+        return;
+      }
+    }
+
+    // Otherwise, delegate to the active file type handler (pipeline/workflow)
     getActiveFileTypeHandler().copySelectedToClipboard();
   }
 
@@ -975,6 +1024,15 @@ public class HopGui
   @GuiKeyboardShortcut(control = true, key = 'v')
   @GuiOsxKeyboardShortcut(command = true, key = 'v')
   public void menuEditPaste() {
+    // Check if the focused widget is the terminal - if so, don't interfere
+    Control focusControl = display.getFocusControl();
+    if (focusControl instanceof org.eclipse.swt.custom.StyledText) {
+      // Let the terminal's own paste handler deal with it
+      // Terminal has its own Cmd+V handler that sends text to PTY
+      return;
+    }
+
+    // Otherwise, delegate to the active file type handler (pipeline/workflow)
     getActiveFileTypeHandler().pasteFromClipboard();
   }
 
@@ -1316,12 +1374,22 @@ public class HopGui
     formData.bottom = new FormAttachment(100, 0);
     mainHopGuiComposite.setLayoutData(formData);
 
-    perspectivesToolbar = new ToolBar(mainHopGuiComposite, SWT.WRAP | SWT.RIGHT | SWT.VERTICAL);
+    // Create a composite container for the left toolbar area
+    // This allows us to position perspectives at top and terminal button at bottom
+    Composite toolbarContainer = new Composite(mainHopGuiComposite, SWT.NO_BACKGROUND);
+    toolbarContainer.setLayout(new FormLayout());
+    FormData fdContainer = new FormData();
+    fdContainer.left = new FormAttachment(0, 0);
+    fdContainer.top = new FormAttachment(0, 0);
+    fdContainer.bottom = new FormAttachment(100, 0);
+    toolbarContainer.setLayoutData(fdContainer);
+
+    // Perspectives toolbar (anchored to top)
+    perspectivesToolbar = new ToolBar(toolbarContainer, SWT.WRAP | SWT.RIGHT | SWT.VERTICAL);
     PropsUi.setLook(perspectivesToolbar, Props.WIDGET_STYLE_TOOLBAR);
     FormData fdToolBar = new FormData();
     fdToolBar.left = new FormAttachment(0, 0);
     fdToolBar.top = new FormAttachment(0, 0);
-    fdToolBar.bottom = new FormAttachment(100, 0);
     perspectivesToolbar.setLayoutData(fdToolBar);
   }
 
@@ -1333,12 +1401,15 @@ public class HopGui
    * bottom of the screen, with perspectives rendering in the top part.
    */
   private void addMainPerspectivesComposite() {
+    // Get the toolbar container (parent of perspectivesToolbar)
+    Composite toolbarContainer = perspectivesToolbar.getParent();
+
     // Create terminal panel wrapper (this adds the terminal functionality)
     terminalPanel =
         new org.apache.hop.ui.hopgui.terminal.HopGuiTerminalPanel(mainHopGuiComposite, this);
     FormData fdTerminalPanel = new FormData();
     fdTerminalPanel.top = new FormAttachment(0, 0);
-    fdTerminalPanel.left = new FormAttachment(perspectivesToolbar, 0);
+    fdTerminalPanel.left = new FormAttachment(toolbarContainer, 0);
     fdTerminalPanel.bottom = new FormAttachment(100, 0);
     fdTerminalPanel.right = new FormAttachment(100, 0);
     terminalPanel.setLayoutData(fdTerminalPanel);
@@ -1475,6 +1546,12 @@ public class HopGui
     if (control == null || control.isDisposed()) {
       return;
     }
+
+    // Don't register global keyboard handler on terminal widgets - they handle their own keys
+    if (control.getData("HOP_TERMINAL_WIDGET") == Boolean.TRUE) {
+      return;
+    }
+
     control.removeKeyListener(keyHandler);
     control.addKeyListener(keyHandler);
 
@@ -1645,6 +1722,20 @@ public class HopGui
       return null;
     }
     return (HopGuiWorkflowGraph) typeHandler;
+  }
+
+  /** Toggle execution results panel for the currently active pipeline or workflow */
+  public void toggleExecutionResults() {
+    HopGuiPipelineGraph pipelineGraph = getActivePipelineGraph();
+    if (pipelineGraph != null) {
+      pipelineGraph.showExecutionResults();
+      return;
+    }
+
+    HopGuiWorkflowGraph workflowGraph = getActiveWorkflowGraph();
+    if (workflowGraph != null) {
+      workflowGraph.showExecutionResults();
+    }
   }
 
   public static HopDataOrchestrationPerspective getDataOrchestrationPerspective() {

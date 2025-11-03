@@ -85,6 +85,8 @@ public class ConfigGuiOptionsTab {
   private Button wHideViewport;
   private Button wHideMenuBar;
   private Button wShowTableViewToolbar;
+  private Button wUseAdvancedTerminal;
+  private Button wUseJediTerm;
   private Combo wDefaultLocale;
 
   public ConfigGuiOptionsTab() {
@@ -485,13 +487,59 @@ public class ConfigGuiOptionsTab {
     wShowTableViewToolbar.setLayoutData(fdShowTableViewToolbar);
     wShowTableViewToolbar.addListener(SWT.Selection, e -> saveValues());
 
+    // Use Advanced Terminal (PTY)
+    Label wlUseAdvancedTerminal = new Label(wLookComp, SWT.RIGHT);
+    wlUseAdvancedTerminal.setText("Use Advanced Terminal (PTY, experimental)");
+    wlUseAdvancedTerminal.setToolTipText(
+        "Enable advanced terminal with full shell prompts and colors.\n"
+            + "Disable for simple, reliable command console (recommended).\n"
+            + "Requires Hop GUI restart to take effect.");
+    PropsUi.setLook(wlUseAdvancedTerminal);
+    FormData fdlUseAdvancedTerminal = new FormData();
+    fdlUseAdvancedTerminal.left = new FormAttachment(0, 0);
+    fdlUseAdvancedTerminal.right = new FormAttachment(middle, -margin);
+    fdlUseAdvancedTerminal.top = new FormAttachment(wShowTableViewToolbar, 2 * margin);
+    wlUseAdvancedTerminal.setLayoutData(fdlUseAdvancedTerminal);
+    wUseAdvancedTerminal = new Button(wLookComp, SWT.CHECK);
+    PropsUi.setLook(wUseAdvancedTerminal);
+    wUseAdvancedTerminal.setSelection(props.useAdvancedTerminal());
+    FormData fdUseAdvancedTerminal = new FormData();
+    fdUseAdvancedTerminal.left = new FormAttachment(middle, 0);
+    fdUseAdvancedTerminal.right = new FormAttachment(100, -margin);
+    fdUseAdvancedTerminal.top = new FormAttachment(wlUseAdvancedTerminal, 0, SWT.CENTER);
+    wUseAdvancedTerminal.setLayoutData(fdUseAdvancedTerminal);
+    wUseAdvancedTerminal.addListener(SWT.Selection, e -> saveValues());
+
+    // Use JediTerm Terminal (POC)
+    Label wlUseJediTerm = new Label(wLookComp, SWT.RIGHT);
+    wlUseJediTerm.setText("Use JediTerm Terminal (POC, experimental)");
+    wlUseJediTerm.setToolTipText(
+        "Use JetBrains JediTerm for terminal emulation. "
+            + "Overrides 'Use Advanced Terminal' setting. "
+            + "Requires Hop GUI restart to take effect.");
+    PropsUi.setLook(wlUseJediTerm);
+    FormData fdlUseJediTerm = new FormData();
+    fdlUseJediTerm.left = new FormAttachment(0, 0);
+    fdlUseJediTerm.right = new FormAttachment(middle, -margin);
+    fdlUseJediTerm.top = new FormAttachment(wUseAdvancedTerminal, 2 * margin);
+    wlUseJediTerm.setLayoutData(fdlUseJediTerm);
+    wUseJediTerm = new Button(wLookComp, SWT.CHECK);
+    PropsUi.setLook(wUseJediTerm);
+    wUseJediTerm.setSelection(props.useJediTerm());
+    FormData fdUseJediTerm = new FormData();
+    fdUseJediTerm.left = new FormAttachment(middle, 0);
+    fdUseJediTerm.right = new FormAttachment(100, -margin);
+    fdUseJediTerm.top = new FormAttachment(wlUseJediTerm, 0, SWT.CENTER);
+    wUseJediTerm.setLayoutData(fdUseJediTerm);
+    wUseJediTerm.addListener(SWT.Selection, e -> saveValues());
+
     // Is Dark Mode enabled
     Label wlDarkMode = new Label(wLookComp, SWT.RIGHT);
     wlDarkMode.setText(BaseMessages.getString(PKG, "EnterOptionsDialog.DarkMode.Label"));
     PropsUi.setLook(wlDarkMode);
     FormData fdlDarkMode = new FormData();
     fdlDarkMode.left = new FormAttachment(0, 0);
-    fdlDarkMode.top = new FormAttachment(wShowTableViewToolbar, 2 * margin);
+    fdlDarkMode.top = new FormAttachment(wUseJediTerm, 2 * margin);
     fdlDarkMode.right = new FormAttachment(middle, -margin);
     wlDarkMode.setLayoutData(fdlDarkMode);
     wDarkMode = new Button(wLookComp, SWT.CHECK);
@@ -742,6 +790,8 @@ public class ConfigGuiOptionsTab {
     props.setDarkMode(wDarkMode.getSelection());
     props.setHidingMenuBar(wHideMenuBar.getSelection());
     props.setShowTableViewToolbar(wShowTableViewToolbar.getSelection());
+    props.setUseAdvancedTerminal(wUseAdvancedTerminal.getSelection());
+    props.setUseJediTerm(wUseJediTerm.getSelection());
 
     int defaultLocaleIndex = wDefaultLocale.getSelectionIndex();
     if (defaultLocaleIndex < 0 || defaultLocaleIndex >= GlobalMessages.localeCodes.length) {
