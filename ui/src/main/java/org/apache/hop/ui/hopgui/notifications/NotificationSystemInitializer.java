@@ -24,6 +24,7 @@ import org.apache.hop.core.gui.plugin.GuiPlugin;
 import org.apache.hop.core.logging.ILogChannel;
 import org.apache.hop.core.variables.IVariables;
 import org.apache.hop.ui.hopgui.notifications.providers.TestNotificationProvider;
+import org.eclipse.swt.widgets.Display;
 
 /**
  * Initializes the notification system when Hop GUI starts. This class registers providers and
@@ -47,11 +48,55 @@ public class NotificationSystemInitializer implements IExtensionPoint<Object> {
       TestNotificationProvider testProvider = new TestNotificationProvider();
       service.registerProvider(testProvider);
 
-      // Start the service
+      // Register RSS/Atom feed providers
+      // Apache Hop releases feed
+      org.apache.hop.ui.hopgui.notifications.providers.RssNotificationProvider apacheHopFeed =
+          new org.apache.hop.ui.hopgui.notifications.providers.RssNotificationProvider(
+              "https://github.com/apache/hop/releases.atom",
+              "rss-apache-hop-releases",
+              "Apache Hop Releases");
+      apacheHopFeed.setPollInterval(3600000); // 1 hour
+      service.registerProvider(apacheHopFeed);
+
+      // Knowbi Putki releases feed (or another repository)
+      org.apache.hop.ui.hopgui.notifications.providers.RssNotificationProvider knowbiFeed =
+          new org.apache.hop.ui.hopgui.notifications.providers.RssNotificationProvider(
+              "https://github.com/knowbi/knowbi-putki/releases.atom",
+              "rss-knowbi-putki-releases",
+              "Knowbi Putki Releases");
+      knowbiFeed.setPollInterval(3600000); // 1 hour
+      service.registerProvider(knowbiFeed);
+
+      // Register GitHub Releases API providers (for better filtering)
+      // Apache Hop via GitHub API
+      org.apache.hop.ui.hopgui.notifications.providers.GitHubReleasesNotificationProvider
+          apacheHopApi =
+              new org.apache.hop.ui.hopgui.notifications.providers
+                  .GitHubReleasesNotificationProvider(
+                  "apache", "hop", "github-apache-hop", "Apache Hop (GitHub API)");
+      apacheHopApi.setPollInterval(3600000); // 1 hour
+      apacheHopApi.setIncludePreReleases(false); // Only stable releases
+      service.registerProvider(apacheHopApi);
+
+      // Start the service (this will initialize providers and start polling)
       service.start();
 
-      // Fetch initial notifications
+      // Fetch initial notifications immediately
       service.fetchFromProviders();
+
+      // Initialize badge manager with a delay to ensure toolbar is ready
+      Display.getCurrent()
+          .asyncExec(
+              () -> {
+                Display.getCurrent()
+                    .timerExec(
+                        500,
+                        () -> {
+                          NotificationBadgeManager badgeManager =
+                              NotificationBadgeManager.getInstance();
+                          badgeManager.initialize();
+                        });
+              });
 
       log.logBasic("Notification system initialized");
     } catch (Exception e) {

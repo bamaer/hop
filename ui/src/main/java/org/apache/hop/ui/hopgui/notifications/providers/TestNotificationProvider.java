@@ -51,6 +51,20 @@ public class TestNotificationProvider implements INotificationProvider {
     List<Notification> notifications = new ArrayList<>();
     long now = System.currentTimeMillis();
 
+    // Notification 0: Test notification (just now - always unread for testing)
+    Notification testNotification =
+        new Notification(
+            "test-notification-new",
+            "New Test Notification",
+            "This is a test notification to verify the badge appears. Click 'Mark all read' to remove the badge.",
+            "Test System",
+            "test-provider",
+            "https://hop.apache.org",
+            new Date(now), // Just now
+            NotificationPriority.INFO,
+            NotificationCategory.OTHER);
+    notifications.add(testNotification);
+
     // Notification 1: New Release (5 minutes ago)
     Notification releaseNotification =
         new Notification(

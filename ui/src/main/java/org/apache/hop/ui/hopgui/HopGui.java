@@ -269,12 +269,20 @@ public class HopGui
   private Control statusToolbar;
   private GuiToolbarWidgets statusToolbarWidgets;
 
-  private Composite toolbarComposite;
   private Control notificationToolbar;
   private GuiToolbarWidgets notificationToolbarWidgets;
 
   private Composite perspectivesSidebar;
   private java.util.List<SidebarButton> sidebarButtons = new java.util.ArrayList<>();
+
+  public ToolBar getNotificationToolbar() {
+    return (ToolBar) notificationToolbar;
+  }
+
+  public GuiToolbarWidgets getNotificationToolbarWidgets() {
+    return notificationToolbarWidgets;
+  }
+
   private Composite mainPerspectivesComposite;
   private HopPerspectiveManager perspectiveManager;
   private IHopPerspective activePerspective;

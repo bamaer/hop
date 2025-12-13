@@ -40,4 +40,20 @@ public class NotificationToolbarItem {
       panel.toggle();
     }
   }
+
+  /** Test method to add a new notification - for debugging badge display */
+  public static void addTestNotification() {
+    org.apache.hop.core.notifications.Notification testNotif =
+        new org.apache.hop.core.notifications.Notification(
+            "test-manual-" + System.currentTimeMillis(),
+            "Manual Test Notification",
+            "This notification was manually added to test the badge display.",
+            "Test",
+            "manual-test",
+            null,
+            new java.util.Date(),
+            org.apache.hop.core.notifications.NotificationPriority.INFO,
+            org.apache.hop.core.notifications.NotificationCategory.OTHER);
+    NotificationService.getInstance().addNotification(testNotif);
+  }
 }
