@@ -264,6 +264,14 @@ public class HopGui
   private ToolBar notificationToolbar;
   private GuiToolbarWidgets notificationToolbarWidgets;
 
+  public ToolBar getNotificationToolbar() {
+    return notificationToolbar;
+  }
+
+  public org.apache.hop.ui.core.gui.GuiToolbarWidgets getNotificationToolbarWidgets() {
+    return notificationToolbarWidgets;
+  }
+
   private ToolBar perspectivesToolbar;
   private Composite mainPerspectivesComposite;
   private HopPerspectiveManager perspectiveManager;

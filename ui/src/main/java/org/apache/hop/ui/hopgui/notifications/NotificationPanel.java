@@ -97,7 +97,7 @@ public class NotificationPanel implements INotificationListener {
 
   /** Create the panel UI */
   private void createPanel() {
-    shell = new Shell(parentShell, SWT.NO_TRIM | SWT.ON_TOP);
+    shell = new Shell(parentShell, SWT.BORDER | SWT.ON_TOP | SWT.RESIZE);
     shell.setLayout(new FormLayout());
     PropsUi.setLook(shell);
 
@@ -208,6 +208,7 @@ public class NotificationPanel implements INotificationListener {
       control.dispose();
     }
 
+    // Get notifications sorted by date (descending - newest first)
     List<Notification> notifications = NotificationService.getInstance().getNotifications(false);
 
     if (notifications.isEmpty()) {
@@ -239,28 +240,9 @@ public class NotificationPanel implements INotificationListener {
 
     GuiResource guiResource = GuiResource.getInstance();
 
-    // Set background color based on read state
-    if (!notification.isRead()) {
-      composite.setBackground(guiResource.getColorLightGray());
-    }
-
-    // Set border color based on priority
-    if (notification.getPriority() != null) {
-      switch (notification.getPriority()) {
-        case ERROR:
-          composite.setBackground(guiResource.getColor(255, 240, 240)); // Light red tint
-          break;
-        case WARNING:
-          composite.setBackground(guiResource.getColor(255, 250, 240)); // Light yellow tint
-          break;
-        case INFO:
-        default:
-          if (!notification.isRead()) {
-            composite.setBackground(guiResource.getColorLightGray());
-          }
-          break;
-      }
-    }
+    // Set background color based on read state and priority
+    // Note: We'll update this dynamically when notification is marked as read
+    updateNotificationBackground(composite, notification, guiResource);
 
     FormData fdComposite = new FormData();
     fdComposite.left = new FormAttachment(0, 0);
@@ -275,6 +257,7 @@ public class NotificationPanel implements INotificationListener {
     // Priority indicator (colored bar on the left)
     Composite priorityBar = new Composite(composite, SWT.NONE);
     priorityBar.setLayout(null);
+    priorityBar.setData("type", "priorityBar"); // Mark for later updates
     FormData fdPriorityBar = new FormData();
     fdPriorityBar.left = new FormAttachment(0, 0);
     fdPriorityBar.top = new FormAttachment(0, 0);
@@ -282,22 +265,8 @@ public class NotificationPanel implements INotificationListener {
     fdPriorityBar.width = 4;
     priorityBar.setLayoutData(fdPriorityBar);
 
-    if (notification.getPriority() != null) {
-      switch (notification.getPriority()) {
-        case ERROR:
-          priorityBar.setBackground(guiResource.getColorRed());
-          break;
-        case WARNING:
-          priorityBar.setBackground(guiResource.getColorOrange());
-          break;
-        case INFO:
-        default:
-          priorityBar.setBackground(guiResource.getColorBlue());
-          break;
-      }
-    } else {
-      priorityBar.setBackground(guiResource.getColorGray());
-    }
+    // Set initial priority bar color (will be updated when read state changes)
+    updatePriorityBar(priorityBar, notification, guiResource);
 
     // Category badge
     Label categoryLabel = null;
@@ -321,6 +290,7 @@ public class NotificationPanel implements INotificationListener {
     // Title
     Label titleLabel = new Label(composite, SWT.WRAP);
     titleLabel.setText(notification.getTitle() != null ? notification.getTitle() : "");
+    titleLabel.setData("type", "title"); // Mark for later updates
     PropsUi.setLook(titleLabel);
     if (!notification.isRead()) {
       titleLabel.setFont(guiResource.getFontBold());
@@ -385,21 +355,188 @@ public class NotificationPanel implements INotificationListener {
       sourceLabel.setLayoutData(fdSource);
     }
 
-    // Click handler
+    // Set cursor to pointer to indicate clickability for entire notification area
+    // Store reference to notification ID and guiResource for updates
+    composite.setData("notificationId", notification.getId());
+    composite.setData("guiResource", guiResource);
+
+    // Set cursor for entire composite and all child controls
+    org.eclipse.swt.graphics.Cursor handCursor =
+        composite.getDisplay().getSystemCursor(org.eclipse.swt.SWT.CURSOR_HAND);
+
+    // Set cursor on composite and all child controls
+    composite.setCursor(handCursor);
+    setCursorRecursive(composite, handCursor);
+
+    // Also add mouse enter/exit listeners to ensure cursor shows on hover
     composite.addListener(
-        SWT.MouseDown,
+        SWT.MouseEnter,
         e -> {
+          composite.setCursor(handCursor);
+          setCursorRecursive(composite, handCursor);
+        });
+    composite.addListener(
+        SWT.MouseExit,
+        e -> {
+          composite.setCursor(handCursor);
+          setCursorRecursive(composite, handCursor);
+        });
+
+    // Click handler - attach to composite and all child controls
+    org.eclipse.swt.widgets.Listener clickListener =
+        e -> {
+          // Mark as read first - this updates the notification in the service
           NotificationService.getInstance().markAsRead(notification.getId());
-          if (notification.getLink() != null && !notification.getLink().isEmpty()) {
+
+          // Get fresh notification from service to ensure we have updated state
+          List<Notification> allNotifications =
+              NotificationService.getInstance().getNotifications(false);
+          Notification updatedNotification =
+              allNotifications.stream()
+                  .filter(n -> notification.getId().equals(n.getId()))
+                  .findFirst()
+                  .orElse(notification);
+
+          // Ensure it's marked as read (should already be, but be safe)
+          updatedNotification.setRead(true);
+
+          // Update visual state immediately
+          updateNotificationBackground(composite, updatedNotification, guiResource);
+
+          // Force redraw to ensure visual changes are visible
+          composite.redraw();
+
+          // Open link if available
+          if (updatedNotification.getLink() != null && !updatedNotification.getLink().isEmpty()) {
             try {
-              EnvironmentUtils.getInstance().openUrl(notification.getLink());
+              EnvironmentUtils.getInstance().openUrl(updatedNotification.getLink());
             } catch (Exception ex) {
               // Silently ignore URL opening errors
             }
           }
-        });
+        };
+
+    // Attach click handler to composite
+    composite.addListener(SWT.MouseDown, clickListener);
+
+    // Also attach to all child controls to make entire area clickable
+    attachClickListenerRecursive(composite, clickListener);
 
     return composite;
+  }
+
+  /** Update notification background based on read state and priority */
+  private void updateNotificationBackground(
+      Composite composite, Notification notification, GuiResource guiResource) {
+    if (notification.isRead()) {
+      // Read notifications have default background
+      composite.setBackground(null);
+    } else {
+      // Unread notifications have colored background based on priority
+      if (notification.getPriority() != null) {
+        switch (notification.getPriority()) {
+          case ERROR:
+            composite.setBackground(guiResource.getColor(255, 240, 240)); // Light red tint
+            break;
+          case WARNING:
+            composite.setBackground(guiResource.getColor(255, 250, 240)); // Light yellow tint
+            break;
+          case INFO:
+          default:
+            composite.setBackground(guiResource.getColorLightGray());
+            break;
+        }
+      } else {
+        composite.setBackground(guiResource.getColorLightGray());
+      }
+    }
+
+    // Update priority bar color based on read state
+    Control[] children = composite.getChildren();
+    for (Control child : children) {
+      if (child instanceof Composite) {
+        Object type = child.getData("type");
+        if ("priorityBar".equals(type)) {
+          updatePriorityBar((Composite) child, notification, guiResource);
+        }
+      }
+      if (child instanceof Label) {
+        Object type = child.getData("type");
+        if ("title".equals(type)) {
+          Label titleLabel = (Label) child;
+          if (notification.isRead()) {
+            // Use default font (remove bold)
+            titleLabel.setFont(null);
+          } else {
+            titleLabel.setFont(guiResource.getFontBold());
+          }
+        }
+      }
+    }
+  }
+
+  /** Update priority bar color based on read state */
+  private void updatePriorityBar(
+      Composite priorityBar, Notification notification, GuiResource guiResource) {
+    if (notification.isRead()) {
+      // Read notifications have gray priority bar
+      priorityBar.setBackground(guiResource.getColorGray());
+    } else {
+      // Unread notifications have colored priority bar based on priority
+      if (notification.getPriority() != null) {
+        switch (notification.getPriority()) {
+          case ERROR:
+            priorityBar.setBackground(guiResource.getColorRed());
+            break;
+          case WARNING:
+            priorityBar.setBackground(guiResource.getColorOrange());
+            break;
+          case INFO:
+          default:
+            priorityBar.setBackground(guiResource.getColorBlue());
+            break;
+        }
+      } else {
+        priorityBar.setBackground(guiResource.getColorGray());
+      }
+    }
+  }
+
+  /** Recursively attach click listener to composite and all its children */
+  private void attachClickListenerRecursive(
+      Control control, org.eclipse.swt.widgets.Listener listener) {
+    if (control == null || control.isDisposed()) {
+      return;
+    }
+    // Don't attach to the priority bar itself (it's just a visual indicator)
+    Object type = control.getData("type");
+    if (!"priorityBar".equals(type)) {
+      // Only attach to leaf controls (Labels, etc.) to avoid duplicate events
+      // The composite already has the listener, so we don't need to attach to child composites
+      if (!(control instanceof Composite)) {
+        control.addListener(SWT.MouseDown, listener);
+      }
+    }
+    if (control instanceof Composite) {
+      Composite composite = (Composite) control;
+      for (Control child : composite.getChildren()) {
+        attachClickListenerRecursive(child, listener);
+      }
+    }
+  }
+
+  /** Recursively set cursor on composite and all its children */
+  private void setCursorRecursive(Control control, org.eclipse.swt.graphics.Cursor cursor) {
+    if (control == null || control.isDisposed()) {
+      return;
+    }
+    control.setCursor(cursor);
+    if (control instanceof Composite) {
+      Composite composite = (Composite) control;
+      for (Control child : composite.getChildren()) {
+        setCursorRecursive(child, cursor);
+      }
+    }
   }
 
   /** Format timestamp for display */
@@ -427,8 +564,33 @@ public class NotificationPanel implements INotificationListener {
 
   /** Position the panel below the bell icon */
   private void positionPanel() {
-    // TODO: Position relative to bell icon
-    // For now, position in top-right corner
+    try {
+      // Get the notification toolbar and find the bell icon
+      HopGui hopGui = HopGui.getInstance();
+      if (hopGui != null && hopGui.getNotificationToolbar() != null) {
+        org.eclipse.swt.widgets.ToolBar toolbar = hopGui.getNotificationToolbar();
+        org.eclipse.swt.widgets.ToolItem[] items = toolbar.getItems();
+
+        // Find the bell icon ToolItem
+        for (org.eclipse.swt.widgets.ToolItem item : items) {
+          if (item != null && !item.isDisposed()) {
+            org.eclipse.swt.graphics.Rectangle itemBounds = item.getBounds();
+            org.eclipse.swt.graphics.Point toolbarLocation = toolbar.toDisplay(0, 0);
+
+            // Position panel below and aligned to the right of the bell icon
+            int x = toolbarLocation.x + itemBounds.x + itemBounds.width - shell.getSize().x;
+            int y = toolbarLocation.y + itemBounds.y + itemBounds.height + 2;
+
+            shell.setLocation(x, y);
+            return;
+          }
+        }
+      }
+    } catch (Exception e) {
+      // Fall through to default positioning
+    }
+
+    // Fallback: position in top-right corner
     Point shellSize = parentShell.getSize();
     Point panelSize = shell.getSize();
     shell.setLocation(shellSize.x - panelSize.x - 20, 60);
