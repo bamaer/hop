@@ -102,8 +102,16 @@ public class GitHubReleasesNotificationProvider implements INotificationProvider
       try (CloseableHttpResponse response = client.execute(request)) {
         int statusCode = response.getStatusLine().getStatusCode();
         if (statusCode != 200) {
-          throw new HopException(
-              "GitHub API returned status code " + statusCode + " for " + apiUrl);
+          // Log warning and return empty list instead of throwing exception
+          org.apache.hop.core.logging.LogChannel.UI.logBasic(
+              "GitHub Provider '"
+                  + getName()
+                  + "': API returned status code "
+                  + statusCode
+                  + " for "
+                  + apiUrl
+                  + " - skipping");
+          return notifications; // Return empty list gracefully
         }
 
         HttpEntity entity = response.getEntity();
@@ -125,8 +133,19 @@ public class GitHubReleasesNotificationProvider implements INotificationProvider
               }
 
               String tagName = release.has("tag_name") ? release.get("tag_name").asText() : null;
-              String name = release.has("name") ? release.get("name").asText() : tagName;
-              String body = release.has("body") ? release.get("body").asText() : "";
+              String name = release.has("name") ? release.get("name").asText() : null;
+              // If name is just the tag name or empty, create a better title
+              if (name == null || name.isEmpty() || name.equals(tagName)) {
+                name = "Apache Hop " + (tagName != null ? tagName : "Release");
+              }
+              String body = release.has("body") ? release.get("body").asText() : null;
+              // Clean up body - remove excessive whitespace
+              if (body != null) {
+                body = body.trim();
+                if (body.isEmpty()) {
+                  body = null;
+                }
+              }
               String htmlUrl = release.has("html_url") ? release.get("html_url").asText() : null;
               String publishedAt =
                   release.has("published_at") ? release.get("published_at").asText() : null;
@@ -135,15 +154,22 @@ public class GitHubReleasesNotificationProvider implements INotificationProvider
                 publishedDate = new Date();
               }
 
-              // Create notification ID from release ID
-              String releaseId = release.has("id") ? release.get("id").asText() : null;
-              String notificationId =
-                  "github-release-"
-                      + repositoryOwner
-                      + "-"
-                      + repositoryName
-                      + "-"
-                      + (releaseId != null ? releaseId : tagName);
+              // Create consistent notification ID using tag name (same format as RSS provider)
+              // This ensures deduplication between RSS and GitHub API providers
+              String notificationId;
+              if (tagName != null) {
+                notificationId = "apache-hop-release-" + tagName;
+              } else {
+                // Fallback if no tag name
+                String releaseId = release.has("id") ? release.get("id").asText() : null;
+                notificationId =
+                    "github-release-"
+                        + repositoryOwner
+                        + "-"
+                        + repositoryName
+                        + "-"
+                        + (releaseId != null ? releaseId : "unknown");
+              }
 
               // Determine priority based on pre-release status
               NotificationPriority priority =
@@ -152,13 +178,34 @@ public class GitHubReleasesNotificationProvider implements INotificationProvider
               // Determine category
               NotificationCategory category = NotificationCategory.RELEASE;
 
+              // Prepare message/description
+              String message = null;
+              if (body != null && !body.isEmpty()) {
+                message = truncateBody(body);
+              } else {
+                // If no body, provide a default message
+                message =
+                    "Apache Hop " + (tagName != null ? tagName : "release") + " is now available.";
+              }
+
+              // Debug logging - use BASIC level so it's always visible
+              org.apache.hop.core.logging.LogChannel.UI.logBasic(
+                  "GitHub Provider: Creating notification for "
+                      + tagName
+                      + ", title: '"
+                      + name
+                      + "', message length: "
+                      + (message != null ? message.length() : 0)
+                      + ", message preview: "
+                      + (message != null && message.length() > 0
+                          ? message.substring(0, Math.min(50, message.length()))
+                          : "null"));
+
               Notification notification =
                   new Notification(
                       notificationId,
-                      name != null ? name : "Release " + tagName,
-                      body != null && !body.isEmpty()
-                          ? truncateBody(body)
-                          : "New release: " + tagName,
+                      name,
+                      message,
                       providerName,
                       providerId,
                       htmlUrl,
@@ -176,24 +223,55 @@ public class GitHubReleasesNotificationProvider implements INotificationProvider
         }
       }
     } catch (Exception e) {
-      throw new HopException(
-          "Error fetching GitHub releases from " + repositoryOwner + "/" + repositoryName, e);
+      // Log error but return empty list instead of throwing to allow other providers to continue
+      org.apache.hop.core.logging.LogChannel.UI.logBasic(
+          "GitHub Provider '"
+              + getName()
+              + "': Error fetching releases from "
+              + repositoryOwner
+              + "/"
+              + repositoryName
+              + " - "
+              + e.getMessage()
+              + " - skipping");
+      return notifications; // Return empty list gracefully
     }
 
     return notifications;
   }
 
   private String truncateBody(String body) {
-    if (body == null) {
+    if (body == null || body.isEmpty()) {
       return "";
     }
-    // Remove markdown formatting and truncate
-    String cleaned = body.replaceAll("\\[.*?\\]\\(.*?\\)", ""); // Remove markdown links
-    cleaned = cleaned.replaceAll("#+\\s*", ""); // Remove markdown headers
+
+    // Remove markdown formatting but preserve text content
+    String cleaned = body;
+    // Replace markdown links with just the link text: [text](url) -> text
+    cleaned = cleaned.replaceAll("\\[([^\\]]+)\\]\\([^\\)]+\\)", "$1");
+    // Remove markdown headers but keep the text
+    cleaned = cleaned.replaceAll("#+\\s+", "");
+    // Remove markdown bold/italic but keep text
+    cleaned = cleaned.replaceAll("\\*\\*([^*]+)\\*\\*", "$1"); // **bold**
+    cleaned = cleaned.replaceAll("\\*([^*]+)\\*", "$1"); // *italic*
+    // Remove markdown code blocks but keep content
+    cleaned = cleaned.replaceAll("```[^`]*```", "");
+    cleaned = cleaned.replaceAll("`([^`]+)`", "$1");
+    // Remove excessive whitespace
+    cleaned = cleaned.replaceAll("\\n{3,}", "\n\n"); // Max 2 newlines
+    cleaned = cleaned.replaceAll("[ \\t]+", " "); // Multiple spaces to single
     cleaned = cleaned.trim();
 
-    if (cleaned.length() > 300) {
-      return cleaned.substring(0, 297) + "...";
+    // Truncate to reasonable length (250 chars for UI display)
+    if (cleaned.length() > 250) {
+      // Try to truncate at a sentence boundary
+      int lastPeriod = cleaned.lastIndexOf('.', 250);
+      int lastNewline = cleaned.lastIndexOf('\n', 250);
+      int truncateAt = Math.max(lastPeriod, lastNewline);
+      if (truncateAt > 100) {
+        return cleaned.substring(0, truncateAt + 1) + "...";
+      }
+      return cleaned.substring(0, 247) + "...";
     }
     return cleaned;
   }

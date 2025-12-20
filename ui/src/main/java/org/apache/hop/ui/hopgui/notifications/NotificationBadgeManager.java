@@ -124,7 +124,13 @@ public class NotificationBadgeManager implements INotificationListener {
             // Always check unread count fresh in case it changed
             int currentUnreadCount = NotificationService.getInstance().getUnreadCount();
 
-            if (currentUnreadCount > 0 && bellItem != null && !bellItem.isDisposed()) {
+            // If count is 0, we don't draw anything (badge should be hidden)
+            // The erase=true in redraw() should have cleared the area
+            if (currentUnreadCount <= 0) {
+              return; // Don't draw badge when count is 0
+            }
+
+            if (bellItem != null && !bellItem.isDisposed()) {
               try {
                 org.eclipse.swt.graphics.Rectangle itemBounds = bellItem.getBounds();
 
@@ -160,22 +166,32 @@ public class NotificationBadgeManager implements INotificationListener {
       return;
     }
 
-    // Update unread count
-    unreadCount = NotificationService.getInstance().getUnreadCount();
+    // Update unread count - always get fresh count
+    int newUnreadCount = NotificationService.getInstance().getUnreadCount();
+    unreadCount = newUnreadCount;
 
+    // Ensure paint listener is set up
     if (badgePaintListener == null && bellItem != null && !bellItem.isDisposed()) {
       setupBadgePainting();
     }
 
-    if (toolbar != null && !toolbar.isDisposed()) {
-      // Force redraw of the toolbar to update the badge
-      toolbar.redraw();
-      // Also redraw the bell item area specifically
-      if (bellItem != null && !bellItem.isDisposed()) {
+    if (toolbar != null && !toolbar.isDisposed() && bellItem != null && !bellItem.isDisposed()) {
+      try {
+        // Get the bell item bounds for precise redraw
+        org.eclipse.swt.graphics.Rectangle bounds = bellItem.getBounds();
+
+        // Force redraw of the bell item area specifically
+        // Use erase=true to clear the old badge when count reaches 0
+        toolbar.redraw(bounds.x, bounds.y, bounds.width, bounds.height, true);
+
+        // Also trigger a full toolbar update to ensure everything is in sync
+        toolbar.update();
+      } catch (Exception e) {
+        // If precise redraw fails, fall back to full toolbar redraw
         try {
-          org.eclipse.swt.graphics.Rectangle bounds = bellItem.getBounds();
-          toolbar.redraw(bounds.x, bounds.y, bounds.width, bounds.height, false);
-        } catch (Exception e) {
+          toolbar.redraw();
+          toolbar.update();
+        } catch (Exception e2) {
           // Ignore
         }
       }
@@ -184,24 +200,39 @@ public class NotificationBadgeManager implements INotificationListener {
 
   @Override
   public void notificationsChanged() {
-    Display.getCurrent()
-        .asyncExec(
-            () -> {
+    // Update immediately on the UI thread
+    Display display = Display.getCurrent();
+    if (display == null) {
+      display = Display.getDefault();
+    }
+    display.asyncExec(
+        () -> {
+          try {
+            // Get fresh unread count
+            int currentCount = NotificationService.getInstance().getUnreadCount();
+            unreadCount = currentCount;
+
+            // If we don't have the bell item yet, try to initialize
+            if (bellItem == null || bellItem.isDisposed()) {
+              initializeWithRetry(0);
+            } else {
+              // Update badge immediately
+              updateBadge();
+            }
+          } catch (Exception e) {
+            // Ignore errors but try to reinitialize if needed
+            if (bellItem == null || bellItem.isDisposed()) {
+              initializeWithRetry(0);
+            } else {
+              // Still try to update even if there was an error
               try {
-                unreadCount = NotificationService.getInstance().getUnreadCount();
-                // Debug: ensure we're getting the count
-                if (unreadCount > 0 && bellItem == null) {
-                  // Try to initialize if we haven't found the bell item yet
-                  initializeWithRetry(0);
-                }
                 updateBadge();
-              } catch (Exception e) {
-                // Ignore errors but try to reinitialize
-                if (bellItem == null || bellItem.isDisposed()) {
-                  initializeWithRetry(0);
-                }
+              } catch (Exception e2) {
+                // Ignore
               }
-            });
+            }
+          }
+        });
   }
 
   /** Dispose the badge manager */

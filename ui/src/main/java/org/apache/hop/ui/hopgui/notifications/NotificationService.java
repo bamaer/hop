@@ -33,10 +33,15 @@ import org.apache.hop.core.logging.ILogChannel;
 import org.apache.hop.core.logging.LogChannel;
 import org.apache.hop.core.notifications.INotificationProvider;
 import org.apache.hop.core.notifications.Notification;
+import org.apache.hop.history.AuditManager;
+import org.apache.hop.history.IAuditManager;
+import org.apache.hop.ui.hopgui.HopGui;
 
 /** Service for managing notifications */
 public class NotificationService {
   private static NotificationService instance;
+
+  private static final String AUDIT_TYPE_READ_STATE = "notifications-read-state";
 
   private final ILogChannel log;
   private final Map<String, INotificationProvider> providers;
@@ -44,6 +49,7 @@ public class NotificationService {
   private final List<INotificationListener> listeners;
   private ScheduledExecutorService scheduler;
   private final Map<String, ScheduledFuture<?>> scheduledTasks;
+  private final Map<String, Boolean> persistedReadState; // notificationId -> read state
 
   private NotificationService() {
     this.log = new LogChannel("NotificationService");
@@ -51,6 +57,8 @@ public class NotificationService {
     this.notifications = new CopyOnWriteArrayList<>();
     this.listeners = new CopyOnWriteArrayList<>();
     this.scheduledTasks = new ConcurrentHashMap<>();
+    this.persistedReadState = new ConcurrentHashMap<>();
+    loadPersistedReadState();
   }
 
   public static synchronized NotificationService getInstance() {
@@ -81,6 +89,16 @@ public class NotificationService {
   }
 
   /**
+   * Get a notification provider by ID
+   *
+   * @param providerId The ID of the provider
+   * @return The provider, or null if not found
+   */
+  public INotificationProvider getProvider(String providerId) {
+    return providers.get(providerId);
+  }
+
+  /**
    * Unregister a notification provider
    *
    * @param providerId The ID of the provider to unregister
@@ -105,11 +123,52 @@ public class NotificationService {
    * @return List of notifications sorted by date (descending - newest first)
    */
   public List<Notification> getNotifications(boolean unreadOnly) {
+    return getNotifications(unreadOnly, 0);
+  }
+
+  /**
+   * Get all notifications
+   *
+   * @param unreadOnly If true, only return unread notifications
+   * @param daysToGoBack Number of days to go back (0 = no limit)
+   * @return List of notifications sorted by date (descending - newest first)
+   */
+  public List<Notification> getNotifications(boolean unreadOnly, int daysToGoBack) {
     List<Notification> result;
     if (unreadOnly) {
       result = notifications.stream().filter(n -> !n.isRead()).collect(Collectors.toList());
+      log.logDetailed(
+          "Filtered to unread only: " + result.size() + " out of " + notifications.size());
     } else {
       result = new ArrayList<>(notifications);
+    }
+
+    // Filter by days to go back if specified
+    if (daysToGoBack > 0) {
+      long cutoffTime = System.currentTimeMillis() - (daysToGoBack * 24L * 60L * 60L * 1000L);
+      Date cutoffDate = new Date(cutoffTime);
+      int beforeFilter = result.size();
+      result =
+          result.stream()
+              .filter(
+                  n -> {
+                    Date timestamp = n.getTimestamp();
+                    if (timestamp == null) {
+                      return false; // Exclude notifications without timestamps
+                    }
+                    return timestamp.after(cutoffDate);
+                  })
+              .collect(Collectors.toList());
+      log.logDetailed(
+          "Filtered by daysToGoBack ("
+              + daysToGoBack
+              + " days): "
+              + result.size()
+              + " out of "
+              + beforeFilter
+              + " (cutoff: "
+              + cutoffDate
+              + ")");
     }
 
     // Sort by timestamp descending (newest first)
@@ -142,6 +201,15 @@ public class NotificationService {
   }
 
   /**
+   * Get total count of all notifications (for debugging)
+   *
+   * @return Total number of notifications in the service
+   */
+  public int getTotalCount() {
+    return notifications.size();
+  }
+
+  /**
    * Mark a notification as read
    *
    * @param notificationId The ID of the notification to mark as read
@@ -150,12 +218,20 @@ public class NotificationService {
     notifications.stream()
         .filter(n -> notificationId.equals(n.getId()))
         .forEach(n -> n.setRead(true));
+    // Persist read state
+    persistedReadState.put(notificationId, true);
+    savePersistedReadState();
     notifyListeners();
   }
 
   /** Mark all notifications as read */
   public void markAllAsRead() {
-    notifications.forEach(n -> n.setRead(true));
+    notifications.forEach(
+        n -> {
+          n.setRead(true);
+          persistedReadState.put(n.getId(), true);
+        });
+    savePersistedReadState();
     notifyListeners();
   }
 
@@ -173,6 +249,11 @@ public class NotificationService {
     boolean exists = notifications.stream().anyMatch(n -> notification.getId().equals(n.getId()));
 
     if (!exists) {
+      // Apply persisted read state if available
+      Boolean readState = persistedReadState.get(notification.getId());
+      if (readState != null) {
+        notification.setRead(readState);
+      }
       notifications.add(notification);
       notifyListeners();
       log.logDetailed("Added notification: " + notification.getTitle());
@@ -341,5 +422,50 @@ public class NotificationService {
       }
     }
     listeners.clear();
+  }
+
+  /** Load persisted read state from audit manager */
+  private void loadPersistedReadState() {
+    try {
+      IAuditManager auditManager = AuditManager.getActive();
+      if (auditManager == null) {
+        return; // Audit manager not available yet
+      }
+      // Use global Hop GUI namespace - notifications are installation-wide, not project-specific
+      String namespace = HopGui.DEFAULT_HOP_GUI_NAMESPACE;
+      Map<String, String> readStateMap = auditManager.loadMap(namespace, AUDIT_TYPE_READ_STATE);
+      if (readStateMap != null) {
+        for (Map.Entry<String, String> entry : readStateMap.entrySet()) {
+          String notificationId = entry.getKey();
+          String readStateStr = entry.getValue();
+          boolean isRead = "true".equalsIgnoreCase(readStateStr);
+          persistedReadState.put(notificationId, isRead);
+        }
+        log.logBasic(
+            "Loaded persisted read state for " + persistedReadState.size() + " notification(s)");
+      }
+    } catch (Exception e) {
+      log.logError("Error loading persisted notification read state", e);
+    }
+  }
+
+  /** Save persisted read state to audit manager */
+  private void savePersistedReadState() {
+    try {
+      IAuditManager auditManager = AuditManager.getActive();
+      if (auditManager == null) {
+        return; // Audit manager not available yet
+      }
+      // Use global Hop GUI namespace - notifications are installation-wide, not project-specific
+      String namespace = HopGui.DEFAULT_HOP_GUI_NAMESPACE;
+      Map<String, String> readStateMap = new java.util.HashMap<>();
+      for (Map.Entry<String, Boolean> entry : persistedReadState.entrySet()) {
+        readStateMap.put(entry.getKey(), String.valueOf(entry.getValue()));
+      }
+      auditManager.saveMap(namespace, AUDIT_TYPE_READ_STATE, readStateMap);
+      log.logDetailed("Saved persisted read state for " + readStateMap.size() + " notification(s)");
+    } catch (Exception e) {
+      log.logError("Error saving persisted notification read state", e);
+    }
   }
 }
