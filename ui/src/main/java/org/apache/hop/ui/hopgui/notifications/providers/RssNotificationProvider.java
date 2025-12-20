@@ -17,6 +17,7 @@
 
 package org.apache.hop.ui.hopgui.notifications.providers;
 
+import java.io.BufferedInputStream;
 import java.io.InputStream;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -95,18 +96,90 @@ public class RssNotificationProvider implements INotificationProvider {
           "Accept", "application/rss+xml, application/atom+xml, application/xml, text/xml");
 
       try (CloseableHttpResponse response = client.execute(request)) {
+        // Check HTTP status code
+        int statusCode = response.getStatusLine().getStatusCode();
+        if (statusCode < 200 || statusCode >= 300) {
+          // Log warning and return empty list instead of throwing exception
+          org.apache.hop.core.logging.LogChannel.UI.logBasic(
+              "RSS Provider '"
+                  + getName()
+                  + "': HTTP error "
+                  + statusCode
+                  + " when fetching feed from "
+                  + feedUrl
+                  + " - skipping");
+          return notifications; // Return empty list gracefully
+        }
+
         HttpEntity entity = response.getEntity();
         if (entity == null) {
           return notifications;
         }
 
-        try (InputStream inputStream = entity.getContent()) {
+        // Check content type to ensure it's XML
+        org.apache.http.Header contentTypeHeader = response.getFirstHeader("Content-Type");
+        String contentType =
+            contentTypeHeader != null ? contentTypeHeader.getValue().toLowerCase() : "";
+        if (!contentType.contains("xml")
+            && !contentType.contains("atom")
+            && !contentType.contains("rss")) {
+          // Log warning but try to parse anyway (some feeds don't set proper content type)
+        }
+
+        try (InputStream rawInputStream = entity.getContent();
+            BufferedInputStream inputStream = new BufferedInputStream(rawInputStream, 8192)) {
+          // Read first few bytes to check for BOM or non-XML content
+          inputStream.mark(1024);
+          byte[] buffer = new byte[1024];
+          int bytesRead = inputStream.read(buffer);
+          inputStream.reset();
+
+          if (bytesRead > 0) {
+            String contentStart =
+                new String(
+                    buffer, 0, Math.min(bytesRead, 100), java.nio.charset.StandardCharsets.UTF_8);
+            // Check if it looks like HTML (common error response)
+            if (contentStart.trim().startsWith("<html")
+                || contentStart.trim().startsWith("<!DOCTYPE html")) {
+              org.apache.hop.core.logging.LogChannel.UI.logBasic(
+                  "RSS Provider '"
+                      + getName()
+                      + "': Received HTML instead of XML from "
+                      + feedUrl
+                      + " (possibly an error page) - skipping");
+              return notifications; // Return empty list gracefully
+            }
+            // Check if it starts with XML declaration or valid XML tag
+            String trimmed = contentStart.trim();
+            if (!trimmed.startsWith("<?xml")
+                && !trimmed.startsWith("<feed")
+                && !trimmed.startsWith("<rss")
+                && !trimmed.startsWith("<rdf:RDF")) {
+              org.apache.hop.core.logging.LogChannel.UI.logBasic(
+                  "RSS Provider '"
+                      + getName()
+                      + "': Response from "
+                      + feedUrl
+                      + " does not appear to be valid XML - skipping");
+              return notifications; // Return empty list gracefully
+            }
+          }
+
           DocumentBuilder builder =
               XmlParserFactoryProducer.createSecureDocBuilderFactory().newDocumentBuilder();
           Document document = builder.parse(inputStream);
 
           // Check if it's Atom or RSS
           Element root = document.getDocumentElement();
+          if (root == null) {
+            org.apache.hop.core.logging.LogChannel.UI.logBasic(
+                "RSS Provider '"
+                    + getName()
+                    + "': Empty XML document received from "
+                    + feedUrl
+                    + " - skipping");
+            return notifications; // Return empty list gracefully
+          }
           String rootName = root.getNodeName();
 
           if ("feed".equals(rootName) || rootName.contains("atom")) {
@@ -116,12 +189,29 @@ public class RssNotificationProvider implements INotificationProvider {
             // RSS feed
             notifications.addAll(parseRssFeed(document));
           } else {
-            throw new HopException("Unknown feed format: " + rootName);
+            org.apache.hop.core.logging.LogChannel.UI.logBasic(
+                "RSS Provider '"
+                    + getName()
+                    + "': Unknown feed format: "
+                    + rootName
+                    + " from "
+                    + feedUrl
+                    + " - skipping");
+            return notifications; // Return empty list gracefully
           }
         }
       }
     } catch (Exception e) {
-      throw new HopException("Error fetching RSS feed from " + feedUrl, e);
+      // Log error but return empty list instead of throwing to allow other providers to continue
+      org.apache.hop.core.logging.LogChannel.UI.logBasic(
+          "RSS Provider '"
+              + getName()
+              + "': Error fetching feed from "
+              + feedUrl
+              + " - "
+              + e.getMessage()
+              + " - skipping");
+      return notifications; // Return empty list gracefully
     }
 
     return notifications;
@@ -150,9 +240,33 @@ public class RssNotificationProvider implements INotificationProvider {
           published = new Date();
         }
 
+        // Extract tag name from title (e.g., "2.16.0" from "Release 2.16.0" or just "2.16.0")
+        // Use tag name for consistent ID with GitHub API provider
+        String tagName = title != null ? title.trim() : null;
+        // If title contains "Release", extract the version
+        if (tagName != null && tagName.toLowerCase().contains("release")) {
+          String[] parts = tagName.split("\\s+");
+          for (String part : parts) {
+            if (part.matches("\\d+\\.\\d+(\\.\\d+)?(-.*)?")) {
+              tagName = part;
+              break;
+            }
+          }
+        }
+
+        // Create consistent notification ID using tag name (same format as GitHub API provider)
+        String notificationId;
+        if (tagName != null && tagName.matches("\\d+\\.\\d+(\\.\\d+)?(-.*)?")) {
+          // Use same ID format as GitHub API provider for deduplication
+          notificationId = "apache-hop-release-" + tagName;
+        } else {
+          // Fallback to original ID if we can't extract tag name
+          notificationId = id != null ? id : "atom-" + System.currentTimeMillis() + "-" + i;
+        }
+
         Notification notification =
             new Notification(
-                id != null ? id : "atom-" + System.currentTimeMillis() + "-" + i,
+                notificationId,
                 title != null ? title : "Untitled",
                 summary != null ? summary : "",
                 providerName,
@@ -160,7 +274,12 @@ public class RssNotificationProvider implements INotificationProvider {
                 link,
                 published,
                 NotificationPriority.INFO,
-                NotificationCategory.ANNOUNCEMENT);
+                NotificationCategory.RELEASE);
+
+        // Set version if we extracted tag name
+        if (tagName != null && tagName.matches("\\d+\\.\\d+(\\.\\d+)?(-.*)?")) {
+          notification.setVersion(tagName);
+        }
 
         notifications.add(notification);
       } catch (Exception e) {

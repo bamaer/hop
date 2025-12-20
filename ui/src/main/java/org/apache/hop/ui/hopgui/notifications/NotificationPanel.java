@@ -21,12 +21,12 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 import org.apache.hop.core.notifications.Notification;
-import org.apache.hop.core.notifications.NotificationCategory;
 import org.apache.hop.ui.core.PropsUi;
 import org.apache.hop.ui.core.gui.GuiResource;
 import org.apache.hop.ui.hopgui.HopGui;
 import org.apache.hop.ui.util.EnvironmentUtils;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.custom.CLabel;
 import org.eclipse.swt.custom.ScrolledComposite;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
@@ -75,6 +75,8 @@ public class NotificationPanel implements INotificationListener {
   /** Show the notification panel */
   public void show() {
     if (shell != null && !shell.isDisposed()) {
+      // Panel already exists, refresh notifications and show
+      updateNotifications();
       shell.setVisible(true);
       shell.setFocus();
       return;
@@ -97,7 +99,9 @@ public class NotificationPanel implements INotificationListener {
 
   /** Create the panel UI */
   private void createPanel() {
-    shell = new Shell(parentShell, SWT.BORDER | SWT.ON_TOP | SWT.RESIZE);
+    // Use DIALOG_TRIM instead of ON_TOP to keep it attached to parent
+    // Remove ON_TOP so it doesn't stay on top when switching applications
+    shell = new Shell(parentShell, SWT.DIALOG_TRIM | SWT.RESIZE);
     shell.setLayout(new FormLayout());
     PropsUi.setLook(shell);
 
@@ -120,11 +124,46 @@ public class NotificationPanel implements INotificationListener {
     fdTitle.bottom = new FormAttachment(100, -10);
     title.setLayoutData(fdTitle);
 
+    // Settings button
+    Button settingsButton = new Button(header, SWT.PUSH);
+    settingsButton.setText("Settings");
+    settingsButton.setToolTipText("Open notification settings");
+    PropsUi.setLook(settingsButton);
+    FormData fdSettings = new FormData();
+    fdSettings.right = new FormAttachment(100, -10);
+    fdSettings.top = new FormAttachment(0, 5);
+    fdSettings.bottom = new FormAttachment(100, -5);
+    settingsButton.setLayoutData(fdSettings);
+    settingsButton.addSelectionListener(
+        new SelectionAdapter() {
+          @Override
+          public void widgetSelected(SelectionEvent e) {
+            // Open configuration perspective
+            // User can navigate to Plugins tab and select "Notifications" to configure
+            org.apache.hop.ui.hopgui.perspective.configuration.ConfigurationPerspective
+                configPerspective = HopGui.getConfigurationPerspective();
+            if (configPerspective != null) {
+              HopGui.getInstance().setActivePerspective(configPerspective);
+
+              // Try to switch to Notifications tab if it exists
+              org.eclipse.swt.custom.CTabFolder configTabs = configPerspective.configTabs;
+              if (configTabs != null && !configTabs.isDisposed()) {
+                for (org.eclipse.swt.custom.CTabItem tabItem : configTabs.getItems()) {
+                  if ("Notifications".equals(tabItem.getText())) {
+                    configTabs.setSelection(tabItem);
+                    break;
+                  }
+                }
+              }
+            }
+          }
+        });
+
     Button markAllRead = new Button(header, SWT.PUSH);
     markAllRead.setText("Mark all read");
     PropsUi.setLook(markAllRead);
     FormData fdMarkAll = new FormData();
-    fdMarkAll.right = new FormAttachment(100, -10);
+    fdMarkAll.right = new FormAttachment(settingsButton, -10);
     fdMarkAll.top = new FormAttachment(0, 5);
     fdMarkAll.bottom = new FormAttachment(100, -5);
     markAllRead.setLayoutData(fdMarkAll);
@@ -133,6 +172,8 @@ public class NotificationPanel implements INotificationListener {
           @Override
           public void widgetSelected(SelectionEvent e) {
             NotificationService.getInstance().markAllAsRead();
+            // Force refresh of all visible notifications
+            updateNotifications();
           }
         });
 
@@ -194,7 +235,34 @@ public class NotificationPanel implements INotificationListener {
           }
         });
 
+    // Listen to parent shell resize events to reposition panel
+    if (parentShell != null && !parentShell.isDisposed()) {
+      parentShell.addListener(
+          SWT.Resize,
+          e -> {
+            if (shell != null && !shell.isDisposed() && isVisible) {
+              Display.getCurrent()
+                  .asyncExec(
+                      () -> {
+                        if (shell != null && !shell.isDisposed() && isVisible) {
+                          positionPanel();
+                        }
+                      });
+            }
+          });
+    }
+
     shell.setSize(400, 500);
+
+    // Add listener to shell resize to ensure titles truncate properly
+    shell.addListener(
+        SWT.Resize,
+        e -> {
+          if (contentComposite != null && !contentComposite.isDisposed()) {
+            // Force layout update to ensure titles truncate correctly
+            contentComposite.layout(true, true);
+          }
+        });
   }
 
   /** Update the notifications display */
@@ -208,8 +276,29 @@ public class NotificationPanel implements INotificationListener {
       control.dispose();
     }
 
+    // Get configuration options
+    org.apache.hop.core.config.HopConfig hopConfig =
+        org.apache.hop.core.config.HopConfig.getInstance();
+    boolean showReadNotifications =
+        org.apache.hop.core.config.HopConfig.readOptionString(
+                "notification.showReadNotifications", "true")
+            .equalsIgnoreCase("true");
+    String daysToGoBackStr =
+        org.apache.hop.core.config.HopConfig.readOptionString(
+            "notification.global.daysToGoBack", "30");
+    int daysToGoBack = 0;
+    try {
+      daysToGoBack = Integer.parseInt(daysToGoBackStr);
+    } catch (NumberFormatException e) {
+      daysToGoBack = 30; // Default to 30 days
+    }
+
     // Get notifications sorted by date (descending - newest first)
-    List<Notification> notifications = NotificationService.getInstance().getNotifications(false);
+    List<Notification> notifications =
+        NotificationService.getInstance().getNotifications(!showReadNotifications, daysToGoBack);
+
+    org.apache.hop.core.logging.LogChannel.UI.logBasic(
+        "NotificationPanel: Updating notifications display, count: " + notifications.size());
 
     if (notifications.isEmpty()) {
       Label emptyLabel = new Label(contentComposite, SWT.CENTER | SWT.WRAP);
@@ -222,14 +311,80 @@ public class NotificationPanel implements INotificationListener {
       emptyLabel.setLayoutData(fdEmpty);
     } else {
       Control lastControl = null;
+      int createdCount = 0;
       for (Notification notification : notifications) {
-        Composite notifComposite = createNotificationItem(notification, lastControl);
-        lastControl = notifComposite;
+        try {
+          Composite notifComposite = createNotificationItem(notification, lastControl);
+          lastControl = notifComposite;
+          createdCount++;
+        } catch (Exception e) {
+          // Log error but continue with other notifications
+          org.apache.hop.core.logging.LogChannel.UI.logError(
+              "Error creating notification item: " + notification.getTitle(), e);
+        }
       }
+      org.apache.hop.core.logging.LogChannel.UI.logBasic(
+          "NotificationPanel: Created " + createdCount + " notification items");
     }
 
-    contentComposite.layout(true, true);
-    scrolledComposite.setMinSize(contentComposite.computeSize(SWT.DEFAULT, SWT.DEFAULT));
+    // Force layout of content composite and scrolled composite
+    if (contentComposite != null && !contentComposite.isDisposed()) {
+      // Get the scrolled composite width first to ensure proper sizing
+      int availableWidth = SWT.DEFAULT;
+      if (scrolledComposite != null && !scrolledComposite.isDisposed()) {
+        org.eclipse.swt.graphics.Rectangle scrolledBounds = scrolledComposite.getBounds();
+        if (scrolledBounds.width > 0) {
+          availableWidth = scrolledBounds.width - 20; // Account for margins
+        }
+      }
+
+      // Layout scrolled composite first to get its actual width
+      if (scrolledComposite != null && !scrolledComposite.isDisposed()) {
+        scrolledComposite.layout(true, false);
+        org.eclipse.swt.graphics.Rectangle scrolledBounds = scrolledComposite.getBounds();
+        if (scrolledBounds.width > 0) {
+          availableWidth = scrolledBounds.width - 20; // Account for margins
+        } else {
+          // Fallback: use shell width if scrolled composite not sized yet
+          if (shell != null && !shell.isDisposed()) {
+            availableWidth = shell.getSize().x > 0 ? shell.getSize().x - 40 : 380;
+          } else {
+            availableWidth = 380; // Default width
+          }
+        }
+      }
+
+      // Layout content composite with proper width constraint
+      // This is critical for SWT.WRAP labels to calculate their height
+      contentComposite.layout(true, true);
+
+      // Compute size with width constraint for proper wrapping
+      org.eclipse.swt.graphics.Point contentSize =
+          contentComposite.computeSize(availableWidth, SWT.DEFAULT);
+
+      org.apache.hop.core.logging.LogChannel.UI.logBasic(
+          "NotificationPanel: Content composite size: "
+              + contentSize.x
+              + "x"
+              + contentSize.y
+              + ", children count: "
+              + contentComposite.getChildren().length
+              + ", available width: "
+              + availableWidth);
+
+      if (scrolledComposite != null && !scrolledComposite.isDisposed()) {
+        scrolledComposite.setMinSize(contentSize);
+        scrolledComposite.layout(true, true);
+
+        // Debug: log scrolled composite size
+        org.eclipse.swt.graphics.Rectangle scrolledBounds = scrolledComposite.getBounds();
+        org.apache.hop.core.logging.LogChannel.UI.logBasic(
+            "NotificationPanel: ScrolledComposite size: "
+                + scrolledBounds.width
+                + "x"
+                + scrolledBounds.height);
+      }
+    }
   }
 
   /** Create a notification item UI */
@@ -244,6 +399,7 @@ public class NotificationPanel implements INotificationListener {
     // Note: We'll update this dynamically when notification is marked as read
     updateNotificationBackground(composite, notification, guiResource);
 
+    // Set FormData for positioning in parent
     FormData fdComposite = new FormData();
     fdComposite.left = new FormAttachment(0, 0);
     fdComposite.right = new FormAttachment(100, 0);
@@ -252,6 +408,7 @@ public class NotificationPanel implements INotificationListener {
     } else {
       fdComposite.top = new FormAttachment(0, 5);
     }
+    // Don't set bottom - composite will size to its children
     composite.setLayoutData(fdComposite);
 
     // Priority indicator (colored bar on the left)
@@ -268,119 +425,146 @@ public class NotificationPanel implements INotificationListener {
     // Set initial priority bar color (will be updated when read state changes)
     updatePriorityBar(priorityBar, notification, guiResource);
 
-    // Category badge
-    Label categoryLabel = null;
-    if (notification.getCategory() != null
-        && notification.getCategory() != NotificationCategory.OTHER) {
-      categoryLabel = new Label(composite, SWT.NONE);
-      String categoryText =
-          notification.getCategory().name().substring(0, 1).toUpperCase()
-              + notification.getCategory().name().substring(1).toLowerCase();
-      categoryLabel.setText(categoryText);
-      PropsUi.setLook(categoryLabel);
-      categoryLabel.setBackground(guiResource.getColorGray());
-      categoryLabel.setForeground(guiResource.getColorWhite());
-      FormData fdCategory = new FormData();
-      fdCategory.right = new FormAttachment(100, -10);
-      fdCategory.top = new FormAttachment(0, 8);
-      categoryLabel.setLayoutData(fdCategory);
-      categoryLabel.pack();
-    }
+    // Source color indicator (small colored square) - positioned on the left, after priority bar
+    Composite sourceIndicator = new Composite(composite, SWT.NONE);
+    sourceIndicator.setLayout(null);
+    sourceIndicator.setData("type", "sourceIndicator"); // Mark to exclude from click handling
+    PropsUi.setLook(sourceIndicator);
+    // Get color for this source from configuration
+    org.eclipse.swt.graphics.Color sourceColor = getSourceColor(notification, guiResource);
+    sourceIndicator.setBackground(sourceColor);
+    FormData fdSourceIndicator = new FormData();
+    // Position after priority bar, 8px gap
+    fdSourceIndicator.left = new FormAttachment(priorityBar, 8);
+    fdSourceIndicator.top = new FormAttachment(0, 10);
+    fdSourceIndicator.width = 12; // Fixed width
+    fdSourceIndicator.height = 12; // Fixed height
+    sourceIndicator.setLayoutData(fdSourceIndicator);
 
-    // Title
-    Label titleLabel = new Label(composite, SWT.WRAP);
-    titleLabel.setText(notification.getTitle() != null ? notification.getTitle() : "");
+    // Add a PaintListener to draw a border for better visibility
+    sourceIndicator.addPaintListener(
+        e -> {
+          org.eclipse.swt.graphics.Rectangle bounds = sourceIndicator.getBounds();
+          e.gc.setForeground(guiResource.getColorDarkGray());
+          e.gc.setLineWidth(1);
+          e.gc.drawRectangle(0, 0, bounds.width - 1, bounds.height - 1);
+        });
+
+    // Tooltip with source name and URL (source name shown in tooltip, not as text)
+    String tooltipText = buildSourceTooltip(notification);
+    sourceIndicator.setToolTipText(tooltipText);
+
+    // Title - use CLabel for automatic ellipsis truncation
+    // Title starts after source indicator
+    CLabel titleLabel = new CLabel(composite, SWT.LEFT);
+    String fullTitle = notification.getTitle() != null ? notification.getTitle() : "";
+    titleLabel.setText(fullTitle);
     titleLabel.setData("type", "title"); // Mark for later updates
+    titleLabel.setData("fullTitle", fullTitle); // Store full title for tooltip
     PropsUi.setLook(titleLabel);
     if (!notification.isRead()) {
       titleLabel.setFont(guiResource.getFontBold());
     }
+    // Set tooltip to show full title if truncated
+    titleLabel.setToolTipText(fullTitle);
     FormData fdTitle = new FormData();
-    fdTitle.left = new FormAttachment(priorityBar, 10);
-    if (categoryLabel != null) {
-      fdTitle.right = new FormAttachment(categoryLabel, -5);
-    } else {
-      fdTitle.right = new FormAttachment(100, -10);
-    }
+    // Title starts after source indicator with 8px gap
+    fdTitle.left = new FormAttachment(sourceIndicator, 8);
+    // Title extends to right edge with margin
+    fdTitle.right = new FormAttachment(100, -10);
     fdTitle.top = new FormAttachment(0, 10);
+    // Don't attach bottom - CLabel will size to its preferred height
     titleLabel.setLayoutData(fdTitle);
 
-    // Message
-    Label messageLabel = new Label(composite, SWT.WRAP);
-    String message = notification.getMessage();
-    if (message != null && message.length() > 150) {
-      message = message.substring(0, 147) + "...";
-    }
-    messageLabel.setText(message != null ? message : "");
-    PropsUi.setLook(messageLabel);
-    FormData fdMessage = new FormData();
-    fdMessage.left = new FormAttachment(priorityBar, 10);
-    fdMessage.right = new FormAttachment(100, -10);
-    fdMessage.top = new FormAttachment(titleLabel, 5);
-    messageLabel.setLayoutData(fdMessage);
-
-    // Footer with timestamp and source
-    Composite footer = new Composite(composite, SWT.NONE);
-    footer.setLayout(new FormLayout());
-    PropsUi.setLook(footer);
-    FormData fdFooter = new FormData();
-    fdFooter.left = new FormAttachment(priorityBar, 10);
-    fdFooter.right = new FormAttachment(100, -10);
-    fdFooter.top = new FormAttachment(messageLabel, 8);
-    fdFooter.bottom = new FormAttachment(100, -10);
-    footer.setLayoutData(fdFooter);
-
-    // Timestamp
-    Label timeLabel = new Label(footer, SWT.NONE);
+    // Timestamp between title and body (always visible)
+    Label timeLabel = new Label(composite, SWT.NONE);
     String timeText = formatTimestamp(notification.getTimestamp());
+    if (timeText == null || timeText.isEmpty()) {
+      timeText = "Unknown date";
+    }
     timeLabel.setText(timeText);
     PropsUi.setLook(timeLabel);
     timeLabel.setForeground(guiResource.getColorDarkGray());
     FormData fdTime = new FormData();
-    fdTime.left = new FormAttachment(0, 0);
-    fdTime.top = new FormAttachment(0, 0);
-    fdTime.bottom = new FormAttachment(100, 0);
+    fdTime.left = new FormAttachment(priorityBar, 10);
+    // Timestamp extends to right edge of composite
+    fdTime.right = new FormAttachment(100, -10);
+    fdTime.top = new FormAttachment(titleLabel, 5);
+    // Don't attach bottom - label will size to its preferred height
     timeLabel.setLayoutData(fdTime);
 
-    // Source (if available)
-    if (notification.getSource() != null && !notification.getSource().isEmpty()) {
-      Label sourceLabel = new Label(footer, SWT.NONE);
-      sourceLabel.setText(" • " + notification.getSource());
-      PropsUi.setLook(sourceLabel);
-      sourceLabel.setForeground(guiResource.getColorDarkGray());
-      FormData fdSource = new FormData();
-      fdSource.left = new FormAttachment(timeLabel, 0);
-      fdSource.top = new FormAttachment(0, 0);
-      fdSource.bottom = new FormAttachment(100, 0);
-      sourceLabel.setLayoutData(fdSource);
+    // Message/Description - simplified, truncated to max 3-5 lines
+    Label messageLabel = null;
+    String message = notification.getMessage();
+
+    // Debug logging - use BASIC level so it's always visible
+    org.apache.hop.core.logging.LogChannel.UI.logBasic(
+        "NotificationPanel: Processing notification '"
+            + notification.getTitle()
+            + "', message is "
+            + (message == null
+                ? "null"
+                : (message.isEmpty() ? "empty" : "present (length: " + message.length() + ")")));
+
+    if (message != null && !message.isEmpty()) {
+      // Limit to approximately 3-5 lines (roughly 200-300 characters)
+      // Simple truncation - just show start of message
+      int maxLength = 250;
+      String displayMessage = message;
+      if (displayMessage.length() > maxLength) {
+        displayMessage = displayMessage.substring(0, maxLength).trim() + "...";
+      }
+      messageLabel = new Label(composite, SWT.WRAP);
+      messageLabel.setText(displayMessage);
+      PropsUi.setLook(messageLabel);
+      FormData fdMessage = new FormData();
+      fdMessage.left = new FormAttachment(priorityBar, 10);
+      // Message extends to right edge of composite (sourceIndicator is on left, so don't constrain
+      // by it)
+      fdMessage.right = new FormAttachment(100, -10);
+      fdMessage.top = new FormAttachment(timeLabel, 5);
+      // Don't attach bottom - label will wrap and size to its content
+      messageLabel.setLayoutData(fdMessage);
+
+      // Set default cursor (not clickable)
+      messageLabel.setCursor(
+          composite.getDisplay().getSystemCursor(org.eclipse.swt.SWT.CURSOR_ARROW));
     }
+
+    // Debug logging
+    org.apache.hop.core.logging.LogChannel.UI.logBasic(
+        "NotificationPanel: Created timestamp label for '"
+            + notification.getTitle()
+            + "', timestamp: '"
+            + timeText
+            + "', has message label: "
+            + (messageLabel != null));
+
+    // Force layout of this composite to ensure all children are properly sized
+    composite.layout(true, true);
 
     // Set cursor to pointer to indicate clickability for entire notification area
     // Store reference to notification ID and guiResource for updates
     composite.setData("notificationId", notification.getId());
     composite.setData("guiResource", guiResource);
 
-    // Set cursor for entire composite and all child controls
+    // Set cursor behavior: title and composite are clickable, body and timestamp are not
     org.eclipse.swt.graphics.Cursor handCursor =
         composite.getDisplay().getSystemCursor(org.eclipse.swt.SWT.CURSOR_HAND);
+    org.eclipse.swt.graphics.Cursor defaultCursor =
+        composite.getDisplay().getSystemCursor(org.eclipse.swt.SWT.CURSOR_ARROW);
 
-    // Set cursor on composite and all child controls
+    // Title is clickable - use hand cursor
+    titleLabel.setCursor(handCursor);
+
+    // Body (message) and timestamp are NOT clickable - use default cursor
+    if (messageLabel != null) {
+      messageLabel.setCursor(defaultCursor);
+    }
+    timeLabel.setCursor(defaultCursor);
+
+    // Composite itself is clickable (for clicking outside title but still on notification)
     composite.setCursor(handCursor);
-    setCursorRecursive(composite, handCursor);
-
-    // Also add mouse enter/exit listeners to ensure cursor shows on hover
-    composite.addListener(
-        SWT.MouseEnter,
-        e -> {
-          composite.setCursor(handCursor);
-          setCursorRecursive(composite, handCursor);
-        });
-    composite.addListener(
-        SWT.MouseExit,
-        e -> {
-          composite.setCursor(handCursor);
-          setCursorRecursive(composite, handCursor);
-        });
 
     // Click handler - attach to composite and all child controls
     org.eclipse.swt.widgets.Listener clickListener =
@@ -460,9 +644,18 @@ public class NotificationPanel implements INotificationListener {
           updatePriorityBar((Composite) child, notification, guiResource);
         }
       }
-      if (child instanceof Label) {
-        Object type = child.getData("type");
-        if ("title".equals(type)) {
+      // Check for title label (can be CLabel or Label)
+      Object type = child.getData("type");
+      if ("title".equals(type)) {
+        if (child instanceof CLabel) {
+          CLabel titleLabel = (CLabel) child;
+          if (notification.isRead()) {
+            // Use default font (remove bold)
+            titleLabel.setFont(null);
+          } else {
+            titleLabel.setFont(guiResource.getFontBold());
+          }
+        } else if (child instanceof Label) {
           Label titleLabel = (Label) child;
           if (notification.isRead()) {
             // Use default font (remove bold)
@@ -482,23 +675,9 @@ public class NotificationPanel implements INotificationListener {
       // Read notifications have gray priority bar
       priorityBar.setBackground(guiResource.getColorGray());
     } else {
-      // Unread notifications have colored priority bar based on priority
-      if (notification.getPriority() != null) {
-        switch (notification.getPriority()) {
-          case ERROR:
-            priorityBar.setBackground(guiResource.getColorRed());
-            break;
-          case WARNING:
-            priorityBar.setBackground(guiResource.getColorOrange());
-            break;
-          case INFO:
-          default:
-            priorityBar.setBackground(guiResource.getColorBlue());
-            break;
-        }
-      } else {
-        priorityBar.setBackground(guiResource.getColorGray());
-      }
+      // Unread notifications use the source color from configuration
+      org.eclipse.swt.graphics.Color sourceColor = getSourceColor(notification, guiResource);
+      priorityBar.setBackground(sourceColor);
     }
   }
 
@@ -508,9 +687,9 @@ public class NotificationPanel implements INotificationListener {
     if (control == null || control.isDisposed()) {
       return;
     }
-    // Don't attach to the priority bar itself (it's just a visual indicator)
+    // Don't attach to the priority bar or source indicator (they're just visual indicators)
     Object type = control.getData("type");
-    if (!"priorityBar".equals(type)) {
+    if (!"priorityBar".equals(type) && !"sourceIndicator".equals(type)) {
       // Only attach to leaf controls (Labels, etc.) to avoid duplicate events
       // The composite already has the listener, so we don't need to attach to child composites
       if (!(control instanceof Composite)) {
@@ -539,6 +718,76 @@ public class NotificationPanel implements INotificationListener {
     }
   }
 
+  /**
+   * Get color for a notification source. This will be configurable via ConfigOption later. For now,
+   * uses a simple hash-based color scheme.
+   */
+  private org.eclipse.swt.graphics.Color getSourceColor(
+      Notification notification, GuiResource guiResource) {
+    // Try to get color from notification source configuration
+    String sourceId = notification.getSourceId();
+    if (sourceId != null && !sourceId.isEmpty()) {
+      try {
+        org.apache.hop.ui.hopgui.notifications.config.NotificationConfigPlugin configPlugin =
+            org.apache.hop.ui.hopgui.notifications.config.NotificationConfigPlugin.getInstance();
+        java.util.List<org.apache.hop.ui.hopgui.notifications.config.NotificationSourceConfig>
+            sources = configPlugin.getSources();
+        if (sources != null) {
+          for (org.apache.hop.ui.hopgui.notifications.config.NotificationSourceConfig source :
+              sources) {
+            if (sourceId.equals(source.getId())) {
+              String colorHex = source.getColor();
+              if (colorHex != null && !colorHex.isEmpty()) {
+                try {
+                  // Parse hex color (e.g., "#FF5733" or "FF5733")
+                  String hex = colorHex.startsWith("#") ? colorHex.substring(1) : colorHex;
+                  int colorValue = Integer.parseInt(hex, 16);
+                  int r = (colorValue >> 16) & 0xFF;
+                  int g = (colorValue >> 8) & 0xFF;
+                  int b = colorValue & 0xFF;
+                  return guiResource.getColor(r, g, b);
+                } catch (NumberFormatException e) {
+                  // Invalid hex color, fall through to hash-based color
+                }
+              }
+              break;
+            }
+          }
+        }
+      } catch (Exception e) {
+        // If lookup fails, fall through to hash-based color
+      }
+    }
+
+    // Fallback: hash-based color generation for consistent colors per source
+    String source = notification.getSource();
+    if (source == null || source.isEmpty()) {
+      return guiResource.getColorGray();
+    }
+
+    int hash = source.hashCode();
+    int r = Math.abs(hash % 200) + 50; // 50-250 range
+    int g = Math.abs((hash >> 8) % 200) + 50;
+    int b = Math.abs((hash >> 16) % 200) + 50;
+
+    return guiResource.getColor(r, g, b);
+  }
+
+  /** Build tooltip text for source indicator showing source name and URL */
+  private String buildSourceTooltip(Notification notification) {
+    StringBuilder tooltip = new StringBuilder();
+    if (notification.getSource() != null && !notification.getSource().isEmpty()) {
+      tooltip.append("Source: ").append(notification.getSource());
+    }
+    if (notification.getLink() != null && !notification.getLink().isEmpty()) {
+      if (tooltip.length() > 0) {
+        tooltip.append("\n");
+      }
+      tooltip.append("URL: ").append(notification.getLink());
+    }
+    return tooltip.length() > 0 ? tooltip.toString() : "Unknown source";
+  }
+
   /** Format timestamp for display */
   private String formatTimestamp(Date timestamp) {
     if (timestamp == null) {
@@ -565,20 +814,23 @@ public class NotificationPanel implements INotificationListener {
   /** Position the panel below the bell icon */
   private void positionPanel() {
     try {
-      // Get the notification toolbar and find the bell icon
+      // Get the notification toolbar and find the bell icon by ID
       HopGui hopGui = HopGui.getInstance();
-      if (hopGui != null && hopGui.getNotificationToolbar() != null) {
-        org.eclipse.swt.widgets.ToolBar toolbar = hopGui.getNotificationToolbar();
-        org.eclipse.swt.widgets.ToolItem[] items = toolbar.getItems();
+      if (hopGui != null && hopGui.getNotificationToolbarWidgets() != null) {
+        org.apache.hop.ui.core.gui.GuiToolbarWidgets widgets =
+            hopGui.getNotificationToolbarWidgets();
+        org.eclipse.swt.widgets.ToolItem bellItem =
+            widgets.findToolItem(NotificationToolbarItem.ID_NOTIFICATION_BELL);
 
-        // Find the bell icon ToolItem
-        for (org.eclipse.swt.widgets.ToolItem item : items) {
-          if (item != null && !item.isDisposed()) {
-            org.eclipse.swt.graphics.Rectangle itemBounds = item.getBounds();
+        if (bellItem != null && !bellItem.isDisposed()) {
+          org.eclipse.swt.widgets.ToolBar toolbar = bellItem.getParent();
+          if (toolbar != null && !toolbar.isDisposed()) {
+            org.eclipse.swt.graphics.Rectangle itemBounds = bellItem.getBounds();
             org.eclipse.swt.graphics.Point toolbarLocation = toolbar.toDisplay(0, 0);
+            org.eclipse.swt.graphics.Point panelSize = shell.getSize();
 
             // Position panel below and aligned to the right of the bell icon
-            int x = toolbarLocation.x + itemBounds.x + itemBounds.width - shell.getSize().x;
+            int x = toolbarLocation.x + itemBounds.x + itemBounds.width - panelSize.x;
             int y = toolbarLocation.y + itemBounds.y + itemBounds.height + 2;
 
             shell.setLocation(x, y);
@@ -591,9 +843,11 @@ public class NotificationPanel implements INotificationListener {
     }
 
     // Fallback: position in top-right corner
-    Point shellSize = parentShell.getSize();
-    Point panelSize = shell.getSize();
-    shell.setLocation(shellSize.x - panelSize.x - 20, 60);
+    if (parentShell != null && !parentShell.isDisposed()) {
+      Point shellSize = parentShell.getSize();
+      Point panelSize = shell.getSize();
+      shell.setLocation(shellSize.x - panelSize.x - 20, 60);
+    }
   }
 
   @Override
