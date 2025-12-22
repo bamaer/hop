@@ -1767,12 +1767,6 @@ public class HopGui
     }
   }
 
-  public static HopDataOrchestrationPerspective getDataOrchestrationPerspective() {
-    return HopGui.getInstance()
-        .getPerspectiveManager()
-        .findPerspective(HopDataOrchestrationPerspective.class);
-  }
-
   public static MetadataPerspective getMetadataPerspective() {
     return HopGui.getInstance().getPerspectiveManager().findPerspective(MetadataPerspective.class);
   }
