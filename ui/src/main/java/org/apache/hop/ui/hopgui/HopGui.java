@@ -489,9 +489,7 @@ public class HopGui
             auditDelegate.openLastFiles();
           }
 
-          // NOTE: Terminal restoration is handled by the Projects plugin when it activates a
-          // project
-          // If projects aren't enabled, terminals will be restored after this block
+          // Terminal restoration is handled by the Projects plugin
 
           // We need to start tracking file history again.
           //
@@ -1191,11 +1189,9 @@ public class HopGui
   @GuiKeyboardShortcut(control = true, key = 'c')
   @GuiOsxKeyboardShortcut(command = true, key = 'c')
   public void menuEditCopySelected() {
-    // Check if the focused widget is the terminal with selected text
     Control focusControl = display.getFocusControl();
     if (focusControl instanceof org.eclipse.swt.custom.StyledText styledText) {
       if (styledText.getSelectionCount() > 0) {
-        // Let the terminal's own copy handler deal with it
         return;
       }
     }
@@ -1213,11 +1209,9 @@ public class HopGui
   @GuiKeyboardShortcut(control = true, key = 'v')
   @GuiOsxKeyboardShortcut(command = true, key = 'v')
   public void menuEditPaste() {
-    // Check if the focused widget is the terminal - if so, don't interfere
     Control focusControl = display.getFocusControl();
     if (focusControl instanceof org.eclipse.swt.custom.StyledText) {
-      // Let the terminal's own paste handler deal with it
-      // Terminal has its own Cmd+V handler that sends text to PTY
+      // Terminal handles paste internally
       return;
     }
 
@@ -1403,7 +1397,6 @@ public class HopGui
   @GuiKeyboardShortcut(control = true, key = '`')
   @GuiOsxKeyboardShortcut(control = true, key = '`')
   public void menuViewTerminal() {
-    // Terminal is not available in web mode
     if (EnvironmentUtils.getInstance().isWeb()) {
       return;
     }
@@ -1420,7 +1413,6 @@ public class HopGui
   @GuiKeyboardShortcut(control = true, shift = true, key = '`')
   @GuiOsxKeyboardShortcut(control = true, shift = true, key = '`')
   public void menuViewNewTerminal() {
-    // Terminal is not available in web mode
     if (EnvironmentUtils.getInstance().isWeb()) {
       return;
     }
@@ -1603,7 +1595,6 @@ public class HopGui
     fdPerspectivesContainer.right = new FormAttachment(100, 0);
     perspectivesContainer.setLayoutData(fdPerspectivesContainer);
 
-    // Bottom toolbar for terminal and execution results buttons
     ToolBar bottomToolbar = new ToolBar(perspectivesSidebar, SWT.WRAP | SWT.RIGHT | SWT.VERTICAL);
     PropsUi.setLook(bottomToolbar, Props.WIDGET_STYLE_TOOLBAR);
     FormData fdBottomToolbar = new FormData();
@@ -1628,7 +1619,6 @@ public class HopGui
           toggleExecutionResults();
         });
 
-    // Terminal toggle button (not available in web mode)
     if (!EnvironmentUtils.getInstance().isWeb()) {
       ToolItem terminalButton = new ToolItem(bottomToolbar, SWT.PUSH);
       Image terminalImage =
@@ -1665,13 +1655,11 @@ public class HopGui
    * Add a main composite where the various perspectives can parent on to show stuff... Its area is
    * to just below the main toolbar and to the right of the perspectives toolbar.
    *
-   * <p>Now wraps everything in a HopGuiTerminalPanel which provides the global terminal at the
-   * bottom of the screen, with perspectives rendering in the top part.
+   * <p>Wraps everything in a HopGuiTerminalPanel which provides the terminal panel at the bottom,
+   * with perspectives rendering in the top section.
    */
   private void addMainPerspectivesComposite() {
-    // Terminal panel is not available in web mode (RAP doesn't support StyledText)
     if (EnvironmentUtils.getInstance().isWeb()) {
-      // In web mode, create perspectives composite directly without terminal wrapper
       mainPerspectivesComposite = new Composite(mainHopGuiComposite, SWT.NONE);
       FormData fdPerspectives = new FormData();
       fdPerspectives.top = new FormAttachment(0, 0);
@@ -1681,7 +1669,6 @@ public class HopGui
       mainPerspectivesComposite.setLayoutData(fdPerspectives);
       mainPerspectivesComposite.setLayout(new StackLayout());
     } else {
-      // Create terminal panel wrapper (this adds the terminal functionality)
       terminalPanel =
           new org.apache.hop.ui.hopgui.terminal.HopGuiTerminalPanel(mainHopGuiComposite, this);
       FormData fdTerminalPanel = new FormData();
@@ -1691,8 +1678,6 @@ public class HopGui
       fdTerminalPanel.right = new FormAttachment(100, 0);
       terminalPanel.setLayoutData(fdTerminalPanel);
 
-      // Get the perspectives composite from the terminal panel
-      // This is where perspectives will actually render (inside the terminal panel's top section)
       mainPerspectivesComposite = terminalPanel.getPerspectiveComposite();
       mainPerspectivesComposite.setLayout(new StackLayout());
     }
@@ -1825,7 +1810,6 @@ public class HopGui
       return;
     }
 
-    // Don't register global keyboard handler on terminal widgets - they handle their own keys
     if (control.getData("HOP_TERMINAL_WIDGET") == Boolean.TRUE) {
       return;
     }
