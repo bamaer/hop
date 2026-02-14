@@ -120,10 +120,10 @@ public class NotificationPluginHelper {
       if (!hasNotificationSource(pluginId)) {
         // Create and save new notification source
         createNotificationSource(pluginId, displayName, pollIntervalMinutes, colorHex);
-        log.logBasic(
+        log.logDetailed(
             "Auto-created notification source for plugin '" + pluginId + "' (" + displayName + ")");
       } else {
-        log.logBasic(
+        log.logDetailed(
             "Notification source already exists for plugin '"
                 + pluginId
                 + "', skipping auto-creation");
@@ -131,7 +131,7 @@ public class NotificationPluginHelper {
 
       // Register the provider
       NotificationService.getInstance().registerProvider(provider);
-      log.logBasic(
+      log.logDetailed(
           "Successfully registered notification provider for plugin '"
               + pluginId
               + "' ("

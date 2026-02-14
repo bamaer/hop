@@ -21,9 +21,11 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 import org.apache.hop.core.notifications.Notification;
+import org.apache.hop.i18n.BaseMessages;
 import org.apache.hop.ui.core.PropsUi;
 import org.apache.hop.ui.core.gui.GuiResource;
 import org.apache.hop.ui.hopgui.HopGui;
+import org.apache.hop.ui.hopgui.perspective.configuration.ConfigurationPerspective;
 import org.apache.hop.ui.util.EnvironmentUtils;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.CLabel;
@@ -43,6 +45,7 @@ import org.eclipse.swt.widgets.Shell;
 
 /** Dropdown panel for displaying notifications */
 public class NotificationPanel implements INotificationListener {
+  private static final Class<?> PKG = NotificationPanel.class;
   private static NotificationPanel instance;
 
   private Shell shell;
@@ -115,19 +118,11 @@ public class NotificationPanel implements INotificationListener {
     fdHeader.top = new FormAttachment(0, 0);
     header.setLayoutData(fdHeader);
 
-    Label title = new Label(header, SWT.NONE);
-    title.setText("Notifications");
-    PropsUi.setLook(title);
-    FormData fdTitle = new FormData();
-    fdTitle.left = new FormAttachment(0, 10);
-    fdTitle.top = new FormAttachment(0, 10);
-    fdTitle.bottom = new FormAttachment(100, -10);
-    title.setLayoutData(fdTitle);
-
     // Settings button
     Button settingsButton = new Button(header, SWT.PUSH);
-    settingsButton.setText("Settings");
-    settingsButton.setToolTipText("Open notification settings");
+    settingsButton.setText(BaseMessages.getString(PKG, "NotificationPanel.Settings"));
+    settingsButton.setToolTipText(
+        BaseMessages.getString(PKG, "NotificationPanel.Settings.Tooltip"));
     PropsUi.setLook(settingsButton);
     FormData fdSettings = new FormData();
     fdSettings.right = new FormAttachment(100, -10);
@@ -138,32 +133,47 @@ public class NotificationPanel implements INotificationListener {
         new SelectionAdapter() {
           @Override
           public void widgetSelected(SelectionEvent e) {
-            // Open configuration perspective
-            // User can navigate to Plugins tab and select "Notifications" to configure
             org.apache.hop.ui.hopgui.perspective.configuration.ConfigurationPerspective
                 configPerspective = HopGui.getConfigurationPerspective();
             if (configPerspective != null) {
               HopGui.getInstance().setActivePerspective(configPerspective);
 
-              // Try to switch to Notifications tab if it exists
-              org.eclipse.swt.custom.CTabFolder configTabs = configPerspective.configTabs;
-              if (configTabs != null && !configTabs.isDisposed()) {
-                for (org.eclipse.swt.custom.CTabItem tabItem : configTabs.getItems()) {
-                  if ("Notifications".equals(tabItem.getText())) {
-                    configTabs.setSelection(tabItem);
-                    break;
-                  }
-                }
-              }
+              // Defer tab/tree selection until perspective is fully activated
+              Display.getCurrent()
+                  .asyncExec(
+                      () -> {
+                        ConfigurationPerspective perspective = HopGui.getConfigurationPerspective();
+                        if (perspective != null) {
+                          perspective.showNotificationsTab();
+                        }
+                      });
             }
           }
         });
 
+    Button clearAll = new Button(header, SWT.PUSH);
+    clearAll.setText(BaseMessages.getString(PKG, "NotificationPanel.ClearAll"));
+    clearAll.setToolTipText(BaseMessages.getString(PKG, "NotificationPanel.ClearAll.Tooltip"));
+    PropsUi.setLook(clearAll);
+    FormData fdClearAll = new FormData();
+    fdClearAll.right = new FormAttachment(settingsButton, -10);
+    fdClearAll.top = new FormAttachment(0, 5);
+    fdClearAll.bottom = new FormAttachment(100, -5);
+    clearAll.setLayoutData(fdClearAll);
+    clearAll.addSelectionListener(
+        new SelectionAdapter() {
+          @Override
+          public void widgetSelected(SelectionEvent e) {
+            NotificationService.getInstance().clearAll();
+            updateNotifications();
+          }
+        });
+
     Button markAllRead = new Button(header, SWT.PUSH);
-    markAllRead.setText("Mark all read");
+    markAllRead.setText(BaseMessages.getString(PKG, "NotificationPanel.MarkAllRead"));
     PropsUi.setLook(markAllRead);
     FormData fdMarkAll = new FormData();
-    fdMarkAll.right = new FormAttachment(settingsButton, -10);
+    fdMarkAll.right = new FormAttachment(clearAll, -10);
     fdMarkAll.top = new FormAttachment(0, 5);
     fdMarkAll.bottom = new FormAttachment(100, -5);
     markAllRead.setLayoutData(fdMarkAll);
@@ -172,7 +182,6 @@ public class NotificationPanel implements INotificationListener {
           @Override
           public void widgetSelected(SelectionEvent e) {
             NotificationService.getInstance().markAllAsRead();
-            // Force refresh of all visible notifications
             updateNotifications();
           }
         });
@@ -205,7 +214,7 @@ public class NotificationPanel implements INotificationListener {
     footer.setLayoutData(fdFooter);
 
     Button closeButton = new Button(footer, SWT.PUSH);
-    closeButton.setText("Close");
+    closeButton.setText(BaseMessages.getString(PKG, "NotificationPanel.Close"));
     PropsUi.setLook(closeButton);
     FormData fdClose = new FormData();
     fdClose.right = new FormAttachment(100, -10);
@@ -293,38 +302,50 @@ public class NotificationPanel implements INotificationListener {
       daysToGoBack = 30; // Default to 30 days
     }
 
-    // Get notifications sorted by date (descending - newest first)
+    // Get provider errors and notifications
+    List<org.apache.hop.ui.hopgui.notifications.ProviderErrorInfo> providerErrors =
+        NotificationService.getInstance().getProviderErrors();
     List<Notification> notifications =
         NotificationService.getInstance().getNotifications(!showReadNotifications, daysToGoBack);
 
-    org.apache.hop.core.logging.LogChannel.UI.logBasic(
-        "NotificationPanel: Updating notifications display, count: " + notifications.size());
+    Control lastControl = null;
 
-    if (notifications.isEmpty()) {
+    // Provider error banner
+    if (!providerErrors.isEmpty()) {
+      Composite errorBanner = createProviderErrorBanner(providerErrors, lastControl);
+      lastControl = errorBanner;
+    }
+
+    if (notifications.isEmpty() && lastControl == null) {
       Label emptyLabel = new Label(contentComposite, SWT.CENTER | SWT.WRAP);
-      emptyLabel.setText("No notifications");
+      emptyLabel.setText(BaseMessages.getString(PKG, "NotificationPanel.NoNotifications"));
       PropsUi.setLook(emptyLabel);
       FormData fdEmpty = new FormData();
       fdEmpty.left = new FormAttachment(0, 10);
       fdEmpty.right = new FormAttachment(100, -10);
       fdEmpty.top = new FormAttachment(0, 20);
       emptyLabel.setLayoutData(fdEmpty);
-    } else {
-      Control lastControl = null;
-      int createdCount = 0;
+    } else if (!notifications.isEmpty()) {
       for (Notification notification : notifications) {
         try {
           Composite notifComposite = createNotificationItem(notification, lastControl);
           lastControl = notifComposite;
-          createdCount++;
         } catch (Exception e) {
           // Log error but continue with other notifications
           org.apache.hop.core.logging.LogChannel.UI.logError(
               "Error creating notification item: " + notification.getTitle(), e);
         }
       }
-      org.apache.hop.core.logging.LogChannel.UI.logBasic(
-          "NotificationPanel: Created " + createdCount + " notification items");
+    } else if (lastControl != null && notifications.isEmpty()) {
+      // Errors only, no notifications
+      Label emptyLabel = new Label(contentComposite, SWT.CENTER | SWT.WRAP);
+      emptyLabel.setText(BaseMessages.getString(PKG, "NotificationPanel.NoNotifications"));
+      PropsUi.setLook(emptyLabel);
+      FormData fdEmpty = new FormData();
+      fdEmpty.left = new FormAttachment(0, 10);
+      fdEmpty.right = new FormAttachment(100, -10);
+      fdEmpty.top = new FormAttachment(lastControl, 10);
+      emptyLabel.setLayoutData(fdEmpty);
     }
 
     // Force layout of content composite and scrolled composite
@@ -362,29 +383,72 @@ public class NotificationPanel implements INotificationListener {
       org.eclipse.swt.graphics.Point contentSize =
           contentComposite.computeSize(availableWidth, SWT.DEFAULT);
 
-      org.apache.hop.core.logging.LogChannel.UI.logBasic(
-          "NotificationPanel: Content composite size: "
-              + contentSize.x
-              + "x"
-              + contentSize.y
-              + ", children count: "
-              + contentComposite.getChildren().length
-              + ", available width: "
-              + availableWidth);
-
       if (scrolledComposite != null && !scrolledComposite.isDisposed()) {
         scrolledComposite.setMinSize(contentSize);
         scrolledComposite.layout(true, true);
-
-        // Debug: log scrolled composite size
-        org.eclipse.swt.graphics.Rectangle scrolledBounds = scrolledComposite.getBounds();
-        org.apache.hop.core.logging.LogChannel.UI.logBasic(
-            "NotificationPanel: ScrolledComposite size: "
-                + scrolledBounds.width
-                + "x"
-                + scrolledBounds.height);
       }
     }
+  }
+
+  /** Create the provider error banner with Retry button */
+  private Composite createProviderErrorBanner(
+      List<org.apache.hop.ui.hopgui.notifications.ProviderErrorInfo> errors, Control above) {
+    Composite banner = new Composite(contentComposite, SWT.BORDER);
+    banner.setLayout(new FormLayout());
+    PropsUi.setLook(banner);
+    banner.setBackground(GuiResource.getInstance().getColor(255, 248, 220)); // Light yellow / wheat
+
+    FormData fdBanner = new FormData();
+    fdBanner.left = new FormAttachment(0, 0);
+    fdBanner.right = new FormAttachment(100, 0);
+    fdBanner.top = above != null ? new FormAttachment(above, 10) : new FormAttachment(0, 10);
+    banner.setLayoutData(fdBanner);
+
+    Label headerLabel = new Label(banner, SWT.WRAP);
+    headerLabel.setText(BaseMessages.getString(PKG, "NotificationPanel.ProviderErrors"));
+    headerLabel.setBackground(banner.getBackground());
+    PropsUi.setLook(headerLabel);
+    FormData fdHeader = new FormData();
+    fdHeader.left = new FormAttachment(0, 10);
+    fdHeader.right = new FormAttachment(100, -80);
+    fdHeader.top = new FormAttachment(0, 10);
+    headerLabel.setLayoutData(fdHeader);
+
+    Button retryButton = new Button(banner, SWT.PUSH);
+    retryButton.setText(BaseMessages.getString(PKG, "NotificationPanel.Retry"));
+    retryButton.setToolTipText(BaseMessages.getString(PKG, "NotificationPanel.Retry.Tooltip"));
+    PropsUi.setLook(retryButton);
+    FormData fdRetry = new FormData();
+    fdRetry.right = new FormAttachment(100, -10);
+    fdRetry.top = new FormAttachment(0, 5);
+    retryButton.setLayoutData(fdRetry);
+    retryButton.addSelectionListener(
+        new SelectionAdapter() {
+          @Override
+          public void widgetSelected(SelectionEvent e) {
+            NotificationService.getInstance().retryNow();
+            updateNotifications();
+          }
+        });
+
+    Control lastLine = headerLabel;
+    for (org.apache.hop.ui.hopgui.notifications.ProviderErrorInfo err : errors) {
+      String text =
+          BaseMessages.getString(
+              PKG, "NotificationPanel.ProviderErrorItem", err.getProviderName(), err.getMessage());
+      Label line = new Label(banner, SWT.WRAP);
+      line.setText(text);
+      line.setBackground(banner.getBackground());
+      PropsUi.setLook(line);
+      FormData fdLine = new FormData();
+      fdLine.left = new FormAttachment(0, 10);
+      fdLine.right = new FormAttachment(100, -10);
+      fdLine.top = new FormAttachment(lastLine, 5);
+      line.setLayoutData(fdLine);
+      lastLine = line;
+    }
+
+    return banner;
   }
 
   /** Create a notification item UI */
@@ -497,15 +561,6 @@ public class NotificationPanel implements INotificationListener {
     Label messageLabel = null;
     String message = notification.getMessage();
 
-    // Debug logging - use BASIC level so it's always visible
-    org.apache.hop.core.logging.LogChannel.UI.logBasic(
-        "NotificationPanel: Processing notification '"
-            + notification.getTitle()
-            + "', message is "
-            + (message == null
-                ? "null"
-                : (message.isEmpty() ? "empty" : "present (length: " + message.length() + ")")));
-
     if (message != null && !message.isEmpty()) {
       // Limit to approximately 3-5 lines (roughly 200-300 characters)
       // Simple truncation - just show start of message
@@ -530,15 +585,6 @@ public class NotificationPanel implements INotificationListener {
       messageLabel.setCursor(
           composite.getDisplay().getSystemCursor(org.eclipse.swt.SWT.CURSOR_ARROW));
     }
-
-    // Debug logging
-    org.apache.hop.core.logging.LogChannel.UI.logBasic(
-        "NotificationPanel: Created timestamp label for '"
-            + notification.getTitle()
-            + "', timestamp: '"
-            + timeText
-            + "', has message label: "
-            + (messageLabel != null));
 
     // Force layout of this composite to ensure all children are properly sized
     composite.layout(true, true);
@@ -814,28 +860,41 @@ public class NotificationPanel implements INotificationListener {
   /** Position the panel below the bell icon */
   private void positionPanel() {
     try {
-      // Get the notification toolbar and find the bell icon by ID
       HopGui hopGui = HopGui.getInstance();
       if (hopGui != null && hopGui.getNotificationToolbarWidgets() != null) {
         org.apache.hop.ui.core.gui.GuiToolbarWidgets widgets =
             hopGui.getNotificationToolbarWidgets();
+
+        org.eclipse.swt.graphics.Rectangle itemBounds = null;
+        org.eclipse.swt.graphics.Point bottomLeftDisplay = null;
+
+        // Desktop: bell is a ToolItem, parent is ToolBar
         org.eclipse.swt.widgets.ToolItem bellItem =
             widgets.findToolItem(NotificationToolbarItem.ID_NOTIFICATION_BELL);
-
         if (bellItem != null && !bellItem.isDisposed()) {
           org.eclipse.swt.widgets.ToolBar toolbar = bellItem.getParent();
           if (toolbar != null && !toolbar.isDisposed()) {
-            org.eclipse.swt.graphics.Rectangle itemBounds = bellItem.getBounds();
-            org.eclipse.swt.graphics.Point toolbarLocation = toolbar.toDisplay(0, 0);
-            org.eclipse.swt.graphics.Point panelSize = shell.getSize();
-
-            // Position panel below and aligned to the right of the bell icon
-            int x = toolbarLocation.x + itemBounds.x + itemBounds.width - panelSize.x;
-            int y = toolbarLocation.y + itemBounds.y + itemBounds.height + 2;
-
-            shell.setLocation(x, y);
-            return;
+            itemBounds = bellItem.getBounds();
+            bottomLeftDisplay =
+                toolbar.toDisplay(itemBounds.x, itemBounds.y + itemBounds.height + 2);
           }
+        }
+
+        // Hop Web (RAP): bell is a Control (Composite) in widgetsMap
+        if (bottomLeftDisplay == null) {
+          org.eclipse.swt.widgets.Control bellControl =
+              widgets.getControlForMenu(NotificationToolbarItem.ID_NOTIFICATION_BELL);
+          if (bellControl != null && !bellControl.isDisposed()) {
+            itemBounds = bellControl.getBounds();
+            bottomLeftDisplay = bellControl.toDisplay(0, itemBounds.height + 2);
+          }
+        }
+
+        if (bottomLeftDisplay != null && itemBounds != null) {
+          org.eclipse.swt.graphics.Point panelSize = shell.getSize();
+          int x = bottomLeftDisplay.x + itemBounds.width - panelSize.x;
+          shell.setLocation(x, bottomLeftDisplay.y);
+          return;
         }
       }
     } catch (Exception e) {

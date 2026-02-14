@@ -243,7 +243,32 @@ public class ConfigurationPerspective implements IHopPerspective {
     // Load all setting tabs
     loadSettingCategories();
 
+    // Sync tree selection when tab is changed programmatically (e.g. from NotificationPanel)
+    configTabs.addListener(
+        SWT.Selection,
+        e -> {
+          CTabItem selectedTab = configTabs.getSelection();
+          if (selectedTab != null && !selectedTab.isDisposed()) {
+            syncTreeSelectionToTab(selectedTab.getText());
+          }
+        });
+
     sashForm.setWeights(20, 80);
+  }
+
+  /** Update the category tree selection to match the currently displayed tab. */
+  private void syncTreeSelectionToTab(String tabText) {
+    if (categoryTree == null || categoryTree.isDisposed() || tabText == null) {
+      return;
+    }
+    // Find top-level tree item with matching text
+    for (TreeItem item : categoryTree.getItems()) {
+      if (tabText.equals(item.getText())) {
+        categoryTree.setSelection(item);
+        categoryTree.showSelection();
+        return;
+      }
+    }
   }
 
   private void loadSettingCategories() {
@@ -772,6 +797,18 @@ public class ConfigurationPerspective implements IHopPerspective {
         showCategory(item.getText());
         break;
       }
+    }
+  }
+
+  /**
+   * Show the Notifications tab and select the Notifications item in the tree. Call this when
+   * opening notification settings from the notification panel.
+   */
+  public void showNotificationsTab() {
+    CTabItem notificationsTab = categoryTabs.get("Notifications");
+    if (notificationsTab != null && !notificationsTab.isDisposed()) {
+      showCategory("Notifications", true);
+      syncTreeSelectionToTab("Notifications");
     }
   }
 

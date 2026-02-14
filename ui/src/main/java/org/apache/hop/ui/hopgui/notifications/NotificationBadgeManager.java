@@ -19,6 +19,7 @@ package org.apache.hop.ui.hopgui.notifications;
 
 import org.apache.hop.ui.core.gui.GuiResource;
 import org.apache.hop.ui.hopgui.HopGui;
+import org.apache.hop.ui.util.EnvironmentUtils;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.PaintEvent;
 import org.eclipse.swt.events.PaintListener;
@@ -57,6 +58,11 @@ public class NotificationBadgeManager implements INotificationListener {
         .asyncExec(
             () -> {
               try {
+                // Skip badge on Hop Web (RAP): toolbar is Composite, not ToolBar; no ToolItems
+                if (EnvironmentUtils.getInstance().isWeb()) {
+                  return;
+                }
+
                 HopGui hopGui = HopGui.getInstance();
                 if (hopGui != null && hopGui.getNotificationToolbar() != null) {
                   toolbar = hopGui.getNotificationToolbar();
@@ -71,8 +77,8 @@ public class NotificationBadgeManager implements INotificationListener {
                                 .ID_NOTIFICATION_BELL);
                   }
 
-                  // Fallback: find by iterating items
-                  if (bellItem == null || bellItem.isDisposed()) {
+                  // Fallback: find by iterating items (desktop ToolBar only)
+                  if ((bellItem == null || bellItem.isDisposed()) && toolbar != null) {
                     ToolItem[] items = toolbar.getItems();
                     for (ToolItem item : items) {
                       if (item != null && !item.isDisposed()) {

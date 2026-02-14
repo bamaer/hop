@@ -100,7 +100,7 @@ public class RssNotificationProvider implements INotificationProvider {
         int statusCode = response.getStatusLine().getStatusCode();
         if (statusCode < 200 || statusCode >= 300) {
           // Log warning and return empty list instead of throwing exception
-          org.apache.hop.core.logging.LogChannel.UI.logBasic(
+          org.apache.hop.core.logging.LogChannel.UI.logDetailed(
               "RSS Provider '"
                   + getName()
                   + "': HTTP error "
@@ -141,7 +141,7 @@ public class RssNotificationProvider implements INotificationProvider {
             // Check if it looks like HTML (common error response)
             if (contentStart.trim().startsWith("<html")
                 || contentStart.trim().startsWith("<!DOCTYPE html")) {
-              org.apache.hop.core.logging.LogChannel.UI.logBasic(
+              org.apache.hop.core.logging.LogChannel.UI.logDetailed(
                   "RSS Provider '"
                       + getName()
                       + "': Received HTML instead of XML from "
@@ -155,7 +155,7 @@ public class RssNotificationProvider implements INotificationProvider {
                 && !trimmed.startsWith("<feed")
                 && !trimmed.startsWith("<rss")
                 && !trimmed.startsWith("<rdf:RDF")) {
-              org.apache.hop.core.logging.LogChannel.UI.logBasic(
+              org.apache.hop.core.logging.LogChannel.UI.logDetailed(
                   "RSS Provider '"
                       + getName()
                       + "': Response from "
@@ -172,7 +172,7 @@ public class RssNotificationProvider implements INotificationProvider {
           // Check if it's Atom or RSS
           Element root = document.getDocumentElement();
           if (root == null) {
-            org.apache.hop.core.logging.LogChannel.UI.logBasic(
+            org.apache.hop.core.logging.LogChannel.UI.logDetailed(
                 "RSS Provider '"
                     + getName()
                     + "': Empty XML document received from "
@@ -189,7 +189,7 @@ public class RssNotificationProvider implements INotificationProvider {
             // RSS feed
             notifications.addAll(parseRssFeed(document));
           } else {
-            org.apache.hop.core.logging.LogChannel.UI.logBasic(
+            org.apache.hop.core.logging.LogChannel.UI.logDetailed(
                 "RSS Provider '"
                     + getName()
                     + "': Unknown feed format: "
@@ -203,7 +203,7 @@ public class RssNotificationProvider implements INotificationProvider {
       }
     } catch (Exception e) {
       // Log error but return empty list instead of throwing to allow other providers to continue
-      org.apache.hop.core.logging.LogChannel.UI.logBasic(
+      org.apache.hop.core.logging.LogChannel.UI.logDetailed(
           "RSS Provider '"
               + getName()
               + "': Error fetching feed from "

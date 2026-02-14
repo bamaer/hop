@@ -20,6 +20,7 @@ package org.apache.hop.ui.hopgui.notifications.config;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.util.HashMap;
 import java.util.Map;
+import org.apache.hop.i18n.BaseMessages;
 
 /**
  * Configuration for a single notification source. This represents one provider (GitHub, RSS, or
@@ -29,18 +30,13 @@ import java.util.Map;
 public class NotificationSourceConfig {
 
   public enum SourceType {
-    GITHUB_RELEASES("GitHub Releases"),
-    RSS_FEED("RSS Feed"),
-    CUSTOM_PLUGIN("Custom Plugin");
-
-    private final String displayName;
-
-    SourceType(String displayName) {
-      this.displayName = displayName;
-    }
+    GITHUB_RELEASES,
+    RSS_FEED,
+    CUSTOM_PLUGIN;
 
     public String getDisplayName() {
-      return displayName;
+      return BaseMessages.getString(
+          NotificationSourceConfig.class, "NotificationSourceConfig.SourceType." + name());
     }
   }
 
@@ -158,8 +154,17 @@ public class NotificationSourceConfig {
     setProperty("rss.url", url);
   }
 
+  /**
+   * Get the plugin ID for CUSTOM_PLUGIN sources. Falls back to {@link #getId()} when plugin.id is
+   * not set in properties (e.g. after JSON load from older config or manual edit), so providers can
+   * be wired correctly.
+   */
   public String getPluginId() {
-    return getProperty("plugin.id");
+    String pluginId = getProperty("plugin.id");
+    if (pluginId != null && !pluginId.isEmpty()) {
+      return pluginId;
+    }
+    return getId(); // Fallback: id and pluginId are the same for PluginHelper-created sources
   }
 
   public void setPluginId(String pluginId) {

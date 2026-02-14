@@ -103,7 +103,7 @@ public class GitHubReleasesNotificationProvider implements INotificationProvider
         int statusCode = response.getStatusLine().getStatusCode();
         if (statusCode != 200) {
           // Log warning and return empty list instead of throwing exception
-          org.apache.hop.core.logging.LogChannel.UI.logBasic(
+          org.apache.hop.core.logging.LogChannel.UI.logDetailed(
               "GitHub Provider '"
                   + getName()
                   + "': API returned status code "
@@ -188,19 +188,6 @@ public class GitHubReleasesNotificationProvider implements INotificationProvider
                     "Apache Hop " + (tagName != null ? tagName : "release") + " is now available.";
               }
 
-              // Debug logging - use BASIC level so it's always visible
-              org.apache.hop.core.logging.LogChannel.UI.logBasic(
-                  "GitHub Provider: Creating notification for "
-                      + tagName
-                      + ", title: '"
-                      + name
-                      + "', message length: "
-                      + (message != null ? message.length() : 0)
-                      + ", message preview: "
-                      + (message != null && message.length() > 0
-                          ? message.substring(0, Math.min(50, message.length()))
-                          : "null"));
-
               Notification notification =
                   new Notification(
                       notificationId,
@@ -224,7 +211,7 @@ public class GitHubReleasesNotificationProvider implements INotificationProvider
       }
     } catch (Exception e) {
       // Log error but return empty list instead of throwing to allow other providers to continue
-      org.apache.hop.core.logging.LogChannel.UI.logBasic(
+      org.apache.hop.core.logging.LogChannel.UI.logDetailed(
           "GitHub Provider '"
               + getName()
               + "': Error fetching releases from "

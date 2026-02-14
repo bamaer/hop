@@ -17,10 +17,14 @@
 
 package org.apache.hop.ui.hopgui.notifications;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executors;
@@ -28,20 +32,27 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import org.apache.hop.core.config.HopConfig;
 import org.apache.hop.core.exception.HopException;
 import org.apache.hop.core.logging.ILogChannel;
 import org.apache.hop.core.logging.LogChannel;
 import org.apache.hop.core.notifications.INotificationProvider;
 import org.apache.hop.core.notifications.Notification;
+import org.apache.hop.core.util.JsonUtil;
+import org.apache.hop.core.util.Utils;
 import org.apache.hop.history.AuditManager;
 import org.apache.hop.history.IAuditManager;
 import org.apache.hop.ui.hopgui.HopGui;
+import org.apache.hop.ui.hopgui.notifications.config.NotificationSourceConfig;
 
 /** Service for managing notifications */
 public class NotificationService {
   private static NotificationService instance;
 
   private static final String AUDIT_TYPE_READ_STATE = "notifications-read-state";
+  private static final String AUDIT_TYPE_REMOVED_IDS = "notifications-removed-ids";
+  private static final String CONFIG_KEY_ENABLED = "notification.system.enabled";
+  private static final String CONFIG_KEY_SOURCES = "notification.sources";
 
   private final ILogChannel log;
   private final Map<String, INotificationProvider> providers;
@@ -50,6 +61,8 @@ public class NotificationService {
   private ScheduledExecutorService scheduler;
   private final Map<String, ScheduledFuture<?>> scheduledTasks;
   private final Map<String, Boolean> persistedReadState; // notificationId -> read state
+  private final Set<String> persistedRemovedIds; // notification IDs that have been removed
+  private final Map<String, ProviderErrorInfo> providerErrors; // providerId -> last error
 
   private NotificationService() {
     this.log = new LogChannel("NotificationService");
@@ -58,7 +71,10 @@ public class NotificationService {
     this.listeners = new CopyOnWriteArrayList<>();
     this.scheduledTasks = new ConcurrentHashMap<>();
     this.persistedReadState = new ConcurrentHashMap<>();
+    this.persistedRemovedIds = ConcurrentHashMap.newKeySet();
+    this.providerErrors = new ConcurrentHashMap<>();
     loadPersistedReadState();
+    loadPersistedRemovedState();
   }
 
   public static synchronized NotificationService getInstance() {
@@ -80,7 +96,7 @@ public class NotificationService {
     }
 
     providers.put(provider.getId(), provider);
-    log.logBasic("Registered notification provider: " + provider.getName());
+    log.logDetailed("Registered notification provider: " + provider.getName());
 
     // Schedule polling if scheduler is running
     if (scheduler != null && !scheduler.isShutdown()) {
@@ -104,6 +120,7 @@ public class NotificationService {
    * @param providerId The ID of the provider to unregister
    */
   public void unregisterProvider(String providerId) {
+    providerErrors.remove(providerId);
     INotificationProvider provider = providers.remove(providerId);
     if (provider != null) {
       // Cancel scheduled polling
@@ -111,8 +128,169 @@ public class NotificationService {
       if (task != null) {
         task.cancel(false);
       }
-      provider.shutdown();
-      log.logBasic("Unregistered notification provider: " + provider.getName());
+      try {
+        provider.shutdown();
+      } catch (Exception e) {
+        log.logError("Error shutting down provider " + provider.getName(), e);
+      }
+      log.logDetailed("Unregistered notification provider: " + provider.getName());
+    }
+  }
+
+  /**
+   * Reschedule polling for an existing provider. Use when poll interval or enabled state changed
+   * (e.g. CUSTOM_PLUGIN config update). Cancels the current task and schedules a new one.
+   *
+   * @param provider The provider to reschedule
+   */
+  public void rescheduleProvider(INotificationProvider provider) {
+    if (provider == null || provider.getId() == null) {
+      return;
+    }
+    ScheduledFuture<?> existing = scheduledTasks.remove(provider.getId());
+    if (existing != null) {
+      existing.cancel(false);
+    }
+    if (provider.isEnabled() && scheduler != null && !scheduler.isShutdown()) {
+      scheduleProviderPolling(provider);
+    }
+  }
+
+  /**
+   * Reload providers from HopConfig and sync with current in-memory state. Called when the user
+   * saves notification settings. Ensures provider lifecycle: unregisters removed/disabled sources,
+   * registers new ones, updates CUSTOM_PLUGIN settings. Existing notifications are left as-is.
+   */
+  public void reloadFromConfig() {
+    synchronized (this) {
+      try {
+        boolean enabled =
+            HopConfig.readOptionString(CONFIG_KEY_ENABLED, "true").equalsIgnoreCase("true");
+        if (!enabled) {
+          log.logDetailed("Notification system disabled, stopping service");
+          stop();
+          return;
+        }
+
+        List<NotificationSourceConfig> sources = loadSourcesFromConfig();
+        Set<String> desiredIds = new HashSet<>();
+        for (NotificationSourceConfig s : sources) {
+          if (s.isEnabled()) {
+            desiredIds.add(s.getId());
+            // CUSTOM_PLUGIN providers are registered under pluginId; getPluginId() falls back to id
+            if (s.getType() == NotificationSourceConfig.SourceType.CUSTOM_PLUGIN) {
+              String pluginId = s.getPluginId();
+              if (!Utils.isEmpty(pluginId)) {
+                desiredIds.add(pluginId);
+              }
+            }
+          }
+        }
+
+        // Unregister providers no longer in config or disabled
+        List<String> toRemove = new ArrayList<>();
+        for (String id : providers.keySet()) {
+          if (!desiredIds.contains(id)) {
+            toRemove.add(id);
+          }
+        }
+        for (String id : toRemove) {
+          unregisterProvider(id);
+        }
+
+        // Sync each desired source
+        int registered = 0;
+        int updated = 0;
+        int failed = 0;
+
+        for (NotificationSourceConfig source : sources) {
+          if (!source.isEnabled()) {
+            continue;
+          }
+          String id = source.getId();
+          if (id == null || id.isEmpty()) {
+            continue;
+          }
+
+          if (source.getType() == NotificationSourceConfig.SourceType.CUSTOM_PLUGIN) {
+            String pluginId = source.getPluginId();
+            if (Utils.isEmpty(pluginId)) {
+              pluginId = id;
+            }
+            INotificationProvider existing = getProvider(pluginId);
+            if (existing != null) {
+              long pollIntervalMs = parsePollIntervalMs(source.getPollIntervalMinutes());
+              existing.setPollInterval(pollIntervalMs);
+              existing.setEnabled(true);
+              rescheduleProvider(existing);
+              updated++;
+            } else {
+              log.logDetailed(
+                  "Custom plugin provider '"
+                      + pluginId
+                      + "' not found (plugin may not have loaded yet)");
+            }
+            continue;
+          }
+
+          // GitHub / RSS: create fresh provider from config
+          unregisterProvider(id); // Replace if exists
+          INotificationProvider provider = NotificationProviderFactory.createProvider(source, log);
+          if (provider != null) {
+            try {
+              provider.initialize();
+              registerProvider(provider);
+              registered++;
+            } catch (Exception e) {
+              log.logError("Error initializing provider '" + source.getName() + "'", e);
+              failed++;
+            }
+          } else {
+            failed++;
+          }
+        }
+
+        // Restart scheduler if it was stopped (e.g. after re-enabling)
+        if (scheduler == null || scheduler.isShutdown()) {
+          start();
+        }
+
+        log.logDetailed(
+            "Notification config reloaded: "
+                + registered
+                + " registered, "
+                + updated
+                + " updated, "
+                + failed
+                + " failed");
+      } catch (Exception e) {
+        log.logError("Error reloading notification config", e);
+      }
+    }
+  }
+
+  private List<NotificationSourceConfig> loadSourcesFromConfig() {
+    try {
+      String json = HopConfig.readOptionString(CONFIG_KEY_SOURCES, null);
+      if (!Utils.isEmpty(json)) {
+        ObjectMapper mapper = JsonUtil.jsonMapper();
+        return mapper.readValue(json, new TypeReference<List<NotificationSourceConfig>>() {});
+      }
+    } catch (Exception e) {
+      log.logError("Error loading notification sources from config", e);
+    }
+    return new ArrayList<>();
+  }
+
+  private long parsePollIntervalMs(String value) {
+    if (Utils.isEmpty(value)) {
+      return 3600000;
+    }
+    try {
+      int minutes = Integer.parseInt(value.trim());
+      return minutes > 0 ? minutes * 60L * 1000L : 3600000;
+    } catch (NumberFormatException e) {
+      return 3600000;
     }
   }
 
@@ -224,6 +402,25 @@ public class NotificationService {
     notifyListeners();
   }
 
+  /**
+   * Clear all notifications: mark as read, remove from panel, and persist as read+removed so they
+   * don't reappear on future fetches.
+   */
+  public void clearAll() {
+    // Mark all as read first
+    notifications.forEach(
+        n -> {
+          n.setRead(true);
+          persistedReadState.put(n.getId(), true);
+          persistedRemovedIds.add(n.getId());
+        });
+    notifications.clear();
+    savePersistedReadState();
+    savePersistedRemovedState();
+    notifyListeners();
+    log.logDetailed("Cleared all notifications");
+  }
+
   /** Mark all notifications as read */
   public void markAllAsRead() {
     notifications.forEach(
@@ -242,6 +439,11 @@ public class NotificationService {
    */
   public void addNotification(Notification notification) {
     if (notification == null || notification.getId() == null) {
+      return;
+    }
+
+    // Don't re-add notifications that were removed by the user
+    if (persistedRemovedIds.contains(notification.getId())) {
       return;
     }
 
@@ -317,15 +519,59 @@ public class NotificationService {
         for (Notification notification : fetched) {
           addNotification(notification);
         }
+        clearProviderError(provider.getId());
       } catch (Exception e) {
         log.logError("Error fetching notifications from provider: " + provider.getName(), e);
+        recordProviderError(provider.getId(), provider.getName(), e);
       }
+    }
+  }
+
+  /**
+   * Retry fetching from all providers. Clears error state and triggers a fresh fetch. Call from UI
+   * when user clicks "Retry" on the provider error banner.
+   */
+  public void retryNow() {
+    try {
+      fetchFromProviders();
+      notifyListeners();
+    } catch (Exception e) {
+      log.logError("Error during retry", e);
+      notifyListeners();
+    }
+  }
+
+  /**
+   * Get provider errors for UI display. Returns a copy of the current error list.
+   *
+   * @return List of provider errors (may be empty)
+   */
+  public List<ProviderErrorInfo> getProviderErrors() {
+    return new ArrayList<>(providerErrors.values());
+  }
+
+  private void recordProviderError(String providerId, String providerName, Throwable e) {
+    String message = e.getMessage();
+    if (message == null || message.isEmpty()) {
+      message = e.getClass().getSimpleName();
+    }
+    boolean hadError = providerErrors.containsKey(providerId);
+    providerErrors.put(
+        providerId, new ProviderErrorInfo(providerId, providerName, message, new Date()));
+    if (!hadError) {
+      notifyListeners();
+    }
+  }
+
+  private void clearProviderError(String providerId) {
+    if (providerErrors.remove(providerId) != null) {
+      notifyListeners();
     }
   }
 
   /** Start the notification service */
   public void start() {
-    log.logBasic("Starting notification service");
+    log.logDetailed("Starting notification service");
 
     // Initialize scheduler
     if (scheduler == null || scheduler.isShutdown()) {
@@ -370,9 +616,11 @@ public class NotificationService {
                   for (Notification notification : fetched) {
                     addNotification(notification);
                   }
+                  clearProviderError(provider.getId());
                 }
               } catch (Exception e) {
                 log.logError("Error polling provider: " + provider.getName(), e);
+                recordProviderError(provider.getId(), provider.getName(), e);
               }
             },
             pollInterval, // Initial delay
@@ -390,7 +638,7 @@ public class NotificationService {
 
   /** Stop the notification service */
   public void stop() {
-    log.logBasic("Stopping notification service");
+    log.logDetailed("Stopping notification service");
 
     // Cancel all scheduled tasks
     for (ScheduledFuture<?> task : scheduledTasks.values()) {
@@ -441,7 +689,7 @@ public class NotificationService {
           boolean isRead = "true".equalsIgnoreCase(readStateStr);
           persistedReadState.put(notificationId, isRead);
         }
-        log.logBasic(
+        log.logDetailed(
             "Loaded persisted read state for " + persistedReadState.size() + " notification(s)");
       }
     } catch (Exception e) {
@@ -466,6 +714,47 @@ public class NotificationService {
       log.logDetailed("Saved persisted read state for " + readStateMap.size() + " notification(s)");
     } catch (Exception e) {
       log.logError("Error saving persisted notification read state", e);
+    }
+  }
+
+  /** Load persisted removed IDs from audit manager */
+  private void loadPersistedRemovedState() {
+    try {
+      IAuditManager auditManager = AuditManager.getActive();
+      if (auditManager == null) {
+        return;
+      }
+      String namespace = HopGui.DEFAULT_HOP_GUI_NAMESPACE;
+      Map<String, String> removedMap = auditManager.loadMap(namespace, AUDIT_TYPE_REMOVED_IDS);
+      if (removedMap != null) {
+        persistedRemovedIds.addAll(removedMap.keySet());
+        log.logDetailed(
+            "Loaded persisted removed state for "
+                + persistedRemovedIds.size()
+                + " notification(s)");
+      }
+    } catch (Exception e) {
+      log.logError("Error loading persisted notification removed state", e);
+    }
+  }
+
+  /** Save persisted removed IDs to audit manager */
+  private void savePersistedRemovedState() {
+    try {
+      IAuditManager auditManager = AuditManager.getActive();
+      if (auditManager == null) {
+        return;
+      }
+      String namespace = HopGui.DEFAULT_HOP_GUI_NAMESPACE;
+      Map<String, String> removedMap = new java.util.HashMap<>();
+      for (String id : persistedRemovedIds) {
+        removedMap.put(id, "removed");
+      }
+      auditManager.saveMap(namespace, AUDIT_TYPE_REMOVED_IDS, removedMap);
+      log.logDetailed(
+          "Saved persisted removed state for " + removedMap.size() + " notification(s)");
+    } catch (Exception e) {
+      log.logError("Error saving persisted notification removed state", e);
     }
   }
 }

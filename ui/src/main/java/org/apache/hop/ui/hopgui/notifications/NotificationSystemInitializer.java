@@ -48,13 +48,6 @@ public class NotificationSystemInitializer implements IExtensionPoint<Object> {
     try {
       NotificationService service = NotificationService.getInstance();
 
-      // Register test provider for manual testing
-      // TODO: Remove or disable in production
-      // DISABLED: Uncomment to enable test notifications for debugging
-      // TestNotificationProvider testProvider = new TestNotificationProvider();
-      // testProvider.setEnabled(false); // Disable by default
-      // service.registerProvider(testProvider);
-
       // Register RSS/Atom feed providers
       // DISABLED: Using GitHub API provider instead (better content and filtering)
       // org.apache.hop.ui.hopgui.notifications.providers.RssNotificationProvider apacheHopFeed =
@@ -80,7 +73,7 @@ public class NotificationSystemInitializer implements IExtensionPoint<Object> {
               .equalsIgnoreCase("true");
 
       if (!notificationsEnabled) {
-        log.logBasic("Notification system is disabled in configuration");
+        log.logDetailed("Notification system is disabled in configuration");
         return; // Don't start the service if disabled
       }
 
@@ -89,7 +82,7 @@ public class NotificationSystemInitializer implements IExtensionPoint<Object> {
 
       if (sources.isEmpty()) {
         // If no sources configured, create a default one for backward compatibility
-        log.logBasic("No notification sources configured, creating default Apache Hop source");
+        log.logDetailed("No notification sources configured, creating default Apache Hop source");
         NotificationSourceConfig defaultSource = new NotificationSourceConfig();
         defaultSource.setId("github-apache-hop");
         defaultSource.setName("Apache Hop Releases");
@@ -108,21 +101,31 @@ public class NotificationSystemInitializer implements IExtensionPoint<Object> {
           String sourcesJson = mapper.writeValueAsString(sources);
           HopConfig.getInstance().saveOption("notification.sources", sourcesJson);
           HopConfig.getInstance().saveToFile();
-          log.logBasic("Saved default notification source to configuration");
+          log.logDetailed("Saved default notification source to configuration");
         } catch (Exception e) {
           log.logError("Error saving default notification source to config", e);
         }
       }
 
-      // Register providers for each enabled source
+      // Register providers for each enabled source (shared logic with hot reload)
       for (NotificationSourceConfig source : sources) {
         if (!source.isEnabled()) {
-          log.logBasic("Skipping disabled notification source: " + source.getName());
+          log.logDetailed("Skipping disabled notification source: " + source.getName());
           continue;
         }
 
         try {
-          registerNotificationProvider(service, source, log);
+          if (source.getType() == NotificationSourceConfig.SourceType.CUSTOM_PLUGIN) {
+            updateOrWarnCustomPluginProvider(service, source, log);
+          } else {
+            INotificationProvider provider =
+                NotificationProviderFactory.createProvider(source, log);
+            if (provider != null) {
+              provider.initialize();
+              service.registerProvider(provider);
+              log.logDetailed("Registered provider: " + source.getName());
+            }
+          }
         } catch (Exception e) {
           log.logError(
               "Error registering notification source '" + source.getName() + "': " + e.getMessage(),
@@ -150,7 +153,7 @@ public class NotificationSystemInitializer implements IExtensionPoint<Object> {
                         });
               });
 
-      log.logBasic("Notification system initialized with " + sources.size() + " source(s)");
+      log.logDetailed("Notification system initialized with " + sources.size() + " source(s)");
     } catch (Exception e) {
       log.logError("Error initializing notification system", e);
     }
@@ -176,115 +179,49 @@ public class NotificationSystemInitializer implements IExtensionPoint<Object> {
   }
 
   /**
-   * Register a notification provider based on source configuration
-   *
-   * @param service Notification service
-   * @param source Source configuration
-   * @param log Log channel
+   * Handle CUSTOM_PLUGIN source: update existing provider if found, else log. Custom plugins
+   * register their providers at startup; we only update poll interval.
    */
-  private void registerNotificationProvider(
+  private void updateOrWarnCustomPluginProvider(
       NotificationService service, NotificationSourceConfig source, ILogChannel log) {
-    long pollIntervalMs = 3600000; // Default 1 hour
-    try {
-      String pollIntervalStr = source.getPollIntervalMinutes();
-      if (pollIntervalStr != null && !pollIntervalStr.isEmpty()) {
-        int minutes = Integer.parseInt(pollIntervalStr);
-        if (minutes > 0) {
-          pollIntervalMs = minutes * 60L * 1000L;
-        }
-      }
-    } catch (NumberFormatException e) {
-      log.logError(
-          "Invalid poll interval for source '"
-              + source.getName()
-              + "': "
-              + source.getPollIntervalMinutes()
-              + ", using default");
+    String pluginId = source.getPluginId();
+    if (pluginId == null || pluginId.isEmpty()) {
+      pluginId = source.getId();
     }
+    if (pluginId == null || pluginId.isEmpty()) {
+      log.logError("Custom plugin source '" + source.getName() + "' is missing plugin ID");
+      return;
+    }
+    INotificationProvider existing = service.getProvider(pluginId);
+    if (existing != null) {
+      long pollIntervalMs = parsePollIntervalMs(source.getPollIntervalMinutes());
+      existing.setPollInterval(pollIntervalMs);
+      // Provider already registered; start() will schedule with updated interval
+      log.logDetailed(
+          "Updated poll interval for custom plugin provider '"
+              + pluginId
+              + "' to "
+              + (pollIntervalMs / 60000)
+              + " minutes");
+    } else {
+      log.logDetailed(
+          "Custom plugin provider '"
+              + pluginId
+              + "' not found. "
+              + "Plugins should register their INotificationProvider via "
+              + "NotificationService.getInstance().registerProvider() during initialization.");
+    }
+  }
 
-    switch (source.getType()) {
-      case GITHUB_RELEASES:
-        String owner = source.getGithubOwner();
-        String repo = source.getGithubRepo();
-        if (owner == null || owner.isEmpty() || repo == null || repo.isEmpty()) {
-          log.logError(
-              "GitHub source '"
-                  + source.getName()
-                  + "' is missing owner or repository configuration");
-          return;
-        }
-        org.apache.hop.ui.hopgui.notifications.providers.GitHubReleasesNotificationProvider
-            githubProvider =
-                new org.apache.hop.ui.hopgui.notifications.providers
-                    .GitHubReleasesNotificationProvider(
-                    owner, repo, source.getId(), source.getName());
-        githubProvider.setPollInterval(pollIntervalMs);
-        githubProvider.setIncludePreReleases(source.isGithubIncludePrereleases());
-        service.registerProvider(githubProvider);
-        log.logBasic(
-            "Registered GitHub provider: "
-                + owner
-                + "/"
-                + repo
-                + " (poll interval: "
-                + (pollIntervalMs / 60000)
-                + " minutes, pre-releases: "
-                + source.isGithubIncludePrereleases()
-                + ")");
-        break;
-
-      case RSS_FEED:
-        String url = source.getRssUrl();
-        if (url == null || url.isEmpty()) {
-          log.logError("RSS source '" + source.getName() + "' is missing URL configuration");
-          return;
-        }
-        org.apache.hop.ui.hopgui.notifications.providers.RssNotificationProvider rssProvider =
-            new org.apache.hop.ui.hopgui.notifications.providers.RssNotificationProvider(
-                url, source.getId(), source.getName());
-        rssProvider.setPollInterval(pollIntervalMs);
-        service.registerProvider(rssProvider);
-        log.logBasic(
-            "Registered RSS provider: "
-                + url
-                + " (poll interval: "
-                + (pollIntervalMs / 60000)
-                + " minutes)");
-        break;
-
-      case CUSTOM_PLUGIN:
-        String pluginId = source.getPluginId();
-        if (pluginId == null || pluginId.isEmpty()) {
-          log.logError("Custom plugin source '" + source.getName() + "' is missing plugin ID");
-          return;
-        }
-        // Custom plugins can register notification providers in two ways:
-        // 1. Via extension point (preferred): Plugins can implement an extension point that
-        //    provides INotificationProvider instances. This would be discovered automatically.
-        // 2. Direct registration: Plugins can call
-        // NotificationService.getInstance().registerProvider()
-        //    during their initialization (e.g., in a @GuiPlugin or @ExtensionPoint class).
-        //
-        // For now, we look for a provider that was already registered with the matching ID.
-        // If found, update its poll interval. If not found, log a warning.
-        INotificationProvider existingProvider = service.getProvider(pluginId);
-        if (existingProvider != null) {
-          existingProvider.setPollInterval(pollIntervalMs);
-          log.logBasic(
-              "Updated poll interval for custom plugin provider '"
-                  + pluginId
-                  + "' to "
-                  + (pollIntervalMs / 60000)
-                  + " minutes");
-        } else {
-          log.logBasic(
-              "Custom plugin provider '"
-                  + pluginId
-                  + "' not found. "
-                  + "Plugins should register their INotificationProvider implementation "
-                  + "via NotificationService.getInstance().registerProvider() during initialization.");
-        }
-        break;
+  private long parsePollIntervalMs(String value) {
+    if (value == null || value.trim().isEmpty()) {
+      return 3600000;
+    }
+    try {
+      int minutes = Integer.parseInt(value.trim());
+      return minutes > 0 ? minutes * 60L * 1000L : 3600000;
+    } catch (NumberFormatException e) {
+      return 3600000;
     }
   }
 }

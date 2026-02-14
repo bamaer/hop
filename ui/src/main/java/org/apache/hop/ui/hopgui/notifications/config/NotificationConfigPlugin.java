@@ -32,6 +32,7 @@ import org.apache.hop.core.logging.ILogChannel;
 import org.apache.hop.core.util.JsonUtil;
 import org.apache.hop.core.util.Utils;
 import org.apache.hop.core.variables.IVariables;
+import org.apache.hop.i18n.BaseMessages;
 import org.apache.hop.metadata.api.IHasHopMetadataProvider;
 import org.apache.hop.ui.core.PropsUi;
 import org.apache.hop.ui.core.dialog.ErrorDialog;
@@ -67,6 +68,7 @@ import org.eclipse.swt.widgets.TableItem;
 @GuiPlugin(description = "Notifications") // Required for @GuiTab discovery
 public class NotificationConfigPlugin implements IConfigOptions {
 
+  private static final Class<?> PKG = NotificationConfigPlugin.class;
   private static final String CONFIG_KEY_ENABLE_NOTIFICATIONS = "notification.system.enabled";
   private static final String CONFIG_KEY_SOURCES = "notification.sources";
   private static final String CONFIG_KEY_GLOBAL_POLL_INTERVAL =
@@ -118,7 +120,8 @@ public class NotificationConfigPlugin implements IConfigOptions {
 
       CTabItem wNotificationsTab = new CTabItem(wTabFolder, SWT.NONE);
       wNotificationsTab.setFont(GuiResource.getInstance().getFontDefault());
-      wNotificationsTab.setText("Notifications");
+      wNotificationsTab.setText(
+          BaseMessages.getString(PKG, "NotificationConfigPlugin.Tab.Notifications"));
       wNotificationsTab.setImage(GuiResource.getInstance().getImagePlugin());
 
       ScrolledComposite sNotificationsComp =
@@ -133,18 +136,41 @@ public class NotificationConfigPlugin implements IConfigOptions {
       lookLayout.marginHeight = PropsUi.getFormMargin();
       wNotificationsTabComp.setLayout(lookLayout);
 
-      // Enable notifications checkbox
+      IVariables variables = null;
+      try {
+        variables = HopGui.getInstance().getVariables();
+      } catch (Exception e) {
+        variables = org.apache.hop.core.variables.Variables.getADefaultVariableSpace();
+      }
+
+      // Enable notifications - label left, checkbox right (same layout as Show read notifications)
+      int middle = 50;
+      Label wlEnableNotifications = new Label(wNotificationsTabComp, SWT.RIGHT);
+      wlEnableNotifications.setText(
+          BaseMessages.getString(PKG, "NotificationConfigPlugin.EnableNotificationSystem"));
+      props.setLook(wlEnableNotifications);
+      FormData fdlEnableNotifications = new FormData();
+      fdlEnableNotifications.left = new FormAttachment(0, 0);
+      fdlEnableNotifications.right = new FormAttachment(middle, -margin);
+      fdlEnableNotifications.top = new FormAttachment(0, margin);
+      wlEnableNotifications.setLayoutData(fdlEnableNotifications);
+
       wEnableNotifications = new Button(wNotificationsTabComp, SWT.CHECK);
-      wEnableNotifications.setText("Enable notification system");
       props.setLook(wEnableNotifications);
       FormData fdEnableNotifications = new FormData();
-      fdEnableNotifications.left = new FormAttachment(0, 0);
+      fdEnableNotifications.left = new FormAttachment(middle, 0);
       fdEnableNotifications.top = new FormAttachment(0, margin);
       wEnableNotifications.setLayoutData(fdEnableNotifications);
       boolean enabled =
           HopConfig.readOptionString(CONFIG_KEY_ENABLE_NOTIFICATIONS, "true")
               .equalsIgnoreCase("true");
       wEnableNotifications.setSelection(enabled);
+      wlEnableNotifications.addListener(
+          org.eclipse.swt.SWT.MouseDown,
+          e -> {
+            wEnableNotifications.setSelection(!wEnableNotifications.getSelection());
+            saveEnableState();
+          });
       wEnableNotifications.addSelectionListener(
           new SelectionAdapter() {
             @Override
@@ -153,23 +179,16 @@ public class NotificationConfigPlugin implements IConfigOptions {
             }
           });
 
-      // Global configuration options
-      int middle = 50;
+      // Default poll interval - right below Enable
       Label wlGlobalPollInterval = new Label(wNotificationsTabComp, SWT.RIGHT);
-      wlGlobalPollInterval.setText("Default poll interval (minutes):");
+      wlGlobalPollInterval.setText(
+          BaseMessages.getString(PKG, "NotificationConfigPlugin.DefaultPollInterval"));
       props.setLook(wlGlobalPollInterval);
       FormData fdlGlobalPollInterval = new FormData();
       fdlGlobalPollInterval.left = new FormAttachment(0, 0);
       fdlGlobalPollInterval.right = new FormAttachment(middle, -margin);
       fdlGlobalPollInterval.top = new FormAttachment(wEnableNotifications, margin);
       wlGlobalPollInterval.setLayoutData(fdlGlobalPollInterval);
-
-      IVariables variables = null;
-      try {
-        variables = HopGui.getInstance().getVariables();
-      } catch (Exception e) {
-        variables = org.apache.hop.core.variables.Variables.getADefaultVariableSpace();
-      }
 
       wGlobalPollInterval =
           new org.apache.hop.ui.core.widget.TextVar(
@@ -183,7 +202,8 @@ public class NotificationConfigPlugin implements IConfigOptions {
       wGlobalPollInterval.setText(getGlobalPollIntervalMinutes());
 
       Label wlGlobalDaysToGoBack = new Label(wNotificationsTabComp, SWT.RIGHT);
-      wlGlobalDaysToGoBack.setText("Default days to go back:");
+      wlGlobalDaysToGoBack.setText(
+          BaseMessages.getString(PKG, "NotificationConfigPlugin.DefaultDaysToGoBack"));
       props.setLook(wlGlobalDaysToGoBack);
       FormData fdlGlobalDaysToGoBack = new FormData();
       fdlGlobalDaysToGoBack.left = new FormAttachment(0, 0);
@@ -203,7 +223,8 @@ public class NotificationConfigPlugin implements IConfigOptions {
       wGlobalDaysToGoBack.setText(getGlobalDaysToGoBack());
 
       wShowReadNotifications = new Button(wNotificationsTabComp, SWT.CHECK);
-      wShowReadNotifications.setText("Show read notifications");
+      wShowReadNotifications.setText(
+          BaseMessages.getString(PKG, "NotificationConfigPlugin.ShowReadNotifications"));
       props.setLook(wShowReadNotifications);
       FormData fdShowReadNotifications = new FormData();
       fdShowReadNotifications.left = new FormAttachment(middle, 0);
@@ -218,17 +239,44 @@ public class NotificationConfigPlugin implements IConfigOptions {
         NotificationSourceConfig.SourceType.CUSTOM_PLUGIN.getDisplayName(),
       };
 
+      String yesLabel = BaseMessages.getString(PKG, "NotificationConfigPlugin.Yes");
+      String noLabel = BaseMessages.getString(PKG, "NotificationConfigPlugin.No");
       ColumnInfo[] columns = {
-        new ColumnInfo("Name", ColumnInfo.COLUMN_TYPE_TEXT, false, false),
-        new ColumnInfo("Type", ColumnInfo.COLUMN_TYPE_CCOMBO, sourceTypes, false),
-        new ColumnInfo("Enabled", ColumnInfo.COLUMN_TYPE_CCOMBO, new String[] {"Yes", "No"}, false),
-        new ColumnInfo("Details", ColumnInfo.COLUMN_TYPE_TEXT, false, false),
-        new ColumnInfo("Poll Interval (min)", ColumnInfo.COLUMN_TYPE_TEXT, false, false),
-        new ColumnInfo("Color", ColumnInfo.COLUMN_TYPE_BUTTON, false, false),
+        new ColumnInfo(
+            BaseMessages.getString(PKG, "NotificationConfigPlugin.Table.Name"),
+            ColumnInfo.COLUMN_TYPE_TEXT,
+            false,
+            false),
+        new ColumnInfo(
+            BaseMessages.getString(PKG, "NotificationConfigPlugin.Table.Type"),
+            ColumnInfo.COLUMN_TYPE_CCOMBO,
+            sourceTypes,
+            false),
+        new ColumnInfo(
+            BaseMessages.getString(PKG, "NotificationConfigPlugin.Table.Enabled"),
+            ColumnInfo.COLUMN_TYPE_CCOMBO,
+            new String[] {yesLabel, noLabel},
+            false),
+        new ColumnInfo(
+            BaseMessages.getString(PKG, "NotificationConfigPlugin.Table.Details"),
+            ColumnInfo.COLUMN_TYPE_TEXT,
+            false,
+            false),
+        new ColumnInfo(
+            BaseMessages.getString(PKG, "NotificationConfigPlugin.Table.PollInterval"),
+            ColumnInfo.COLUMN_TYPE_TEXT,
+            false,
+            false),
+        new ColumnInfo(
+            BaseMessages.getString(PKG, "NotificationConfigPlugin.Table.Color"),
+            ColumnInfo.COLUMN_TYPE_BUTTON,
+            false,
+            false),
       };
 
       // Set button text for color column
-      columns[5].setButtonText("Choose Color...");
+      columns[5].setButtonText(
+          BaseMessages.getString(PKG, "NotificationConfigPlugin.Table.ChooseColor"));
       columns[5].setToolTip("Click to choose a color for this notification source");
 
       wSourcesTable =
@@ -273,7 +321,7 @@ public class NotificationConfigPlugin implements IConfigOptions {
 
       // Buttons
       Button wAdd = new Button(wNotificationsTabComp, SWT.PUSH);
-      wAdd.setText("Add...");
+      wAdd.setText(BaseMessages.getString(PKG, "NotificationConfigPlugin.Add"));
       props.setLook(wAdd);
       FormData fdAdd = new FormData();
       fdAdd.left = new FormAttachment(0, 0);
@@ -288,7 +336,7 @@ public class NotificationConfigPlugin implements IConfigOptions {
           });
 
       Button wEdit = new Button(wNotificationsTabComp, SWT.PUSH);
-      wEdit.setText("Edit...");
+      wEdit.setText(BaseMessages.getString(PKG, "NotificationConfigPlugin.Edit"));
       props.setLook(wEdit);
       FormData fdEdit = new FormData();
       fdEdit.left = new FormAttachment(wAdd, margin);
@@ -303,7 +351,7 @@ public class NotificationConfigPlugin implements IConfigOptions {
           });
 
       Button wDelete = new Button(wNotificationsTabComp, SWT.PUSH);
-      wDelete.setText("Delete");
+      wDelete.setText(BaseMessages.getString(PKG, "NotificationConfigPlugin.Delete"));
       props.setLook(wDelete);
       FormData fdDelete = new FormData();
       fdDelete.left = new FormAttachment(wEdit, margin);
@@ -318,7 +366,7 @@ public class NotificationConfigPlugin implements IConfigOptions {
           });
 
       Button wSave = new Button(wNotificationsTabComp, SWT.PUSH);
-      wSave.setText("Save");
+      wSave.setText(BaseMessages.getString(PKG, "NotificationConfigPlugin.Save"));
       props.setLook(wSave);
       BaseTransformDialog.positionBottomButtons(
           wNotificationsTabComp, new Button[] {wSave}, margin, null);
@@ -349,7 +397,10 @@ public class NotificationConfigPlugin implements IConfigOptions {
       wNotificationsTab.setControl(sNotificationsComp);
     } catch (Exception e) {
       new org.apache.hop.ui.core.dialog.ErrorDialog(
-          wTabFolder.getShell(), "Error", "Error creating notifications configuration tab", e);
+          wTabFolder.getShell(),
+          BaseMessages.getString(PKG, "NotificationConfigPlugin.Error"),
+          BaseMessages.getString(PKG, "NotificationConfigPlugin.ErrorCreatingTab"),
+          e);
     }
   }
 
@@ -391,13 +442,15 @@ public class NotificationConfigPlugin implements IConfigOptions {
     if (sources == null) {
       loadSources();
     }
+    String yesLabel = BaseMessages.getString(PKG, "NotificationConfigPlugin.Yes");
+    String noLabel = BaseMessages.getString(PKG, "NotificationConfigPlugin.No");
     wSourcesTable.table.removeAll();
     for (NotificationSourceConfig source : sources) {
       TableItem item = new TableItem(wSourcesTable.table, SWT.NONE);
       int col = 1;
       item.setText(col++, Const.NVL(source.getName(), ""));
       item.setText(col++, Const.NVL(source.getType().getDisplayName(), ""));
-      item.setText(col++, source.isEnabled() ? "Yes" : "No");
+      item.setText(col++, source.isEnabled() ? yesLabel : noLabel);
       item.setText(col++, Const.NVL(source.getDetailsDisplay(), ""));
       String pollInterval = source.getPollIntervalMinutes();
       if (Utils.isEmpty(pollInterval)) {
@@ -468,6 +521,7 @@ public class NotificationConfigPlugin implements IConfigOptions {
       String sourcesJson = mapper.writeValueAsString(sources);
       HopConfig.getInstance().saveOption(CONFIG_KEY_SOURCES, sourcesJson);
       HopConfig.getInstance().saveToFile();
+      notifyConfigChanged();
     } catch (Exception e) {
       new ErrorDialog(
           wSourcesTable.getShell(), "Error", "Error saving notification sources configuration", e);
@@ -480,9 +534,19 @@ public class NotificationConfigPlugin implements IConfigOptions {
             CONFIG_KEY_ENABLE_NOTIFICATIONS, String.valueOf(wEnableNotifications.getSelection()));
     try {
       HopConfig.getInstance().saveToFile();
+      notifyConfigChanged();
     } catch (Exception e) {
       new ErrorDialog(
           wSourcesTable.getShell(), "Error", "Error saving notification system enabled state", e);
+    }
+  }
+
+  private void notifyConfigChanged() {
+    try {
+      org.apache.hop.ui.hopgui.notifications.NotificationService.getInstance().reloadFromConfig();
+    } catch (Exception e) {
+      org.apache.hop.core.logging.LogChannel.GENERAL.logError(
+          "Error reloading notification providers after config change", e);
     }
   }
 
@@ -593,7 +657,8 @@ public class NotificationConfigPlugin implements IConfigOptions {
       }
 
       String enabledStr = item.getText(3);
-      source.setEnabled("Yes".equals(enabledStr));
+      source.setEnabled(
+          BaseMessages.getString(PKG, "NotificationConfigPlugin.Yes").equals(enabledStr));
 
       // For Details column, if it's a GitHub URL, parse it
       String details = item.getText(4);
@@ -601,6 +666,11 @@ public class NotificationConfigPlugin implements IConfigOptions {
         parseGitHubUrl(source, details);
       } else if (source.getType() == NotificationSourceConfig.SourceType.RSS_FEED) {
         source.setRssUrl(details);
+      } else if (source.getType() == NotificationSourceConfig.SourceType.CUSTOM_PLUGIN) {
+        if (!Utils.isEmpty(details)) {
+          source.setPluginId(details);
+          source.setId(details); // Keep id and pluginId in sync for provider lookup
+        }
       }
 
       // Poll interval column
@@ -652,6 +722,42 @@ public class NotificationConfigPlugin implements IConfigOptions {
     if (owner != null && !owner.isEmpty() && repo != null && !repo.isEmpty()) {
       source.setGithubOwner(owner);
       source.setGithubRepo(repo);
+    }
+  }
+
+  /**
+   * Reload values from HopConfig into the widgets. Called when the Configuration perspective is
+   * reactivated so that changes made elsewhere (or in another tab) are reflected.
+   */
+  public void reloadValues() {
+    if (wEnableNotifications == null || wEnableNotifications.isDisposed()) {
+      return; // Tab not yet initialized or already disposed
+    }
+
+    try {
+      // Reload enable state
+      boolean enabled =
+          HopConfig.readOptionString(CONFIG_KEY_ENABLE_NOTIFICATIONS, "true")
+              .equalsIgnoreCase("true");
+      wEnableNotifications.setSelection(enabled);
+
+      // Reload global options
+      if (wGlobalPollInterval != null && !wGlobalPollInterval.isDisposed()) {
+        wGlobalPollInterval.setText(getGlobalPollIntervalMinutes());
+      }
+      if (wGlobalDaysToGoBack != null && !wGlobalDaysToGoBack.isDisposed()) {
+        wGlobalDaysToGoBack.setText(getGlobalDaysToGoBack());
+      }
+      if (wShowReadNotifications != null && !wShowReadNotifications.isDisposed()) {
+        wShowReadNotifications.setSelection(isShowReadNotifications());
+      }
+
+      // Reload sources from config and refresh table
+      loadSources();
+      loadSourcesIntoTable();
+    } catch (Exception e) {
+      org.apache.hop.core.logging.LogChannel.GENERAL.logError(
+          "Error reloading notification config values", e);
     }
   }
 

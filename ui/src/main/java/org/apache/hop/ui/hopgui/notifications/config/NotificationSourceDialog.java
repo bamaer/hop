@@ -19,6 +19,7 @@ package org.apache.hop.ui.hopgui.notifications.config;
 
 import java.util.UUID;
 import org.apache.hop.core.util.Utils;
+import org.apache.hop.i18n.BaseMessages;
 import org.apache.hop.ui.core.PropsUi;
 import org.apache.hop.ui.core.dialog.ErrorDialog;
 import org.apache.hop.ui.core.widget.TextVar;
@@ -76,7 +77,7 @@ public class NotificationSourceDialog {
   public String open() {
     Display display = parentShell.getDisplay();
 
-    shell.setText("Notification Source Configuration");
+    shell.setText(BaseMessages.getString(PKG, "NotificationSourceDialog.Title"));
 
     FormLayout formLayout = new FormLayout();
     formLayout.marginWidth = PropsUi.getFormMargin();
@@ -88,7 +89,7 @@ public class NotificationSourceDialog {
 
     // Name field
     Label wlName = new Label(shell, SWT.RIGHT);
-    wlName.setText("Name:");
+    wlName.setText(BaseMessages.getString(PKG, "NotificationSourceDialog.Name"));
     props.setLook(wlName);
     FormData fdlName = new FormData();
     fdlName.left = new FormAttachment(0, 0);
@@ -107,7 +108,7 @@ public class NotificationSourceDialog {
 
     // Type field
     Label wlType = new Label(shell, SWT.RIGHT);
-    wlType.setText("Type:");
+    wlType.setText(BaseMessages.getString(PKG, "NotificationSourceDialog.Type"));
     props.setLook(wlType);
     FormData fdlType = new FormData();
     fdlType.left = new FormAttachment(0, 0);
@@ -135,7 +136,7 @@ public class NotificationSourceDialog {
 
     // Enabled checkbox
     wEnabled = new Button(shell, SWT.CHECK);
-    wEnabled.setText("Enabled");
+    wEnabled.setText(BaseMessages.getString(PKG, "NotificationSourceDialog.Enabled"));
     props.setLook(wEnabled);
     FormData fdEnabled = new FormData();
     fdEnabled.left = new FormAttachment(middle, 0);
@@ -144,7 +145,7 @@ public class NotificationSourceDialog {
 
     // Color picker
     Label wlColor = new Label(shell, SWT.RIGHT);
-    wlColor.setText("Color:");
+    wlColor.setText(BaseMessages.getString(PKG, "NotificationSourceDialog.Color"));
     props.setLook(wlColor);
     FormData fdlColor = new FormData();
     fdlColor.left = new FormAttachment(0, 0);
@@ -171,7 +172,7 @@ public class NotificationSourceDialog {
     wColorPreview.setLayoutData(fdColorPreview);
 
     wColorButton = new Button(wColorComposite, SWT.PUSH);
-    wColorButton.setText("Choose...");
+    wColorButton.setText(BaseMessages.getString(PKG, "NotificationSourceDialog.ChooseColor"));
     props.setLook(wColorButton);
     FormData fdColorButton = new FormData();
     fdColorButton.left = new FormAttachment(wColorPreview, margin);
@@ -214,7 +215,7 @@ public class NotificationSourceDialog {
 
     // Buttons
     Button wOk = new Button(shell, SWT.PUSH);
-    wOk.setText("OK");
+    wOk.setText(BaseMessages.getString(PKG, "NotificationSourceDialog.OK"));
     wOk.addSelectionListener(
         new SelectionAdapter() {
           @Override
@@ -227,7 +228,7 @@ public class NotificationSourceDialog {
         });
 
     Button wCancel = new Button(shell, SWT.PUSH);
-    wCancel.setText("Cancel");
+    wCancel.setText(BaseMessages.getString(PKG, "NotificationSourceDialog.Cancel"));
     wCancel.addSelectionListener(
         new SelectionAdapter() {
           @Override
@@ -311,7 +312,7 @@ public class NotificationSourceDialog {
       case GITHUB_RELEASES:
         // GitHub URL field (for easy input)
         Label wlGithubUrl = new Label(wTypeSpecificComposite, SWT.RIGHT);
-        wlGithubUrl.setText("GitHub URL (or owner/repo):");
+        wlGithubUrl.setText(BaseMessages.getString(PKG, "NotificationSourceDialog.GithubUrl"));
         props.setLook(wlGithubUrl);
         FormData fdlGithubUrl = new FormData();
         fdlGithubUrl.left = new FormAttachment(0, 0);
@@ -341,7 +342,7 @@ public class NotificationSourceDialog {
         }
 
         Button wParseUrl = new Button(wTypeSpecificComposite, SWT.PUSH);
-        wParseUrl.setText("Parse");
+        wParseUrl.setText(BaseMessages.getString(PKG, "NotificationSourceDialog.Parse"));
         props.setLook(wParseUrl);
         FormData fdParseUrl = new FormData();
         fdParseUrl.left = new FormAttachment(wGithubUrl, margin);
@@ -396,7 +397,7 @@ public class NotificationSourceDialog {
         yPos += 30;
 
         Label wlGithubOwner = new Label(wTypeSpecificComposite, SWT.RIGHT);
-        wlGithubOwner.setText("Owner:");
+        wlGithubOwner.setText(BaseMessages.getString(PKG, "NotificationSourceDialog.Owner"));
         props.setLook(wlGithubOwner);
         FormData fdlGithubOwner = new FormData();
         fdlGithubOwner.left = new FormAttachment(0, 0);
@@ -421,7 +422,7 @@ public class NotificationSourceDialog {
         yPos += 30;
 
         Label wlGithubRepo = new Label(wTypeSpecificComposite, SWT.RIGHT);
-        wlGithubRepo.setText("Repository:");
+        wlGithubRepo.setText(BaseMessages.getString(PKG, "NotificationSourceDialog.Repository"));
         props.setLook(wlGithubRepo);
         FormData fdlGithubRepo = new FormData();
         fdlGithubRepo.left = new FormAttachment(0, 0);
@@ -446,7 +447,8 @@ public class NotificationSourceDialog {
         yPos += 30;
 
         wGithubIncludePrereleases = new Button(wTypeSpecificComposite, SWT.CHECK);
-        wGithubIncludePrereleases.setText("Include pre-releases");
+        wGithubIncludePrereleases.setText(
+            BaseMessages.getString(PKG, "NotificationSourceDialog.IncludePrereleases"));
         props.setLook(wGithubIncludePrereleases);
         FormData fdGithubIncludePrereleases = new FormData();
         fdGithubIncludePrereleases.left = new FormAttachment(middle, 0);
@@ -457,7 +459,7 @@ public class NotificationSourceDialog {
 
       case RSS_FEED:
         Label wlRssUrl = new Label(wTypeSpecificComposite, SWT.RIGHT);
-        wlRssUrl.setText("Feed URL:");
+        wlRssUrl.setText(BaseMessages.getString(PKG, "NotificationSourceDialog.FeedUrl"));
         props.setLook(wlRssUrl);
         FormData fdlRssUrl = new FormData();
         fdlRssUrl.left = new FormAttachment(0, 0);
@@ -483,7 +485,7 @@ public class NotificationSourceDialog {
 
       case CUSTOM_PLUGIN:
         Label wlPluginId = new Label(wTypeSpecificComposite, SWT.RIGHT);
-        wlPluginId.setText("Plugin ID:");
+        wlPluginId.setText(BaseMessages.getString(PKG, "NotificationSourceDialog.PluginId"));
         props.setLook(wlPluginId);
         FormData fdlPluginId = new FormData();
         fdlPluginId.left = new FormAttachment(0, 0);
@@ -511,7 +513,7 @@ public class NotificationSourceDialog {
     // Poll interval (common to all types)
     yPos += 40;
     Label wlPollInterval = new Label(wTypeSpecificComposite, SWT.RIGHT);
-    wlPollInterval.setText("Poll interval (minutes):");
+    wlPollInterval.setText(BaseMessages.getString(PKG, "NotificationSourceDialog.PollInterval"));
     props.setLook(wlPollInterval);
     FormData fdlPollInterval = new FormData();
     fdlPollInterval.left = new FormAttachment(0, 0);
@@ -542,7 +544,7 @@ public class NotificationSourceDialog {
 
     yPos += 30;
     Label wlDaysToGoBack = new Label(wTypeSpecificComposite, SWT.RIGHT);
-    wlDaysToGoBack.setText("Days to go back (0 = use global):");
+    wlDaysToGoBack.setText(BaseMessages.getString(PKG, "NotificationSourceDialog.DaysToGoBack"));
     props.setLook(wlDaysToGoBack);
     FormData fdlDaysToGoBack = new FormData();
     fdlDaysToGoBack.left = new FormAttachment(0, 0);
@@ -665,6 +667,9 @@ public class NotificationSourceDialog {
           return false;
         }
         sourceConfig.setPluginId(pluginId);
+        // Use plugin ID as source id so provider lookup works (provider is registered under
+        // pluginId)
+        sourceConfig.setId(pluginId);
         break;
     }
 

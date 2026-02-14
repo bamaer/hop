@@ -32,7 +32,7 @@ public class NotificationToolbarItem {
       root = HopGui.ID_NOTIFICATION_TOOLBAR,
       id = ID_NOTIFICATION_BELL,
       type = GuiToolbarElementType.BUTTON,
-      toolTip = "Notifications",
+      toolTip = "i18n::NotificationToolbarItem.Tooltip",
       image = "ui/images/notification-bell.svg")
   public void showNotifications() {
     NotificationPanel panel = NotificationPanel.getInstance();
