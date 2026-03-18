@@ -122,8 +122,6 @@ public class ProjectsGuiPlugin {
       "context-menu-project-40012-add-from-existing";
   public static final String ID_CONTEXT_MENU_PROJECT_ADD_FROM_TEMPLATE =
       "context-menu-project-40013-add-from-template";
-  public static final String ID_CONTEXT_MENU_PROJECT_ADD_EMPTY =
-      "context-menu-project-40014-add-empty";
   public static final String ID_CONTEXT_MENU_PROJECT_EDIT = "context-menu-project-40020-edit";
   public static final String ID_CONTEXT_MENU_PROJECT_DELETE = "context-menu-project-40030-delete";
 
@@ -962,17 +960,6 @@ public class ProjectsGuiPlugin {
     addProjectFromTemplateInternal();
   }
 
-  @GuiMenuElement(
-      root = ID_CONTEXT_MENU_PROJECT,
-      parentId = ID_CONTEXT_MENU_PROJECT_ADD,
-      id = ID_CONTEXT_MENU_PROJECT_ADD_EMPTY,
-      label = "i18n::HopGui.Toolbar.Project.Add.Empty.Label",
-      toolTip = "i18n::HopGui.Toolbar.Project.Add.Empty.Tooltip",
-      image = "ui/images/add.svg")
-  public void addProjectEmpty() {
-    addProjectEmptyInternal();
-  }
-
   private void addProjectFromVersionControlInternal() {
     try {
       HopGui hopGui = HopGui.getInstance();
@@ -1028,20 +1015,6 @@ public class ProjectsGuiPlugin {
       variables = Variables.getADefaultVariableSpace();
     }
     AddProjectFromTemplateDialog dialog = new AddProjectFromTemplateDialog(shell, variables);
-    dialog.open();
-  }
-
-  private void addProjectEmptyInternal() {
-    HopGui hopGui = HopGui.getInstance();
-    Shell shell = hopGui.getActiveShell();
-    if (shell == null) {
-      shell = hopGui.getShell();
-    }
-    IVariables variables = hopGui.getVariables();
-    if (variables == null) {
-      variables = Variables.getADefaultVariableSpace();
-    }
-    EmptyProjectDialog dialog = new EmptyProjectDialog(shell, variables, this::addNewEnvironment);
     dialog.open();
   }
 
