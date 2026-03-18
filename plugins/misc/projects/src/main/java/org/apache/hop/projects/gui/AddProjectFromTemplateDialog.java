@@ -35,6 +35,7 @@ import org.apache.hop.core.vfs.HopVfs;
 import org.apache.hop.i18n.BaseMessages;
 import org.apache.hop.projects.config.ProjectsConfig;
 import org.apache.hop.projects.config.ProjectsConfigSingleton;
+import org.apache.hop.projects.git.GitRepoProvider;
 import org.apache.hop.projects.project.Project;
 import org.apache.hop.projects.project.ProjectConfig;
 import org.apache.hop.projects.util.GitCloneHelper;
@@ -168,11 +169,19 @@ public class AddProjectFromTemplateDialog extends Dialog {
     fdlUrl.right = new FormAttachment(middle, 0);
     fdlUrl.top = new FormAttachment(lastControl, margin);
     wlUrl.setLayoutData(fdlUrl);
+    Button wBrowseRepo = new Button(comp, SWT.PUSH);
+    wBrowseRepo.setText(
+        BaseMessages.getString(PKG, "AddProjectFromTemplateDialog.Button.BrowseRepo"));
+    FormData fdbBrowseRepo = new FormData();
+    fdbBrowseRepo.right = new FormAttachment(99, 0);
+    fdbBrowseRepo.top = new FormAttachment(wlUrl, 0, SWT.CENTER);
+    wBrowseRepo.setLayoutData(fdbBrowseRepo);
+    wBrowseRepo.addListener(SWT.Selection, e -> browseRepository());
     wGitUrl = new Text(comp, SWT.SINGLE | SWT.BORDER | SWT.LEFT);
     wGitUrl.addListener(SWT.Modify, e -> updateProjectNameFromUrl());
     FormData fdGitUrl = new FormData();
     fdGitUrl.left = new FormAttachment(middle, margin);
-    fdGitUrl.right = new FormAttachment(99, 0);
+    fdGitUrl.right = new FormAttachment(wBrowseRepo, -margin);
     fdGitUrl.top = new FormAttachment(wlUrl, 0, SWT.CENTER);
     wGitUrl.setLayoutData(fdGitUrl);
 
@@ -294,6 +303,20 @@ public class AddProjectFromTemplateDialog extends Dialog {
     BaseDialog.defaultShellHandling(shell, c -> ok(), c -> cancel());
 
     return returnValue;
+  }
+
+  private void browseRepository() {
+    GitRepoProvider detectedProvider = GitRepoProvider.detectFromUrl(wGitUrl.getText().trim());
+    SelectRepositoryDialog dialog =
+        new SelectRepositoryDialog(shell, detectedProvider, wToken.getText().trim());
+    String cloneUrl = dialog.open();
+    if (cloneUrl != null) {
+      wGitUrl.setText(cloneUrl);
+      String repoName = dialog.getSelectedRepoName();
+      if (repoName != null && StringUtils.isEmpty(wProjectName.getText())) {
+        wProjectName.setText(repoName);
+      }
+    }
   }
 
   private void updateSourceState() {

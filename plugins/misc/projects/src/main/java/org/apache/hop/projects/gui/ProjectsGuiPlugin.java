@@ -956,7 +956,8 @@ public class ProjectsGuiPlugin {
       id = ID_CONTEXT_MENU_PROJECT_ADD_FROM_TEMPLATE,
       label = "i18n::HopGui.Toolbar.Project.Add.FromTemplate.Label",
       toolTip = "i18n::HopGui.Toolbar.Project.Add.FromTemplate.Tooltip",
-      image = "ui/images/add.svg")
+      image = "ui/images/add.svg",
+      ignored = true)
   public void addProjectFromTemplate() {
     addProjectFromTemplateInternal();
   }

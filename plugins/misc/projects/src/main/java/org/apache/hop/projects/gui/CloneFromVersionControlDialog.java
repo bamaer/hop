@@ -30,6 +30,7 @@ import org.apache.hop.core.vfs.HopVfs;
 import org.apache.hop.i18n.BaseMessages;
 import org.apache.hop.projects.config.ProjectsConfig;
 import org.apache.hop.projects.config.ProjectsConfigSingleton;
+import org.apache.hop.projects.git.GitRepoProvider;
 import org.apache.hop.projects.project.Project;
 import org.apache.hop.projects.project.ProjectConfig;
 import org.apache.hop.projects.util.GitCloneHelper;
@@ -124,13 +125,40 @@ public class CloneFromVersionControlDialog extends Dialog {
     fdlUrl.right = new FormAttachment(middle, 0);
     fdlUrl.top = new FormAttachment(0, margin * 2);
     wlUrl.setLayoutData(fdlUrl);
+    Button wBrowseRepo = new Button(comp, SWT.PUSH);
+    wBrowseRepo.setText(
+        BaseMessages.getString(PKG, "CloneFromVersionControlDialog.Button.BrowseRepo"));
+    FormData fdbBrowseRepo = new FormData();
+    fdbBrowseRepo.right = new FormAttachment(99, 0);
+    fdbBrowseRepo.top = new FormAttachment(wlUrl, 0, SWT.CENTER);
+    wBrowseRepo.setLayoutData(fdbBrowseRepo);
+    wBrowseRepo.addListener(SWT.Selection, e -> browseRepository());
     wUrl = new Text(comp, SWT.SINGLE | SWT.BORDER | SWT.LEFT);
     FormData fdUrl = new FormData();
     fdUrl.left = new FormAttachment(middle, margin);
-    fdUrl.right = new FormAttachment(99, 0);
+    fdUrl.right = new FormAttachment(wBrowseRepo, -margin);
     fdUrl.top = new FormAttachment(wlUrl, 0, SWT.CENTER);
     wUrl.setLayoutData(fdUrl);
     lastControl = wUrl;
+
+    // Token (optional) — placed directly below the URL / Browse row
+    Label wlToken = new Label(comp, SWT.RIGHT);
+    wlToken.setText(BaseMessages.getString(PKG, "CloneFromVersionControlDialog.Label.Token"));
+    FormData fdlToken = new FormData();
+    fdlToken.left = new FormAttachment(0, 0);
+    fdlToken.right = new FormAttachment(middle, 0);
+    fdlToken.top = new FormAttachment(lastControl, margin);
+    wlToken.setLayoutData(fdlToken);
+    wToken = new Text(comp, SWT.SINGLE | SWT.BORDER | SWT.LEFT | SWT.PASSWORD);
+    PropsUi.setLook(wToken);
+    FormData fdToken = new FormData();
+    fdToken.left = new FormAttachment(middle, margin);
+    fdToken.right = new FormAttachment(99, 0);
+    fdToken.top = new FormAttachment(wlToken, 0, SWT.CENTER);
+    wToken.setLayoutData(fdToken);
+    wToken.setToolTipText(
+        BaseMessages.getString(PKG, "CloneFromVersionControlDialog.Label.Token.Tooltip"));
+    lastControl = wToken;
 
     // Directory
     Label wlDir = new Label(comp, SWT.RIGHT);
@@ -171,25 +199,6 @@ public class CloneFromVersionControlDialog extends Dialog {
     wProjectName.setLayoutData(fdName);
     wUrl.addListener(SWT.Modify, e -> updateProjectNameFromUrl());
     lastControl = wProjectName;
-
-    // Token (optional)
-    Label wlToken = new Label(comp, SWT.RIGHT);
-    wlToken.setText(BaseMessages.getString(PKG, "CloneFromVersionControlDialog.Label.Token"));
-    FormData fdlToken = new FormData();
-    fdlToken.left = new FormAttachment(0, 0);
-    fdlToken.right = new FormAttachment(middle, 0);
-    fdlToken.top = new FormAttachment(lastControl, margin);
-    wlToken.setLayoutData(fdlToken);
-    wToken = new Text(comp, SWT.SINGLE | SWT.BORDER | SWT.LEFT | SWT.PASSWORD);
-    PropsUi.setLook(wToken);
-    FormData fdToken = new FormData();
-    fdToken.left = new FormAttachment(middle, margin);
-    fdToken.right = new FormAttachment(99, 0);
-    fdToken.top = new FormAttachment(wlToken, 0, SWT.CENTER);
-    wToken.setLayoutData(fdToken);
-    wToken.setToolTipText(
-        BaseMessages.getString(PKG, "CloneFromVersionControlDialog.Label.Token.Tooltip"));
-    lastControl = wToken;
 
     // Shallow clone
     Label wlShallow = new Label(comp, SWT.RIGHT);
@@ -232,6 +241,20 @@ public class CloneFromVersionControlDialog extends Dialog {
     BaseDialog.defaultShellHandling(shell, c -> ok(), c -> cancel());
 
     return returnValue;
+  }
+
+  private void browseRepository() {
+    GitRepoProvider detectedProvider = GitRepoProvider.detectFromUrl(wUrl.getText().trim());
+    SelectRepositoryDialog dialog =
+        new SelectRepositoryDialog(shell, detectedProvider, wToken.getText().trim());
+    String cloneUrl = dialog.open();
+    if (cloneUrl != null) {
+      wUrl.setText(cloneUrl);
+      String repoName = dialog.getSelectedRepoName();
+      if (repoName != null && StringUtils.isEmpty(wProjectName.getText())) {
+        wProjectName.setText(repoName);
+      }
+    }
   }
 
   private void updateShallowDepthState() {
