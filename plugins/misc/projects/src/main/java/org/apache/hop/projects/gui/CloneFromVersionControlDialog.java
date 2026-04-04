@@ -19,7 +19,7 @@ package org.apache.hop.projects.gui;
 
 import java.io.File;
 import org.apache.commons.io.FilenameUtils;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.vfs2.FileObject;
 import org.apache.hop.core.Const;
 import org.apache.hop.core.config.HopConfig;

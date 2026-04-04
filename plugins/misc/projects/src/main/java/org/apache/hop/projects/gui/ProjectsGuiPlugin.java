@@ -948,18 +948,6 @@ public class ProjectsGuiPlugin {
     addProjectFromExistingSourcesInternal();
   }
 
-  @GuiMenuElement(
-      root = ID_CONTEXT_MENU_PROJECT,
-      parentId = ID_CONTEXT_MENU_PROJECT_ADD,
-      id = ID_CONTEXT_MENU_PROJECT_ADD_FROM_TEMPLATE,
-      label = "i18n::HopGui.Toolbar.Project.Add.FromTemplate.Label",
-      toolTip = "i18n::HopGui.Toolbar.Project.Add.FromTemplate.Tooltip",
-      image = "ui/images/add.svg",
-      ignored = true)
-  public void addProjectFromTemplate() {
-    addProjectFromTemplateInternal();
-  }
-
   private void addProjectFromVersionControlInternal() {
     try {
       HopGui hopGui = HopGui.getInstance();
@@ -1002,20 +990,6 @@ public class ProjectsGuiPlugin {
         }
       }
     }
-  }
-
-  private void addProjectFromTemplateInternal() {
-    HopGui hopGui = HopGui.getInstance();
-    Shell shell = hopGui.getActiveShell();
-    if (shell == null) {
-      shell = hopGui.getShell();
-    }
-    IVariables variables = hopGui.getVariables();
-    if (variables == null) {
-      variables = Variables.getADefaultVariableSpace();
-    }
-    AddProjectFromTemplateDialog dialog = new AddProjectFromTemplateDialog(shell, variables);
-    dialog.open();
   }
 
   private void addProjectFromExistingSourcesInternal() {
