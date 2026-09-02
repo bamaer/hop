@@ -32,6 +32,7 @@ import org.apache.hop.core.exception.HopException;
 import org.apache.hop.core.extension.ExtensionPointHandler;
 import org.apache.hop.core.extension.HopExtensionPoint;
 import org.apache.hop.core.logging.LogChannel;
+import org.apache.hop.core.notifications.NotificationProviderPluginType;
 import org.apache.hop.core.plugins.ActionPluginType;
 import org.apache.hop.core.plugins.HopServerPluginType;
 import org.apache.hop.core.plugins.IPluginType;
@@ -101,7 +102,8 @@ public class HopEnvironment {
         ExecutionInfoLocationPluginType.getInstance(),
         LineageSinkPluginType.getInstance(),
         HopCommandPluginType.getInstance(),
-        DataStreamPluginType.getInstance());
+        DataStreamPluginType.getInstance(),
+        NotificationProviderPluginType.getInstance());
   }
 
   public static void init(List<IPluginType> pluginTypes) throws HopException {
