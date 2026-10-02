@@ -63,6 +63,25 @@ public interface IGraphConnection extends AutoCloseable {
     return true;
   }
 
+  /**
+   * @return True if this connection writes nodes and relationships with {@link #upsert} instead of
+   *     with statements, as for databases which don't speak Cypher.
+   */
+  default boolean isSupportingUpserts() {
+    return false;
+  }
+
+  /**
+   * Create or update nodes and then relationships, in this order.
+   *
+   * @param nodes The nodes to upsert
+   * @param relationships The relationships to upsert between nodes, which are upserted first
+   */
+  default void upsert(List<GraphUpsertNode> nodes, List<GraphUpsertRelationship> relationships)
+      throws HopException {
+    throw new HopException("This graph database connection doesn't support upserts");
+  }
+
   @Override
   void close() throws HopException;
 }

@@ -137,6 +137,16 @@ class CypherDialectTest {
   }
 
   @Test
+  void testGremlin() {
+    assertFalse(CypherDialect.GREMLIN.isCypher());
+    assertTrue(CypherDialect.FALKORDB.isCypher());
+    assertFalse(CypherDialect.GREMLIN.isSupportingIndexes());
+    assertFalse(CypherDialect.GREMLIN.isSupportingConstraints());
+    assertEquals(CypherDialect.GREMLIN, CypherDialect.fromId("gremlin"));
+    assertEquals(CypherDialect.NEO4J, CypherDialect.fromId("unknown"));
+  }
+
+  @Test
   void testSchemaChangesInTransactions() {
     assertTrue(CypherDialect.NEO4J.isSupportingSchemaChangesInTransactions());
     assertFalse(CypherDialect.MEMGRAPH.isSupportingSchemaChangesInTransactions());

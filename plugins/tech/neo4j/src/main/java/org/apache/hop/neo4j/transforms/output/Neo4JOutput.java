@@ -832,6 +832,13 @@ public class Neo4JOutput extends BaseNeoTransform<Neo4JOutputMeta, Neo4JOutputDa
       try {
         data.graphConnection =
             NeoConnectionUtils.findGraphConnection(metadataProvider, resolve(meta.getConnection()));
+        if (data.graphConnection != null && !data.graphConnection.getDialect().isCypher()) {
+          logError(
+              "Neo4j Output writes Cypher, which connection '"
+                  + resolve(meta.getConnection())
+                  + "' doesn't speak. Use Neo4j Graph Output with a graph model instead.");
+          return false;
+        }
         if (data.graphConnection == null) {
           logError(
               "Connection '"

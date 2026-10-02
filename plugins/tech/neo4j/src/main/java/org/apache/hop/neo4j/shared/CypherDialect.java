@@ -57,6 +57,17 @@ public enum CypherDialect {
       EnumSet.noneOf(ConstraintType.class),
       EnumSet.noneOf(ConstraintType.class)),
 
+  /**
+   * Gremlin servers don't speak Cypher: Graph Output writes to them with upserts, the Cypher
+   * transform and script run Gremlin scripts. No index or constraint statements.
+   */
+  GREMLIN(
+      false,
+      false,
+      true,
+      EnumSet.noneOf(ConstraintType.class),
+      EnumSet.noneOf(ConstraintType.class)),
+
   /** Amazon Neptune manages its indexes itself and has no constraints. */
   NEPTUNE(
       false,
@@ -82,6 +93,13 @@ public enum CypherDialect {
     this.supportingSchemaChangesInTransactions = supportingSchemaChangesInTransactions;
     this.nodeConstraintTypes = nodeConstraintTypes;
     this.relationshipConstraintTypes = relationshipConstraintTypes;
+  }
+
+  /**
+   * @return False for databases which don't speak Cypher, like Gremlin servers
+   */
+  public boolean isCypher() {
+    return this != GREMLIN;
   }
 
   /** The dialect with the given name, Neo4j for anything unknown. */

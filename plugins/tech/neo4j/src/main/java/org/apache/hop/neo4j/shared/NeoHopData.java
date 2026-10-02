@@ -21,6 +21,7 @@ package org.apache.hop.neo4j.shared;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.Date;
 import org.apache.hop.core.exception.HopException;
@@ -62,6 +63,10 @@ public class NeoHopData {
         case IValueMeta.TYPE_BIGNUMBER:
           return new BigDecimal(value.toString().trim());
         case IValueMeta.TYPE_DATE:
+          if (value instanceof Date date) {
+            // Graph connections write dates and times as UTC
+            return java.sql.Date.valueOf(date.toInstant().atZone(ZoneOffset.UTC).toLocalDate());
+          }
           if (value instanceof LocalDate localDate) {
             return java.sql.Date.valueOf(localDate);
           }
@@ -70,6 +75,10 @@ public class NeoHopData {
           }
           return java.sql.Date.valueOf(LocalDate.parse(value.toString().trim().substring(0, 10)));
         case IValueMeta.TYPE_TIMESTAMP:
+          if (value instanceof Date date) {
+            return java.sql.Timestamp.valueOf(
+                LocalDateTime.ofInstant(date.toInstant(), ZoneOffset.UTC));
+          }
           if (value instanceof LocalDateTime localDateTime) {
             return java.sql.Timestamp.valueOf(localDateTime);
           }

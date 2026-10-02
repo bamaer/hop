@@ -20,6 +20,8 @@ package org.apache.hop.neo4j.transforms.graph;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.hop.core.graph.GraphUpsertNode;
+import org.apache.hop.core.graph.GraphUpsertRelationship;
 import org.apache.hop.core.graph.IGraphConnection;
 import org.apache.hop.core.graph.IGraphTransaction;
 import org.apache.hop.core.row.IRowMeta;
@@ -41,6 +43,13 @@ public class GraphOutputData extends BaseNeoTransformData implements ITransformD
   public int[] fieldIndexes;
   public long batchSize;
   public IGraphTransaction transaction;
+
+  /** Write with upserts instead of Cypher, for graph databases which don't speak Cypher. */
+  public boolean upserting;
+
+  public List<GraphUpsertNode> upsertNodes;
+  public List<GraphUpsertRelationship> upsertRelationships;
+  public long upsertRowCount;
   public long outputCount;
   public boolean hasInput;
   public GraphModel graphModel;

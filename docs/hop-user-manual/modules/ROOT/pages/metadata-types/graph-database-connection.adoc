@@ -23,8 +23,8 @@ under the License.
 
 == Description
 
-A graph database connection connects to a graph database which speaks Cypher.
-The graph database type determines how Hop connects and which Cypher it generates:
+A graph database connection connects to a graph database which speaks Cypher or Gremlin.
+The graph database type determines how Hop connects and which statements it generates:
 
 [options="header"]
 |===
@@ -51,6 +51,10 @@ Memgraph only offers routing in its high availability setup.
 |Apache AGE
 |PostgreSQL with the AGE extension, on port 5432, through the PostgreSQL JDBC driver which comes with Hop.
 One connection works with one AGE graph, which Hop can create when it doesn't exist.
+
+|Gremlin
+|Gremlin
+|The Apache TinkerPop driver, on port 8182: Apache TinkerPop Gremlin Server, JanusGraph or the Gremlin endpoint of Amazon Neptune.
 |===
 
 Graph database connections are serialized as JSON in the Hop metadata folder under
@@ -63,20 +67,40 @@ When a Neo4j connection and a graph database connection have the same name, the 
 
 [options="header"]
 |===
-|Feature |Neo4j, Memgraph, Neptune |FalkorDB, Apache AGE
+|Feature |Neo4j, Memgraph, Neptune |FalkorDB, Apache AGE |Gremlin
 
-|Neo4j Output, Neo4j Graph Output, Neo4j Cypher transforms
+|Neo4j Graph Output transform
 |Yes
-|Yes. Returning a graph from the Neo4j Cypher transform and validating against the graph model in Neo4j Graph Output need a Bolt connection.
+|Yes
+|Yes: nodes and relationships are upserted with Gremlin traversals. A node is identified by its primary properties and gets one label.
 
-|Neo4j Cypher script, Neo4j index, Neo4j constraint, Check Neo4j connections actions
+|Neo4j Output transform
+|Yes
+|Yes
+|No: it writes Cypher. Use Neo4j Graph Output with a graph model.
+
+|Neo4j Cypher transform, Neo4j Cypher script action
+|Yes
+|Yes
+|Yes, with Gremlin scripts instead of Cypher. Parameters become script bindings.
+
+|Neo4j index, Neo4j constraint actions
+|Yes
+|Yes
+|No: create indexes with the schema tools of the server
+
+|Check Neo4j connections action
+|Yes
 |Yes
 |Yes
 
 |Neo4j Cypher Builder transform, Neo4j execution information location, Neo4j logging
 |Yes
 |No
+|No
 |===
+
+Returning a graph from the Neo4j Cypher transform and validating against the graph model in Neo4j Graph Output need a Neo4j, Memgraph or Neptune connection.
 
 == Options
 
@@ -107,6 +131,11 @@ Every on/off option has a variable alternative which, when set, overrides it, fo
 
 Server or IP address, port, graph name, username, password and whether to use TLS.
 Leave the username empty for the default user and the password empty when the server doesn't ask for one.
+
+=== Gremlin
+
+Servers or IP addresses (several servers of a cluster separated by commas), port, traversal source (`g` by default), username, password, whether to use TLS, and the serializer: GraphBinary for current servers, GraphSON 3 or GraphSON 2 for older ones.
+The JanusGraph types are registered with every serializer, so JanusGraph vertices and edges come back like those of any other server.
 
 === Apache AGE
 
@@ -172,6 +201,13 @@ The database type determines which index and constraint statements are generated
 More differences to keep in mind:
 
 * *FalkorDB*: dates, times and binary values are passed to FalkorDB as ISO and Base64 strings.
+* *Gremlin*: a vertex has one label, Graph Output uses the first label of a node.
+The binding names `id`, `label`, `key` and `value` are reserved by Gremlin servers: don't use them as parameter names.
+Amazon Neptune doesn't run scripts with bindings: on Neptune, use Graph Output, which doesn't need them.
+Dates and times are stored as UTC dates, the date type every Gremlin server supports.
+Graph Output looks nodes up by their keys: create indexes on them on the server for large graphs.
+There are no transactions: every request is committed on its own.
+Scripts return a row per result: a map, from `project()`, `elementMap()` or `valueMap()`, gives a field per key, anything else one field called `result`.
 * *Apache AGE*: a node has one label, and label names can't contain spaces.
 Cypher statements that return values need to name them: `RETURN *` isn't supported.
 * Notifications of the database, like deprecation warnings or the query planner hints of Memgraph, are advice about a statement which succeeded.

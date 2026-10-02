@@ -22,6 +22,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -32,6 +33,8 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.hop.core.Const;
 import org.apache.hop.core.exception.HopException;
 import org.apache.hop.core.exception.HopValueException;
+import org.apache.hop.core.graph.GraphUpsertNode;
+import org.apache.hop.core.graph.GraphUpsertRelationship;
 import org.apache.hop.core.row.IRowMeta;
 import org.apache.hop.core.row.IValueMeta;
 import org.apache.hop.core.row.RowDataUtil;
@@ -95,6 +98,12 @@ public class GraphOutput extends BaseNeoTransform<GraphOutputMeta, GraphOutputDa
 
         try {
           data.connection = data.graphConnection.connect(getLogChannel(), this);
+          data.upserting =
+              !data.graphConnection.getDialect().isCypher()
+                  && data.connection.isSupportingUpserts();
+          data.upsertNodes = new ArrayList<>();
+          data.upsertRelationships = new ArrayList<>();
+          data.upsertRowCount = 0;
         } catch (Exception e) {
           logError("Unable to connect to graph database '" + data.graphConnection.name() + "'", e);
           return false;
@@ -438,6 +447,17 @@ public class GraphOutput extends BaseNeoTransform<GraphOutputMeta, GraphOutputDa
       outputRowData[getInputRowMeta().size()] = graphData;
 
       putRow(data.outputRowMeta, outputRowData);
+
+    } else if (data.upserting) {
+
+      // No Cypher: collect the nodes and relationships of this row and upsert them per batch
+      //
+      addUpserts(getGraphData(row, getInputRowMeta()));
+      incrementLinesOutput();
+      if (data.upsertRowCount >= Math.max(1L, data.batchSize)) {
+        writeUpserts();
+      }
+      putRow(getInputRowMeta(), row);
 
     } else {
 
@@ -1368,6 +1388,17 @@ public class GraphOutput extends BaseNeoTransform<GraphOutputMeta, GraphOutputDa
 
   private void wrapUpTransaction() {
 
+    if (data.upserting) {
+      try {
+        writeUpserts();
+      } catch (HopException e) {
+        logError("Error writing nodes and relationships", e);
+        stopAll();
+        setErrors(1L);
+      }
+      return;
+    }
+
     if (meta.isOutOfOrderAllowed()) {
       boolean errors = emptyUnwindMap();
       if (errors) {
@@ -1390,6 +1421,57 @@ public class GraphOutput extends BaseNeoTransform<GraphOutputMeta, GraphOutputDa
         data.outputCount = 0;
       }
     }
+  }
+
+  /**
+   * Add the nodes and relationships of a row to the upserts. A node is identified by its primary
+   * properties and gets its first label: Gremlin vertices have one label.
+   */
+  private void addUpserts(GraphData graphData) {
+    Map<String, GraphUpsertNode> nodesById = new HashMap<>();
+    for (GraphNodeData nodeData : graphData.getNodes()) {
+      Map<String, Object> keys = new LinkedHashMap<>();
+      Map<String, Object> properties = new LinkedHashMap<>();
+      for (GraphPropertyData property : nodeData.getProperties()) {
+        if (property.isPrimary()) {
+          keys.put(property.getId(), property.getValue());
+        } else {
+          properties.put(property.getId(), property.getValue());
+        }
+      }
+      String label =
+          nodeData.getLabels().isEmpty()
+              ? nodeData.getPropertySetId()
+              : nodeData.getLabels().get(0);
+      GraphUpsertNode node = new GraphUpsertNode(label, keys, properties);
+      nodesById.put(nodeData.getId(), node);
+      data.upsertNodes.add(node);
+    }
+    for (GraphRelationshipData relationshipData : graphData.getRelationships()) {
+      GraphUpsertNode source = nodesById.get(relationshipData.getSourceNodeId());
+      GraphUpsertNode target = nodesById.get(relationshipData.getTargetNodeId());
+      if (source == null || target == null) {
+        continue;
+      }
+      Map<String, Object> properties = new LinkedHashMap<>();
+      for (GraphPropertyData property : relationshipData.getProperties()) {
+        properties.put(property.getId(), property.getValue());
+      }
+      data.upsertRelationships.add(
+          new GraphUpsertRelationship(relationshipData.getLabel(), source, target, properties));
+    }
+    data.upsertRowCount++;
+  }
+
+  /** Upsert the nodes and relationships collected so far. */
+  private void writeUpserts() throws HopException {
+    if (data.upsertRowCount == 0) {
+      return;
+    }
+    data.connection.upsert(data.upsertNodes, data.upsertRelationships);
+    data.upsertNodes.clear();
+    data.upsertRelationships.clear();
+    data.upsertRowCount = 0;
   }
 
   /**
@@ -1589,7 +1671,22 @@ public class GraphOutput extends BaseNeoTransform<GraphOutputMeta, GraphOutputDa
 
     // Calculate the node labels
     //
-    graphNodeData.getLabels().addAll(node.getNode().getLabels());
+    if (data.upserting) {
+      // The labels selected for this row, which can come from a field value, in model order
+      //
+      for (String label : node.getNode().getLabels()) {
+        if (node.getLabels().contains(label)) {
+          graphNodeData.getLabels().add(label);
+        }
+      }
+      for (String label : node.getLabels()) {
+        if (!graphNodeData.getLabels().contains(label)) {
+          graphNodeData.getLabels().add(label);
+        }
+      }
+    } else {
+      graphNodeData.getLabels().addAll(node.getNode().getLabels());
+    }
 
     // Look up the properties to update in the node
     //
