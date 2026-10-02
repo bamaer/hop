@@ -153,7 +153,8 @@ public class Neo4JOutputDialog extends BaseTransformDialog {
             shell,
             SWT.SINGLE | SWT.LEFT | SWT.BORDER,
             "Neo4j Connection",
-            "The name of the Neo4j connection to use");
+            "The name of the Neo4j connection to use",
+            true);
     PropsUi.setLook(wConnection);
     wConnection.addModifyListener(lsMod);
     FormData fdConnection = new FormData();

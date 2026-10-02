@@ -33,6 +33,60 @@ import org.neo4j.driver.Value;
 
 public class NeoHopData {
 
+  /**
+   * Convert a plain Java result value, as graph connections other than Bolt return them, to the
+   * given Hop type. Lists and maps (nodes and relationships included) become JSON strings.
+   */
+  public static Object convertToHopValue(String name, Object value, IValueMeta targetValueMeta)
+      throws HopException {
+    if (value == null) {
+      return null;
+    }
+    try {
+      switch (targetValueMeta.getType()) {
+        case IValueMeta.TYPE_STRING:
+          if (value instanceof java.util.Map || value instanceof java.util.List) {
+            return JSONValue.toJSONString(value);
+          }
+          return value.toString();
+        case IValueMeta.TYPE_INTEGER:
+          return value instanceof Number number
+              ? number.longValue()
+              : Long.valueOf(value.toString().trim());
+        case IValueMeta.TYPE_NUMBER:
+          return value instanceof Number number
+              ? number.doubleValue()
+              : Double.valueOf(value.toString().trim());
+        case IValueMeta.TYPE_BOOLEAN:
+          return value instanceof Boolean bool ? bool : Boolean.valueOf(value.toString().trim());
+        case IValueMeta.TYPE_BIGNUMBER:
+          return new BigDecimal(value.toString().trim());
+        case IValueMeta.TYPE_DATE:
+          if (value instanceof LocalDate localDate) {
+            return java.sql.Date.valueOf(localDate);
+          }
+          if (value instanceof LocalDateTime localDateTime) {
+            return java.sql.Date.valueOf(localDateTime.toLocalDate());
+          }
+          return java.sql.Date.valueOf(LocalDate.parse(value.toString().trim().substring(0, 10)));
+        case IValueMeta.TYPE_TIMESTAMP:
+          if (value instanceof LocalDateTime localDateTime) {
+            return java.sql.Timestamp.valueOf(localDateTime);
+          }
+          if (value instanceof LocalDate localDate) {
+            return java.sql.Timestamp.valueOf(localDate.atStartOfDay());
+          }
+          return java.sql.Timestamp.valueOf(LocalDateTime.parse(value.toString().trim()));
+        default:
+          throw new HopException(
+              "Unable to convert a graph database value to type " + targetValueMeta.toStringMeta());
+      }
+    } catch (Exception e) {
+      throw new HopException(
+          "Unable to convert value '" + name + "' to type : " + targetValueMeta.getTypeDesc(), e);
+    }
+  }
+
   public static Object convertNeoToHopValue(
       String recordValueName,
       Value recordValue,

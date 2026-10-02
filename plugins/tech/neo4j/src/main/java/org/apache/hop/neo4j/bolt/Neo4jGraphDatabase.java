@@ -19,6 +19,7 @@ package org.apache.hop.neo4j.bolt;
 
 import org.apache.hop.core.graph.GraphDatabasePlugin;
 import org.apache.hop.core.gui.plugin.GuiPlugin;
+import org.apache.hop.neo4j.shared.CypherDialect;
 
 /** Neo4j over Bolt, with the defaults of a Neo4j connection: automatic configuration. */
 @GraphDatabasePlugin(
@@ -29,7 +30,7 @@ import org.apache.hop.core.gui.plugin.GuiPlugin;
 @GuiPlugin
 public class Neo4jGraphDatabase extends BoltGraphDatabase {
   @Override
-  public BoltDialect getDialect() {
-    return BoltDialect.NEO4J;
+  public CypherDialect getCypherDialect() {
+    return CypherDialect.NEO4J;
   }
 }

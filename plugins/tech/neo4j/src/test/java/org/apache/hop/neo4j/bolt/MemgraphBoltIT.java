@@ -41,6 +41,7 @@ import org.apache.hop.neo4j.actions.index.IndexUpdate;
 import org.apache.hop.neo4j.actions.index.Neo4jIndex;
 import org.apache.hop.neo4j.actions.index.ObjectType;
 import org.apache.hop.neo4j.actions.index.UpdateType;
+import org.apache.hop.neo4j.shared.CypherDialect;
 import org.apache.hop.neo4j.shared.NeoConnection;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -150,10 +151,10 @@ class MemgraphBoltIT {
         List.of(
             Neo4jIndex.generateCreateIndexCypher(
                 new IndexUpdate(UpdateType.CREATE, ObjectType.NODE, null, "BoltITSchema", "a, b"),
-                BoltDialect.MEMGRAPH),
+                CypherDialect.MEMGRAPH),
             Neo4jIndex.generateCreateIndexCypher(
                 new IndexUpdate(UpdateType.CREATE, ObjectType.RELATIONSHIP, null, "LINK", "w"),
-                BoltDialect.MEMGRAPH),
+                CypherDialect.MEMGRAPH),
             Neo4jConstraint.generateCreateConstraintCypher(
                 new ConstraintUpdate(
                     org.apache.hop.neo4j.actions.constraint.UpdateType.CREATE,
@@ -162,7 +163,7 @@ class MemgraphBoltIT {
                     null,
                     "BoltITSchema",
                     "id"),
-                BoltDialect.MEMGRAPH),
+                CypherDialect.MEMGRAPH),
             Neo4jConstraint.generateCreateConstraintCypher(
                 new ConstraintUpdate(
                     org.apache.hop.neo4j.actions.constraint.UpdateType.CREATE,
@@ -171,7 +172,7 @@ class MemgraphBoltIT {
                     null,
                     "BoltITSchema",
                     "id"),
-                BoltDialect.MEMGRAPH),
+                CypherDialect.MEMGRAPH),
             Neo4jConstraint.generateDropConstraintCypher(
                 new ConstraintUpdate(
                     org.apache.hop.neo4j.actions.constraint.UpdateType.DROP,
@@ -180,10 +181,10 @@ class MemgraphBoltIT {
                     null,
                     "BoltITSchema",
                     "id"),
-                BoltDialect.MEMGRAPH),
+                CypherDialect.MEMGRAPH),
             Neo4jIndex.generateDropIndexCypher(
                 new IndexUpdate(UpdateType.DROP, ObjectType.NODE, null, "BoltITSchema", "a, b"),
-                BoltDialect.MEMGRAPH));
+                CypherDialect.MEMGRAPH));
     // Memgraph only accepts index and constraint changes in auto-commit transactions
     //
     try (IGraphConnection connection = graphDatabaseMeta.connect(LogChannel.GENERAL, variables)) {

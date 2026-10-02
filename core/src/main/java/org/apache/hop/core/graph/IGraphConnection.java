@@ -35,6 +35,34 @@ public interface IGraphConnection extends AutoCloseable {
   List<Map<String, Object>> execute(String statement, Map<String, Object> parameters)
       throws HopException;
 
+  /**
+   * Begin an explicit transaction. Databases without multi-statement transactions execute each
+   * statement on its own and ignore commit and rollback.
+   */
+  IGraphTransaction beginTransaction() throws HopException;
+
+  /**
+   * Run work in a write transaction, committed when the work returns. Where the database supports
+   * it, the work is retried on transient errors.
+   */
+  <T> T executeWrite(IGraphTransactionWork<T> work) throws HopException;
+
+  /**
+   * @return The Cypher dialect of the database, for example NEO4J or MEMGRAPH. The plugins
+   *     generating statements use it to decide which syntax to use.
+   */
+  default String getDialect() {
+    return "NEO4J";
+  }
+
+  /**
+   * @return True if a transaction groups several statements atomically. False if every statement is
+   *     executed and committed on its own, whatever transaction it runs in.
+   */
+  default boolean isSupportingTransactions() {
+    return true;
+  }
+
   @Override
   void close() throws HopException;
 }

@@ -34,6 +34,9 @@ import org.eclipse.swt.widgets.Composite;
  */
 public class NeoConnectionSelectionLine extends MetaSelectionLine<GraphDatabaseMeta> {
 
+  /** List graph database connections of all types, not only the Bolt ones. */
+  private final boolean listingAllTypes;
+
   public NeoConnectionSelectionLine(
       IVariables variables,
       IHopMetadataProvider metadataProvider,
@@ -41,6 +44,21 @@ public class NeoConnectionSelectionLine extends MetaSelectionLine<GraphDatabaseM
       int flags,
       String labelText,
       String toolTipText) {
+    this(variables, metadataProvider, parentComposite, flags, labelText, toolTipText, false);
+  }
+
+  /**
+   * @param listingAllTypes True to list graph database connections of all types, for the transforms
+   *     and actions which work with any graph database. False to list only Bolt ones.
+   */
+  public NeoConnectionSelectionLine(
+      IVariables variables,
+      IHopMetadataProvider metadataProvider,
+      Composite parentComposite,
+      int flags,
+      String labelText,
+      String toolTipText,
+      boolean listingAllTypes) {
     super(
         variables,
         metadataProvider,
@@ -49,6 +67,12 @@ public class NeoConnectionSelectionLine extends MetaSelectionLine<GraphDatabaseM
         flags,
         labelText,
         toolTipText);
+    this.listingAllTypes = listingAllTypes;
+    try {
+      fillItems();
+    } catch (HopException e) {
+      // The items are filled again when the dialog is populated
+    }
   }
 
   @Override
@@ -57,7 +81,10 @@ public class NeoConnectionSelectionLine extends MetaSelectionLine<GraphDatabaseM
     if (getMetadataProvider() == null) {
       return;
     }
-    List<String> names = NeoConnectionUtils.getConnectionNames(getMetadataProvider());
+    List<String> names =
+        listingAllTypes
+            ? NeoConnectionUtils.getAllConnectionNames(getMetadataProvider())
+            : NeoConnectionUtils.getConnectionNames(getMetadataProvider());
     setItems(names.toArray(new String[0]));
     setText(Const.NVL(previous, ""));
   }

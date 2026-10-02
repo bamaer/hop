@@ -23,8 +23,8 @@ import org.apache.hop.core.Const;
 import org.apache.hop.core.util.Utils;
 import org.apache.hop.core.variables.IVariables;
 import org.apache.hop.i18n.BaseMessages;
-import org.apache.hop.neo4j.bolt.BoltDialect;
-import org.apache.hop.neo4j.shared.NeoConnection;
+import org.apache.hop.neo4j.shared.CypherDialect;
+import org.apache.hop.neo4j.shared.NamedGraphConnection;
 import org.apache.hop.neo4j.shared.NeoConnectionSelectionLine;
 import org.apache.hop.neo4j.shared.NeoConnectionUtils;
 import org.apache.hop.ui.core.PropsUi;
@@ -82,7 +82,8 @@ public class Neo4jIndexDialog extends ActionDialog implements IActionDialog {
             shell,
             SWT.SINGLE | SWT.LEFT | SWT.BORDER,
             BaseMessages.getString(PKG, "Neo4jIndexDialog.NeoConnection.Label"),
-            BaseMessages.getString(PKG, "Neo4jIndexDialog.NeoConnection.Tooltip"));
+            BaseMessages.getString(PKG, "Neo4jIndexDialog.NeoConnection.Tooltip"),
+            true);
     PropsUi.setLook(wConnection);
     wConnection.addModifyListener(lsMod);
     FormData fdConnection = new FormData();
@@ -132,7 +133,7 @@ public class Neo4jIndexDialog extends ActionDialog implements IActionDialog {
     //
     columns[1].setComboValuesSelectionListener(
         (tableItem, rowNr, colNr) -> {
-          BoltDialect dialect = getSelectedDialect();
+          CypherDialect dialect = getSelectedDialect();
           List<String> objectTypes = new ArrayList<>();
           if (dialect.isSupportingNodeIndexes()) {
             objectTypes.add(ObjectType.NODE.name());
@@ -293,10 +294,10 @@ public class Neo4jIndexDialog extends ActionDialog implements IActionDialog {
   }
 
   /** The dialect of the selected connection, Neo4j when it can't be determined. */
-  private BoltDialect getSelectedDialect() {
+  private CypherDialect getSelectedDialect() {
     try {
-      NeoConnection connection =
-          NeoConnectionUtils.loadConnection(
+      NamedGraphConnection connection =
+          NeoConnectionUtils.findGraphConnection(
               getMetadataProvider(), variables.resolve(wConnection.getText()));
       if (connection != null) {
         return connection.getDialect();
@@ -304,6 +305,6 @@ public class Neo4jIndexDialog extends ActionDialog implements IActionDialog {
     } catch (Exception e) {
       // Fall back to Neo4j
     }
-    return BoltDialect.NEO4J;
+    return CypherDialect.NEO4J;
   }
 }

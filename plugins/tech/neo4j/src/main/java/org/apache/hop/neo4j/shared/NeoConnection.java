@@ -42,7 +42,6 @@ import org.apache.hop.metadata.api.HopMetadataCategory;
 import org.apache.hop.metadata.api.HopMetadataProperty;
 import org.apache.hop.metadata.api.HopMetadataPropertyType;
 import org.apache.hop.metadata.api.IHopMetadata;
-import org.apache.hop.neo4j.bolt.BoltDialect;
 import org.neo4j.driver.AuthTokens;
 import org.neo4j.driver.Config;
 import org.neo4j.driver.Driver;
@@ -115,7 +114,7 @@ public class NeoConnection extends HopMetadataBase implements IHopMetadata {
    * The Cypher dialect of the database. Not stored: a Neo4j connection is always Neo4j, a Bolt
    * graph database connection sets it from its type.
    */
-  private BoltDialect dialect = BoltDialect.NEO4J;
+  private CypherDialect dialect = CypherDialect.NEO4J;
 
   public NeoConnection() {
     boltPort = "7687";
@@ -870,14 +869,14 @@ public class NeoConnection extends HopMetadataBase implements IHopMetadata {
   /**
    * @return The Cypher dialect of the database, never null
    */
-  public BoltDialect getDialect() {
-    return dialect == null ? BoltDialect.NEO4J : dialect;
+  public CypherDialect getDialect() {
+    return dialect == null ? CypherDialect.NEO4J : dialect;
   }
 
   /**
    * @param dialect The Cypher dialect of the database
    */
-  public void setDialect(BoltDialect dialect) {
+  public void setDialect(CypherDialect dialect) {
     this.dialect = dialect;
   }
 }

@@ -376,6 +376,7 @@ under the License.
 *** xref:workflow/actions/copyfiles.adoc[Copy Files]
 *** xref:workflow/actions/createfolder.adoc[Create a folder]
 *** xref:workflow/actions/createfile.adoc[Create file]
+*** xref:workflow/actions/create-property-graph.adoc[Create property graph]
 *** xref:workflow/actions/databricks-job-run.adoc[Databricks job run]
 *** xref:workflow/actions/databricks-job-wait.adoc[Databricks job wait]
 *** xref:workflow/actions/dbt.adoc[dbt]

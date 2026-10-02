@@ -19,6 +19,7 @@ package org.apache.hop.neo4j.bolt;
 
 import org.apache.hop.core.graph.GraphDatabasePlugin;
 import org.apache.hop.core.gui.plugin.GuiPlugin;
+import org.apache.hop.neo4j.shared.CypherDialect;
 
 /** Amazon Neptune openCypher over Bolt. Neptune listens on port 8182 and requires encryption. */
 @GraphDatabasePlugin(
@@ -37,7 +38,7 @@ public class NeptuneGraphDatabase extends BoltGraphDatabase {
   }
 
   @Override
-  public BoltDialect getDialect() {
-    return BoltDialect.NEPTUNE;
+  public CypherDialect getCypherDialect() {
+    return CypherDialect.NEPTUNE;
   }
 }

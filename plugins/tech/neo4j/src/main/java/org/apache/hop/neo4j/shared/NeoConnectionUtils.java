@@ -19,15 +19,17 @@ package org.apache.hop.neo4j.shared;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.hop.core.Const;
 import org.apache.hop.core.exception.HopException;
 import org.apache.hop.core.graph.GraphDatabaseMeta;
+import org.apache.hop.core.graph.IGraphConnection;
 import org.apache.hop.core.logging.ILogChannel;
 import org.apache.hop.metadata.api.IHopMetadataProvider;
 import org.apache.hop.metadata.api.IHopMetadataSerializer;
-import org.apache.hop.neo4j.bolt.BoltDialect;
 import org.apache.hop.neo4j.bolt.BoltGraphDatabase;
 import org.apache.hop.neo4j.bolt.Neo4jGraphDatabase;
 import org.neo4j.driver.Session;
@@ -150,6 +152,176 @@ public class NeoConnectionUtils {
     return skipped;
   }
 
+  /**
+   * Find a connection by name: a Neo4j connection first, so existing projects behave exactly as
+   * before, otherwise a graph database connection of any type.
+   *
+   * @return The connection or null if there is no connection with that name
+   */
+  public static NamedGraphConnection findGraphConnection(
+      IHopMetadataProvider metadataProvider, String name) throws HopException {
+    if (metadataProvider == null || StringUtils.isEmpty(name)) {
+      return null;
+    }
+    NeoConnection connection = metadataProvider.getSerializer(NeoConnection.class).load(name);
+    if (connection != null) {
+      return new NamedGraphConnection(name, connection, null);
+    }
+    GraphDatabaseMeta graphDatabaseMeta = GraphDatabaseMeta.load(metadataProvider, name);
+    if (graphDatabaseMeta != null) {
+      return new NamedGraphConnection(name, null, graphDatabaseMeta);
+    }
+    return null;
+  }
+
+  /** True for Neo4j connections and graph database connections of a Bolt type. */
+  public static boolean isBolt(NamedGraphConnection graphConnection) {
+    return graphConnection.neoConnection() != null
+        || graphConnection.graphDatabaseMeta().getGraphDatabase() instanceof BoltGraphDatabase;
+  }
+
+  /**
+   * Find a connection by name or fail.
+   *
+   * @throws HopException when there is no Neo4j or graph database connection with that name
+   */
+  public static NamedGraphConnection getGraphConnection(
+      IHopMetadataProvider metadataProvider, String name) throws HopException {
+    if (StringUtils.isEmpty(name)) {
+      throw new HopException("Please specify a graph database or Neo4j connection");
+    }
+    NamedGraphConnection connection = findGraphConnection(metadataProvider, name);
+    if (connection == null) {
+      throw new HopException("Unable to find graph database or Neo4j connection '" + name + "'");
+    }
+    return connection;
+  }
+
+  /**
+   * The sorted names of all Neo4j connections and graph database connections of any type, for the
+   * transforms and actions which work through {@link NamedGraphConnection}.
+   */
+  public static List<String> getAllConnectionNames(IHopMetadataProvider metadataProvider)
+      throws HopException {
+    Set<String> names =
+        new TreeSet<>(metadataProvider.getSerializer(NeoConnection.class).listObjectNames());
+    names.addAll(metadataProvider.getSerializer(GraphDatabaseMeta.class).listObjectNames());
+    return new ArrayList<>(names);
+  }
+
+  /**
+   * Create a unique constraint (one key property) or an index (several key properties) on the first
+   * label, through a graph connection in its dialect.
+   */
+  public static void createNodeIndex(
+      ILogChannel log, IGraphConnection connection, List<String> labels, List<String> keyProperties)
+      throws HopException {
+    CypherDialect dialect = CypherDialect.fromId(connection.getDialect());
+    String cypher = getCreateNodeIndexCypher(labels, keyProperties, dialect);
+    if (cypher == null) {
+      if (!labels.isEmpty() && !keyProperties.isEmpty()) {
+        log.logBasic(
+            dialect
+                + " doesn't create indexes in Cypher: not creating an index on "
+                + labels.get(0));
+      }
+      return;
+    }
+    log.logDetailed("Creating index or constraint : " + cypher);
+    try {
+      connection.execute(cypher, Map.of());
+    } catch (HopException e) {
+      if (!isExistingOrMissingIndex(dialect, e)) {
+        throw e;
+      }
+    }
+  }
+
+  /**
+   * FalkorDB has no IF [NOT] EXISTS: an index which exists already, or doesn't exist when dropping,
+   * is not an error, the same as with Neo4j.
+   */
+  private static boolean isExistingOrMissingIndex(CypherDialect dialect, Exception e) {
+    if (dialect != CypherDialect.FALKORDB) {
+      return false;
+    }
+    String message = Const.getSimpleStackTrace(e);
+    return message.contains("already indexed") || message.contains("no such index");
+  }
+
+  /**
+   * Run an index or constraint statement: in a write transaction, or on its own where the database
+   * doesn't allow schema changes in a transaction.
+   *
+   * @param description What the statement does, for the log, for example "Creating index"
+   */
+  public static void runSchemaStatement(
+      NamedGraphConnection graphConnection,
+      ILogChannel log,
+      org.apache.hop.core.variables.IVariables variables,
+      String cypher,
+      String description)
+      throws HopException {
+    try (IGraphConnection connection = graphConnection.connect(log, variables)) {
+      log.logDetailed(description + " with cypher: " + cypher);
+      if (!graphConnection.getDialect().isSupportingSchemaChangesInTransactions()
+          || !connection.isSupportingTransactions()) {
+        connection.execute(cypher, Map.of());
+      } else {
+        connection.executeWrite(
+            transaction -> {
+              transaction.execute(cypher, Map.of());
+              return true;
+            });
+      }
+    } catch (HopException e) {
+      if (isExistingOrMissingIndex(graphConnection.getDialect(), e)) {
+        log.logDetailed(description + ": nothing to do, " + Const.getSimpleStackTrace(e));
+        return;
+      }
+      throw new HopException(description + " failed with cypher [" + cypher + "]", e);
+    }
+  }
+
+  /** The statement creating the index of {@link #createNodeIndex}, null if there is none. */
+  public static String getCreateNodeIndexCypher(
+      List<String> labels, List<String> keyProperties, CypherDialect dialect) {
+    if (keyProperties.isEmpty() || labels.isEmpty() || !dialect.isSupportingNodeIndexes()) {
+      return null;
+    }
+    String label = labels.get(0);
+    switch (dialect) {
+      case MEMGRAPH:
+        if (keyProperties.size() == 1) {
+          return "CREATE CONSTRAINT ON (n:"
+              + label
+              + ") ASSERT n."
+              + keyProperties.get(0)
+              + " IS UNIQUE";
+        }
+        return "CREATE INDEX ON :" + label + "(" + String.join(", ", keyProperties) + ")";
+      case FALKORDB:
+        List<String> properties = new ArrayList<>();
+        keyProperties.forEach(p -> properties.add("n." + p));
+        return "CREATE INDEX FOR (n:" + label + ") ON (" + String.join(", ", properties) + ")";
+      default:
+        if (keyProperties.size() == 1) {
+          return "CREATE CONSTRAINT IF NOT EXISTS FOR (n:"
+              + label
+              + ") REQUIRE n."
+              + keyProperties.get(0)
+              + " IS UNIQUE;";
+        }
+        List<String> neoProperties = new ArrayList<>();
+        keyProperties.forEach(p -> neoProperties.add("n." + p));
+        return "CREATE INDEX IF NOT EXISTS FOR (n:"
+            + label
+            + ") ON ("
+            + String.join(", ", neoProperties)
+            + ")";
+    }
+  }
+
   /** The sorted names of all Neo4j connections and graph database connections of a Bolt type. */
   public static List<String> getConnectionNames(IHopMetadataProvider metadataProvider)
       throws HopException {
@@ -166,7 +338,7 @@ public class NeoConnectionUtils {
 
   public static final void createNodeIndex(
       ILogChannel log, Session session, List<String> labels, List<String> keyProperties) {
-    createNodeIndex(log, session, labels, keyProperties, BoltDialect.NEO4J);
+    createNodeIndex(log, session, labels, keyProperties, CypherDialect.NEO4J);
   }
 
   /**
@@ -178,7 +350,7 @@ public class NeoConnectionUtils {
       Session session,
       List<String> labels,
       List<String> keyProperties,
-      BoltDialect dialect) {
+      CypherDialect dialect) {
     if (keyProperties.isEmpty() || labels.isEmpty()) {
       return;
     }
@@ -186,7 +358,7 @@ public class NeoConnectionUtils {
       log.logBasic(dialect + " manages its own indexes: not creating an index on " + labels.get(0));
       return;
     }
-    if (dialect == BoltDialect.MEMGRAPH) {
+    if (dialect == CypherDialect.MEMGRAPH) {
       String label = labels.get(0);
       String cypher;
       if (keyProperties.size() == 1) {

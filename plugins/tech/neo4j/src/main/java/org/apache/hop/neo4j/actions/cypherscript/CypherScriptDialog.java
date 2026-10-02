@@ -75,7 +75,8 @@ public class CypherScriptDialog extends ActionDialog implements IActionDialog {
             shell,
             SWT.SINGLE | SWT.LEFT | SWT.BORDER,
             BaseMessages.getString(PKG, "CypherScriptDialog.NeoConnection.Label"),
-            BaseMessages.getString(PKG, "CypherScriptDialog.NeoConnection.Tooltip"));
+            BaseMessages.getString(PKG, "CypherScriptDialog.NeoConnection.Tooltip"),
+            true);
     PropsUi.setLook(wConnection);
     wConnection.addModifyListener(lsMod);
     FormData fdConnection = new FormData();

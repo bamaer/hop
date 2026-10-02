@@ -19,6 +19,7 @@ package org.apache.hop.neo4j.transforms.cypher;
 
 import java.util.List;
 import java.util.Map;
+import org.apache.hop.core.graph.IGraphConnection;
 import org.apache.hop.core.row.IRowMeta;
 import org.apache.hop.neo4j.core.data.GraphPropertyDataType;
 import org.apache.hop.neo4j.shared.NeoConnection;
@@ -33,6 +34,13 @@ public class CypherData extends BaseTransformData implements ITransformData {
 
   public IRowMeta outputRowMeta;
   public NeoConnection neoConnection;
+
+  /**
+   * The connection to a graph database which isn't spoken to over Bolt, for example FalkorDB. Null
+   * for Bolt connections, which use the driver and session.
+   */
+  public IGraphConnection graphConnection;
+
   public String url;
   public Driver driver;
   public Session session;

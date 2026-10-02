@@ -30,10 +30,11 @@ import org.apache.hop.neo4j.actions.index.IndexUpdate;
 import org.apache.hop.neo4j.actions.index.Neo4jIndex;
 import org.apache.hop.neo4j.actions.index.ObjectType;
 import org.apache.hop.neo4j.actions.index.UpdateType;
+import org.apache.hop.neo4j.shared.CypherDialect;
 import org.junit.jupiter.api.Test;
 
 /** The statements were checked against Memgraph 3.6, see MemgraphBoltIT. */
-class BoltDialectTest {
+class CypherDialectTest {
 
   private static IndexUpdate index(ObjectType objectType, String name, String properties) {
     return new IndexUpdate(UpdateType.CREATE, objectType, "idx", name, properties);
@@ -59,10 +60,10 @@ class BoltDialectTest {
     IndexUpdate update = index(ObjectType.NODE, "Person", "name, age");
     assertEquals(
         Neo4jIndex.generateCreateIndexCypher(update),
-        Neo4jIndex.generateCreateIndexCypher(update, BoltDialect.NEO4J));
+        Neo4jIndex.generateCreateIndexCypher(update, CypherDialect.NEO4J));
     assertEquals(
         Neo4jIndex.generateDropIndexCypher(update),
-        Neo4jIndex.generateDropIndexCypher(update, BoltDialect.NEO4J));
+        Neo4jIndex.generateDropIndexCypher(update, CypherDialect.NEO4J));
     ConstraintUpdate unique =
         constraint(
             org.apache.hop.neo4j.actions.constraint.ObjectType.NODE,
@@ -71,7 +72,7 @@ class BoltDialectTest {
             "id");
     assertEquals(
         Neo4jConstraint.generateCreateConstraintCypher(unique),
-        Neo4jConstraint.generateCreateConstraintCypher(unique, BoltDialect.NEO4J));
+        Neo4jConstraint.generateCreateConstraintCypher(unique, CypherDialect.NEO4J));
   }
 
   @Test
@@ -79,20 +80,20 @@ class BoltDialectTest {
     assertEquals(
         "CREATE INDEX ON :Person(name, age)",
         Neo4jIndex.generateCreateIndexCypher(
-            index(ObjectType.NODE, "Person", "name, age"), BoltDialect.MEMGRAPH));
+            index(ObjectType.NODE, "Person", "name, age"), CypherDialect.MEMGRAPH));
     assertEquals(
         "DROP INDEX ON :Person(name)",
         Neo4jIndex.generateDropIndexCypher(
-            index(ObjectType.NODE, "Person", "name"), BoltDialect.MEMGRAPH));
+            index(ObjectType.NODE, "Person", "name"), CypherDialect.MEMGRAPH));
     assertEquals(
         "CREATE EDGE INDEX ON :KNOWS(since)",
         Neo4jIndex.generateCreateIndexCypher(
-            index(ObjectType.RELATIONSHIP, "KNOWS", "since"), BoltDialect.MEMGRAPH));
+            index(ObjectType.RELATIONSHIP, "KNOWS", "since"), CypherDialect.MEMGRAPH));
     assertThrows(
         HopException.class,
         () ->
             Neo4jIndex.generateCreateIndexCypher(
-                index(ObjectType.RELATIONSHIP, "KNOWS", "a, b"), BoltDialect.MEMGRAPH));
+                index(ObjectType.RELATIONSHIP, "KNOWS", "a, b"), CypherDialect.MEMGRAPH));
   }
 
   @Test
@@ -102,16 +103,16 @@ class BoltDialectTest {
     assertEquals(
         "CREATE CONSTRAINT ON (n:Person) ASSERT n.a, n.b IS UNIQUE",
         Neo4jConstraint.generateCreateConstraintCypher(
-            constraint(node, ConstraintType.UNIQUE, "Person", "a, b"), BoltDialect.MEMGRAPH));
+            constraint(node, ConstraintType.UNIQUE, "Person", "a, b"), CypherDialect.MEMGRAPH));
     assertEquals(
         "DROP CONSTRAINT ON (n:Person) ASSERT EXISTS (n.id)",
         Neo4jConstraint.generateDropConstraintCypher(
-            constraint(node, ConstraintType.NOT_NULL, "Person", "id"), BoltDialect.MEMGRAPH));
+            constraint(node, ConstraintType.NOT_NULL, "Person", "id"), CypherDialect.MEMGRAPH));
     assertThrows(
         HopException.class,
         () ->
             Neo4jConstraint.generateCreateConstraintCypher(
-                constraint(node, ConstraintType.NODE_KEY, "Person", "id"), BoltDialect.MEMGRAPH));
+                constraint(node, ConstraintType.NODE_KEY, "Person", "id"), CypherDialect.MEMGRAPH));
     assertThrows(
         HopException.class,
         () ->
@@ -121,23 +122,23 @@ class BoltDialectTest {
                     ConstraintType.UNIQUE,
                     "KNOWS",
                     "id"),
-                BoltDialect.MEMGRAPH));
+                CypherDialect.MEMGRAPH));
   }
 
   @Test
   void testNeptuneHasNoIndexesOrConstraints() {
-    assertFalse(BoltDialect.NEPTUNE.isSupportingIndexes());
-    assertFalse(BoltDialect.NEPTUNE.isSupportingConstraints());
+    assertFalse(CypherDialect.NEPTUNE.isSupportingIndexes());
+    assertFalse(CypherDialect.NEPTUNE.isSupportingConstraints());
     assertThrows(
         HopException.class,
         () ->
             Neo4jIndex.generateCreateIndexCypher(
-                index(ObjectType.NODE, "Person", "name"), BoltDialect.NEPTUNE));
+                index(ObjectType.NODE, "Person", "name"), CypherDialect.NEPTUNE));
   }
 
   @Test
   void testSchemaChangesInTransactions() {
-    assertTrue(BoltDialect.NEO4J.isSupportingSchemaChangesInTransactions());
-    assertFalse(BoltDialect.MEMGRAPH.isSupportingSchemaChangesInTransactions());
+    assertTrue(CypherDialect.NEO4J.isSupportingSchemaChangesInTransactions());
+    assertFalse(CypherDialect.MEMGRAPH.isSupportingSchemaChangesInTransactions());
   }
 }

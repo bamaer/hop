@@ -34,6 +34,7 @@ import org.apache.hop.core.util.Utils;
 import org.apache.hop.neo4j.core.data.GraphData;
 import org.apache.hop.neo4j.core.data.GraphPropertyDataType;
 import org.apache.hop.neo4j.model.GraphPropertyType;
+import org.apache.hop.neo4j.shared.NamedGraphConnection;
 import org.apache.hop.neo4j.shared.NeoConnectionUtils;
 import org.apache.hop.neo4j.shared.NeoHopData;
 import org.apache.hop.pipeline.Pipeline;
@@ -74,6 +75,22 @@ public class Cypher extends BaseTransform<CypherMeta, CypherData> {
       return false;
     }
     try {
+      NamedGraphConnection graphConnection =
+          NeoConnectionUtils.findGraphConnection(
+              metadataProvider, resolve(meta.getConnectionName()));
+      if (graphConnection != null && !NeoConnectionUtils.isBolt(graphConnection)) {
+        // Not Bolt: work through the generic graph connection
+        //
+        if (meta.isReturningGraph()) {
+          logError(
+              "Returning a graph is only supported on Neo4j, Memgraph and Neptune connections");
+          return false;
+        }
+        data.batchSize = Const.toLongExpanded(resolve(meta.getBatchSize()), 1);
+        data.attempts = 1 + Math.max(0, Const.toInt(resolve(meta.getNrRetriesOnError()), 0));
+        data.graphConnection = graphConnection.connect(getLogChannel(), this);
+        return super.init();
+      }
       data.neoConnection =
           NeoConnectionUtils.loadConnection(metadataProvider, resolve(meta.getConnectionName()));
       if (data.neoConnection == null) {
@@ -128,6 +145,14 @@ public class Cypher extends BaseTransform<CypherMeta, CypherData> {
   }
 
   private void closeSessionDriver() {
+    if (data.graphConnection != null) {
+      try {
+        data.graphConnection.close();
+      } catch (HopException e) {
+        logError("Error closing the graph database connection", e);
+      }
+      data.graphConnection = null;
+    }
     if (data.session != null) {
       data.session.close();
     }
@@ -314,6 +339,11 @@ public class Cypher extends BaseTransform<CypherMeta, CypherData> {
       return;
     }
 
+    if (data.graphConnection != null) {
+      runGenericStatementsBatch();
+      return;
+    }
+
     // Execute all the statements in there in one transaction...
     //
     TransactionCallback<Integer> transactionWork =
@@ -371,6 +401,10 @@ public class Cypher extends BaseTransform<CypherMeta, CypherData> {
   }
 
   private List<Object[]> writeUnwindList() throws HopException {
+    if (data.graphConnection != null) {
+      writeGenericUnwindList();
+      return null;
+    }
     HashMap<String, Object> unwindMap = new HashMap<>();
     unwindMap.put(data.unwindMapName, data.unwindList);
     List<Object[]> resultRows = null;
@@ -431,6 +465,96 @@ public class Cypher extends BaseTransform<CypherMeta, CypherData> {
     data.unwindList.clear();
     data.outputCount = 0;
     return resultRows;
+  }
+
+  /** Execute the batch of statements over a graph connection which isn't Bolt. */
+  private void runGenericStatementsBatch() throws HopException {
+    executeGeneric(
+        () -> {
+          data.graphConnection.executeWrite(
+              transaction -> {
+                for (CypherStatement cypherStatement : data.cypherStatements) {
+                  List<Map<String, Object>> rows =
+                      transaction.execute(
+                          cypherStatement.getCypher(), cypherStatement.getParameters());
+                  getGenericResultRows(rows, cypherStatement.getRow(), false);
+                }
+                return null;
+              });
+          if (meta.isReadOnly()) {
+            setLinesInput(getLinesInput() + data.cypherStatements.size());
+          } else {
+            setLinesOutput(getLinesOutput() + data.cypherStatements.size());
+          }
+        });
+    data.cypherStatements.clear();
+  }
+
+  /** Execute the unwind statement over a graph connection which isn't Bolt. */
+  private void writeGenericUnwindList() throws HopException {
+    Map<String, Object> unwindMap = new HashMap<>();
+    unwindMap.put(data.unwindMapName, data.unwindList);
+    executeGeneric(
+        () ->
+            data.graphConnection.executeWrite(
+                transaction -> {
+                  getGenericResultRows(
+                      transaction.execute(data.cypher, unwindMap), new Object[0], true);
+                  return null;
+                }));
+    setLinesOutput(getLinesOutput() + data.unwindList.size());
+    data.unwindList.clear();
+    data.outputCount = 0;
+  }
+
+  /** Work to retry the configured number of times. */
+  @FunctionalInterface
+  private interface GenericWork {
+    void execute() throws HopException;
+  }
+
+  private void executeGeneric(GenericWork work) throws HopException {
+    for (int attempt = 0; attempt < data.attempts; attempt++) {
+      try {
+        work.execute();
+        return;
+      } catch (HopException e) {
+        if (attempt + 1 >= data.attempts) {
+          throw e;
+        }
+        logBasic("Retrying after attempt #" + (attempt + 1) + " with error : " + e.getMessage());
+      }
+    }
+  }
+
+  /**
+   * Pass the result rows of a graph connection which isn't Bolt to the next transforms. The values
+   * are plain Java values: they are converted to the types of the return values.
+   */
+  private void getGenericResultRows(List<Map<String, Object>> rows, Object[] row, boolean unwind)
+      throws HopException {
+    if (meta.getReturnValues().isEmpty()) {
+      if (!unwind) {
+        putRow(data.outputRowMeta, row);
+      }
+      return;
+    }
+    for (Map<String, Object> resultRow : rows) {
+      Object[] outputRow;
+      if (unwind) {
+        outputRow = RowDataUtil.allocateRowData(data.outputRowMeta.size());
+      } else {
+        outputRow = RowDataUtil.createResizedCopy(row, data.outputRowMeta.size());
+      }
+      int index = data.hasInput && !unwind ? getInputRowMeta().size() : 0;
+      for (ReturnValue returnValue : meta.getReturnValues()) {
+        IValueMeta targetValueMeta = data.outputRowMeta.getValueMeta(index);
+        outputRow[index++] =
+            NeoHopData.convertToHopValue(
+                returnValue.getName(), resultRow.get(returnValue.getName()), targetValueMeta);
+      }
+      putRow(data.outputRowMeta, outputRow);
+    }
   }
 
   public void getResultRows(Result result, Object[] row, boolean unwind) throws HopException {

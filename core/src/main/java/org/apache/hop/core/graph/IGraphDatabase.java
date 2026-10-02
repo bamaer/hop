@@ -41,6 +41,14 @@ public interface IGraphDatabase extends Cloneable {
   IGraphDatabase clone();
 
   /**
+   * @return The Cypher dialect of this database type, for example NEO4J, MEMGRAPH or FALKORDB. The
+   *     same as {@link IGraphConnection#getDialect()} of its connections.
+   */
+  default String getDialect() {
+    return "NEO4J";
+  }
+
+  /**
    * Open a connection to the graph database. The caller closes it.
    *
    * @param log The log channel to log to

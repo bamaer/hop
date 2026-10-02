@@ -31,6 +31,7 @@ import org.apache.hop.core.gui.plugin.GuiWidgetGroupType;
 import org.apache.hop.core.logging.ILogChannel;
 import org.apache.hop.core.variables.IVariables;
 import org.apache.hop.metadata.api.HopMetadataProperty;
+import org.apache.hop.neo4j.shared.CypherDialect;
 import org.apache.hop.neo4j.shared.NeoConnection;
 import org.neo4j.driver.Driver;
 
@@ -362,7 +363,12 @@ public abstract class BoltGraphDatabase extends BaseGraphDatabase {
   }
 
   /** The Cypher dialect of this database type. */
-  public abstract BoltDialect getDialect();
+  public abstract CypherDialect getCypherDialect();
+
+  @Override
+  public String getDialect() {
+    return getCypherDialect().name();
+  }
 
   /**
    * The settings of this Bolt database as a Neo4j connection, the form the transforms and actions
@@ -373,7 +379,7 @@ public abstract class BoltGraphDatabase extends BaseGraphDatabase {
   public NeoConnection toNeoConnection(String name) {
     NeoConnection neo = new NeoConnection();
     neo.setName(name);
-    neo.setDialect(getDialect());
+    neo.setDialect(getCypherDialect());
     neo.setServer(server);
     neo.setDatabaseName(databaseName);
     neo.setBoltPort(boltPort);
@@ -442,7 +448,8 @@ public abstract class BoltGraphDatabase extends BaseGraphDatabase {
     NeoConnection neo = toNeoConnection(connectionName);
     Driver driver = neo.getDriver(log, variables);
     try {
-      return new BoltGraphConnection(driver, neo.getSession(log, driver, variables));
+      return new BoltGraphConnection(
+          driver, neo.getSession(log, driver, variables), getCypherDialect(), log);
     } catch (RuntimeException e) {
       driver.close();
       throw new HopException("Unable to open a session on " + connectionName, e);

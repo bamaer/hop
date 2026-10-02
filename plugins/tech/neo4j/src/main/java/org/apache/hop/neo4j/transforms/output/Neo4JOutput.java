@@ -27,7 +27,6 @@ import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hop.core.Const;
 import org.apache.hop.core.exception.HopException;
-import org.apache.hop.core.exception.HopRuntimeException;
 import org.apache.hop.core.exception.HopValueException;
 import org.apache.hop.core.row.IRowMeta;
 import org.apache.hop.core.row.IValueMeta;
@@ -50,7 +49,6 @@ import org.apache.hop.neo4j.transforms.output.fields.PropertyField;
 import org.apache.hop.pipeline.Pipeline;
 import org.apache.hop.pipeline.PipelineMeta;
 import org.apache.hop.pipeline.transform.TransformMeta;
-import org.neo4j.driver.Result;
 
 public class Neo4JOutput extends BaseNeoTransform<Neo4JOutputMeta, Neo4JOutputData> {
 
@@ -212,8 +210,7 @@ public class Neo4JOutput extends BaseNeoTransform<Neo4JOutputMeta, Neo4JOutputDa
       if (meta.isReturningGraph()) {
         logBasic("Writing to output graph field, not to Neo4j");
       } else {
-        data.driver = data.neoConnection.getDriver(getLogChannel(), this);
-        data.session = data.neoConnection.getSession(getLogChannel(), data.driver, this);
+        data.connection = data.graphConnection.connect(getLogChannel(), this);
 
         // Create indexes for the primary properties of the From and To nodes
         //
@@ -512,17 +509,11 @@ public class Neo4JOutput extends BaseNeoTransform<Neo4JOutputMeta, Neo4JOutputDa
         logDebug("properties list size : " + data.unwindList.size());
       }
 
-      // Run it always without beginTransaction()...
-      // In Neo4j 5.x, Result must be consumed within the callback
+      // Run it always in a write transaction. The connection logs the notifications.
       //
-      data.session.executeWrite(
+      data.connection.executeWrite(
           tx -> {
-            Result result = tx.run(data.cypher, properties);
-            try {
-              processSummary(result);
-            } catch (HopException e) {
-              throw new HopRuntimeException("Error processing result summary", e);
-            }
+            tx.execute(data.cypher, properties);
             return null;
           });
 
@@ -839,9 +830,9 @@ public class Neo4JOutput extends BaseNeoTransform<Neo4JOutputMeta, Neo4JOutputDa
       }
 
       try {
-        data.neoConnection =
-            NeoConnectionUtils.loadConnection(metadataProvider, resolve(meta.getConnection()));
-        if (data.neoConnection == null) {
+        data.graphConnection =
+            NeoConnectionUtils.findGraphConnection(metadataProvider, resolve(meta.getConnection()));
+        if (data.graphConnection == null) {
           logError(
               "Connection '"
                   + resolve(meta.getConnection())
@@ -876,11 +867,13 @@ public class Neo4JOutput extends BaseNeoTransform<Neo4JOutputMeta, Neo4JOutputDa
       }
     }
 
-    if (data.session != null) {
-      data.session.close();
-    }
-    if (data.driver != null) {
-      data.driver.close();
+    if (data.connection != null) {
+      try {
+        data.connection.close();
+      } catch (HopException e) {
+        logError("Error closing the graph database connection", e);
+      }
+      data.connection = null;
     }
 
     super.dispose();
@@ -898,10 +891,6 @@ public class Neo4JOutput extends BaseNeoTransform<Neo4JOutputMeta, Neo4JOutputDa
       labels.append(escapeLabel(nodeLabel));
     }
     return labels.toString();
-  }
-
-  private void processSummary(Result result) throws HopException {
-    NeoConnectionUtils.logNotifications(getLogChannel(), result.consume());
   }
 
   public List<String> getNodeLabels(
@@ -947,7 +936,7 @@ public class Neo4JOutput extends BaseNeoTransform<Neo4JOutputMeta, Neo4JOutputDa
 
   private void createIndexForNode(
       Neo4JOutputData data, NodeField theNode, IRowMeta rowMeta, Object[] rowData)
-      throws HopValueException {
+      throws HopException {
 
     // Which labels to index?
     //
@@ -981,11 +970,7 @@ public class Neo4JOutput extends BaseNeoTransform<Neo4JOutputMeta, Neo4JOutputDa
 
       if (label != null && !primaryProperties.isEmpty()) {
         NeoConnectionUtils.createNodeIndex(
-            getLogChannel(),
-            data.session,
-            Collections.singletonList(label),
-            primaryProperties,
-            data.neoConnection.getDialect());
+            getLogChannel(), data.connection, Collections.singletonList(label), primaryProperties);
       }
     }
   }

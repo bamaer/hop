@@ -19,6 +19,7 @@ package org.apache.hop.neo4j.bolt;
 
 import org.apache.hop.core.graph.GraphDatabasePlugin;
 import org.apache.hop.core.gui.plugin.GuiPlugin;
+import org.apache.hop.neo4j.shared.CypherDialect;
 
 /**
  * Memgraph over Bolt. Memgraph has no routing table outside of its high availability setup, so this
@@ -38,7 +39,7 @@ public class MemgraphGraphDatabase extends BoltGraphDatabase {
   }
 
   @Override
-  public BoltDialect getDialect() {
-    return BoltDialect.MEMGRAPH;
+  public CypherDialect getCypherDialect() {
+    return CypherDialect.MEMGRAPH;
   }
 }

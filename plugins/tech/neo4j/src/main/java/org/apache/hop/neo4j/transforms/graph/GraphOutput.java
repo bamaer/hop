@@ -38,6 +38,7 @@ import org.apache.hop.core.row.RowDataUtil;
 import org.apache.hop.core.util.Utils;
 import org.apache.hop.core.variables.IVariables;
 import org.apache.hop.metadata.api.IHopMetadataSerializer;
+import org.apache.hop.neo4j.bolt.BoltGraphConnection;
 import org.apache.hop.neo4j.core.GraphUsage;
 import org.apache.hop.neo4j.core.data.GraphData;
 import org.apache.hop.neo4j.core.data.GraphNodeData;
@@ -56,7 +57,6 @@ import org.apache.hop.neo4j.transforms.BaseNeoTransform;
 import org.apache.hop.pipeline.Pipeline;
 import org.apache.hop.pipeline.PipelineMeta;
 import org.apache.hop.pipeline.transform.TransformMeta;
-import org.neo4j.driver.Result;
 
 @SuppressWarnings("java:S1104")
 public class GraphOutput extends BaseNeoTransform<GraphOutputMeta, GraphOutputData> {
@@ -82,9 +82,9 @@ public class GraphOutput extends BaseNeoTransform<GraphOutputMeta, GraphOutputDa
           return false;
         }
 
-        data.neoConnection =
-            NeoConnectionUtils.loadConnection(metadataProvider, meta.getConnectionName());
-        if (data.neoConnection == null) {
+        data.graphConnection =
+            NeoConnectionUtils.findGraphConnection(metadataProvider, meta.getConnectionName());
+        if (data.graphConnection == null) {
           logError(
               "Connection '"
                   + meta.getConnectionName()
@@ -94,14 +94,9 @@ public class GraphOutput extends BaseNeoTransform<GraphOutputMeta, GraphOutputDa
         }
 
         try {
-          data.driver = data.neoConnection.getDriver(getLogChannel(), this);
-          data.session = data.neoConnection.getSession(getLogChannel(), data.driver, this);
+          data.connection = data.graphConnection.connect(getLogChannel(), this);
         } catch (Exception e) {
-          logError(
-              "Unable to get or create Neo4j database driver for database '"
-                  + data.neoConnection.getName()
-                  + "'",
-              e);
+          logError("Unable to connect to graph database '" + data.graphConnection.name() + "'", e);
           return false;
         }
 
@@ -130,7 +125,12 @@ public class GraphOutput extends BaseNeoTransform<GraphOutputMeta, GraphOutputDa
         //
         List<NodeProperty> usedNodeProperties = findUsedNodeProperties();
         data.modelValidator = new ModelValidator(data.graphModel, usedNodeProperties);
-        int nrErrors = data.modelValidator.validateBeforeLoad(getLogChannel(), data.session);
+        if (!(data.connection instanceof BoltGraphConnection boltConnection)) {
+          logError("Validating against the graph model is only supported on Neo4j");
+          return false;
+        }
+        int nrErrors =
+            data.modelValidator.validateBeforeLoad(getLogChannel(), boltConnection.getSession());
         if (nrErrors > 0) {
           // There were validation errors, we can stop here...
           logError(
@@ -170,11 +170,13 @@ public class GraphOutput extends BaseNeoTransform<GraphOutputMeta, GraphOutputDa
 
     wrapUpTransaction();
 
-    if (data.session != null) {
-      data.session.close();
-    }
-    if (data.driver != null) {
-      data.driver.close();
+    if (data.connection != null) {
+      try {
+        data.connection.close();
+      } catch (HopException e) {
+        logError("Error closing the graph database connection", e);
+      }
+      data.connection = null;
     }
     if (data.cypherMap != null) {
       data.cypherMap.clear();
@@ -515,11 +517,7 @@ public class GraphOutput extends BaseNeoTransform<GraphOutputMeta, GraphOutputDa
     //
     for (GraphNode node : nodePropertiesMap.keySet()) {
       NeoConnectionUtils.createNodeIndex(
-          getLogChannel(),
-          data.session,
-          node.getLabels(),
-          nodePropertiesMap.get(node),
-          data.neoConnection.getDialect());
+          getLogChannel(), data.connection, node.getLabels(), nodePropertiesMap.get(node));
     }
   }
 
@@ -527,8 +525,12 @@ public class GraphOutput extends BaseNeoTransform<GraphOutputMeta, GraphOutputDa
       GraphOutputData data, String cypher, Map<String, Object> parameters) {
     boolean errors = false;
     if (data.batchSize <= 1) {
-      Result result = data.session.run(cypher, parameters);
-      errors = processSummary(result);
+      try {
+        data.connection.execute(cypher, parameters);
+      } catch (HopException e) {
+        logError("Error executing statement", e);
+        errors = true;
+      }
     } else {
 
       if (meta.isOutOfOrderAllowed()) {
@@ -557,20 +559,24 @@ public class GraphOutput extends BaseNeoTransform<GraphOutputMeta, GraphOutputDa
       } else {
         // Normal batching
         //
-        if (data.outputCount == 0) {
-          data.transaction = data.session.beginTransaction();
-        }
+        try {
+          if (data.outputCount == 0) {
+            data.transaction = data.connection.beginTransaction();
+          }
 
-        Result result = data.transaction.run(cypher, parameters);
-        errors = processSummary(result);
+          data.transaction.execute(cypher, parameters);
 
-        data.outputCount++;
-        incrementLinesOutput();
+          data.outputCount++;
+          incrementLinesOutput();
 
-        if (!errors && data.outputCount >= data.batchSize) {
-          data.transaction.commit();
-          data.transaction.close();
-          data.outputCount = 0;
+          if (data.outputCount >= data.batchSize) {
+            data.transaction.commit();
+            data.transaction.close();
+            data.outputCount = 0;
+          }
+        } catch (HopException e) {
+          logError("Error executing statement in a transaction", e);
+          errors = true;
         }
       }
     }
@@ -603,16 +609,16 @@ public class GraphOutput extends BaseNeoTransform<GraphOutputMeta, GraphOutputDa
       // Execute this unwind cypher statement...
       // In Neo4j 5.x, Result must be consumed within the callback
       //
-      boolean statementErrors =
-          data.session.executeWrite(
-              tx -> {
-                Result result = tx.run(unwindCypher, props);
-                // Consume the result and check for errors
-                NeoConnectionUtils.logNotifications(getLogChannel(), result.consume());
-                return false;
-              });
-
-      errors = statementErrors;
+      try {
+        data.connection.executeWrite(
+            tx -> {
+              tx.execute(unwindCypher, props);
+              return null;
+            });
+      } catch (HopException e) {
+        logError("Error executing statement: " + unwindCypher, e);
+        errors = true;
+      }
 
       if (errors) {
         // The error is already logged, simply break out of the loop...
@@ -627,11 +633,6 @@ public class GraphOutput extends BaseNeoTransform<GraphOutputMeta, GraphOutputDa
     data.unwindMapList.clear();
 
     return errors;
-  }
-
-  private boolean processSummary(Result result) {
-    NeoConnectionUtils.logNotifications(getLogChannel(), result.consume());
-    return false;
   }
 
   private static class NodeAndPropertyData {
@@ -1375,8 +1376,14 @@ public class GraphOutput extends BaseNeoTransform<GraphOutputMeta, GraphOutputDa
       }
     } else {
       if (data.outputCount > 0) {
-        data.transaction.commit();
-        data.transaction.close();
+        try {
+          data.transaction.commit();
+          data.transaction.close();
+        } catch (HopException e) {
+          logError("Error committing the transaction", e);
+          stopAll();
+          setErrors(1L);
+        }
 
         // Force creation of a new transaction on the next batch of records
         //

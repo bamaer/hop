@@ -81,7 +81,7 @@ public class CheckConnectionsDialog extends ActionDialog implements IActionDialo
 
     String[] availableConnectionNames;
     try {
-      List<String> names = NeoConnectionUtils.getConnectionNames(getMetadataProvider());
+      List<String> names = NeoConnectionUtils.getAllConnectionNames(getMetadataProvider());
       availableConnectionNames = names.toArray(new String[0]);
     } catch (HopException e) {
       availableConnectionNames = new String[] {};

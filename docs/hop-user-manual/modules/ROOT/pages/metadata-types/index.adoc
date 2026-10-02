@@ -50,7 +50,7 @@ xref:metadata-types/data-stream/data-stream.adoc[Data Stream]: A Data Stream can
 * xref:metadata-types/git-connection.adoc[Git Connection]: REST API endpoint and credentials for GitHub, GitLab, Bitbucket, Forgejo or Gitea
 * xref:metadata-types/git-vfs-connection.adoc[Git repository]: Named VFS access to the files of a git repository at a branch, tag or commit
 * xref:metadata-types/google-storage-authentication.adoc[Google Storage Connection]: A Google Cloud Storage connection type.
-* xref:metadata-types/graph-database-connection.adoc[Graph Database Connection]: A connection to a graph database over the Bolt protocol: Neo4j, Memgraph or Amazon Neptune
+* xref:metadata-types/graph-database-connection.adoc[Graph Database Connection]: A connection to a graph database which speaks Cypher: Neo4j, Memgraph, Amazon Neptune, FalkorDB or Apache AGE
 * xref:metadata-types/hdfs-connection.adoc[HDFS Connection]: Named HDFS access via HttpFS, Knox or WebHDFS (no Hadoop client JARs)
 * xref:metadata-types/hop-server.adoc[Hop Server]: Defines a Hop Server
 * xref:metadata-types/mongodb-connection.adoc[MongoDB Connection]: Describes a MongoDB connection

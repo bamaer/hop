@@ -26,7 +26,7 @@ import org.apache.hop.core.annotations.ActionTransformType;
 import org.apache.hop.core.exception.HopException;
 import org.apache.hop.metadata.api.HopMetadataProperty;
 import org.apache.hop.metadata.api.HopMetadataPropertyType;
-import org.apache.hop.neo4j.shared.NeoConnection;
+import org.apache.hop.neo4j.shared.NamedGraphConnection;
 import org.apache.hop.neo4j.shared.NeoConnectionUtils;
 import org.apache.hop.workflow.action.ActionBase;
 import org.apache.hop.workflow.action.IAction;
@@ -80,8 +80,8 @@ public class CheckConnections extends ActionBase implements IAction {
     for (String connectionName : realConnectionNames) {
       testCount++;
       try {
-        NeoConnection connection =
-            NeoConnectionUtils.loadConnection(getMetadataProvider(), connectionName);
+        NamedGraphConnection connection =
+            NeoConnectionUtils.findGraphConnection(getMetadataProvider(), connectionName);
         if (connection == null) {
           throw new HopException("Unable to find connection with name '" + connectionName + "'");
         }

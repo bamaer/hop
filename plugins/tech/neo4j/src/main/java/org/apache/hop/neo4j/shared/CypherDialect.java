@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.hop.neo4j.bolt;
+package org.apache.hop.neo4j.shared;
 
 import java.util.EnumSet;
 import java.util.Set;
@@ -25,7 +25,7 @@ import org.apache.hop.neo4j.actions.constraint.ConstraintType;
  * The Cypher dialect of a Bolt graph database: which index and constraint statements it supports.
  * Statements the transforms and actions generate otherwise are the same for all Bolt databases.
  */
-public enum BoltDialect {
+public enum CypherDialect {
   /** Neo4j 5: named indexes and constraints, IF [NOT] EXISTS. */
   NEO4J(
       true,
@@ -42,6 +42,21 @@ public enum BoltDialect {
       EnumSet.of(ConstraintType.UNIQUE, ConstraintType.NOT_NULL),
       EnumSet.noneOf(ConstraintType.class)),
 
+  /**
+   * FalkorDB: unnamed indexes in Cypher, constraints only through its own commands. Every statement
+   * is a transaction of its own.
+   */
+  FALKORDB(
+      true, true, true, EnumSet.noneOf(ConstraintType.class), EnumSet.noneOf(ConstraintType.class)),
+
+  /** Apache AGE: indexes and constraints are PostgreSQL ones, not Cypher. */
+  AGE(
+      false,
+      false,
+      true,
+      EnumSet.noneOf(ConstraintType.class),
+      EnumSet.noneOf(ConstraintType.class)),
+
   /** Amazon Neptune manages its indexes itself and has no constraints. */
   NEPTUNE(
       false,
@@ -56,7 +71,7 @@ public enum BoltDialect {
   private final Set<ConstraintType> nodeConstraintTypes;
   private final Set<ConstraintType> relationshipConstraintTypes;
 
-  BoltDialect(
+  CypherDialect(
       boolean supportingNodeIndexes,
       boolean supportingRelationshipIndexes,
       boolean supportingSchemaChangesInTransactions,
@@ -67,6 +82,16 @@ public enum BoltDialect {
     this.supportingSchemaChangesInTransactions = supportingSchemaChangesInTransactions;
     this.nodeConstraintTypes = nodeConstraintTypes;
     this.relationshipConstraintTypes = relationshipConstraintTypes;
+  }
+
+  /** The dialect with the given name, Neo4j for anything unknown. */
+  public static CypherDialect fromId(String id) {
+    for (CypherDialect dialect : values()) {
+      if (dialect.name().equalsIgnoreCase(id)) {
+        return dialect;
+      }
+    }
+    return NEO4J;
   }
 
   public boolean isSupportingNodeIndexes() {
