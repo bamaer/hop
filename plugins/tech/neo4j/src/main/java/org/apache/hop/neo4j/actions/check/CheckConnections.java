@@ -26,8 +26,8 @@ import org.apache.hop.core.annotations.ActionTransformType;
 import org.apache.hop.core.exception.HopException;
 import org.apache.hop.metadata.api.HopMetadataProperty;
 import org.apache.hop.metadata.api.HopMetadataPropertyType;
-import org.apache.hop.metadata.api.IHopMetadataSerializer;
 import org.apache.hop.neo4j.shared.NeoConnection;
+import org.apache.hop.neo4j.shared.NeoConnectionUtils;
 import org.apache.hop.workflow.action.ActionBase;
 import org.apache.hop.workflow.action.IAction;
 
@@ -66,9 +66,6 @@ public class CheckConnections extends ActionBase implements IAction {
   @Override
   public Result execute(Result result, int nr) throws HopException {
 
-    IHopMetadataSerializer<NeoConnection> serializer =
-        getMetadataProvider().getSerializer(NeoConnection.class);
-
     // Replace variables & parameters
     //
     List<String> realConnectionNames = new ArrayList<>();
@@ -83,7 +80,8 @@ public class CheckConnections extends ActionBase implements IAction {
     for (String connectionName : realConnectionNames) {
       testCount++;
       try {
-        NeoConnection connection = serializer.load(connectionName);
+        NeoConnection connection =
+            NeoConnectionUtils.loadConnection(getMetadataProvider(), connectionName);
         if (connection == null) {
           throw new HopException("Unable to find connection with name '" + connectionName + "'");
         }

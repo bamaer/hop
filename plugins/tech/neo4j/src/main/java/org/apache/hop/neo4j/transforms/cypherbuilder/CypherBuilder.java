@@ -28,7 +28,7 @@ import org.apache.hop.core.row.IValueMeta;
 import org.apache.hop.core.row.RowDataUtil;
 import org.apache.hop.neo4j.core.data.GraphPropertyDataType;
 import org.apache.hop.neo4j.model.GraphPropertyType;
-import org.apache.hop.neo4j.shared.NeoConnection;
+import org.apache.hop.neo4j.shared.NeoConnectionUtils;
 import org.apache.hop.neo4j.shared.NeoHopData;
 import org.apache.hop.pipeline.Pipeline;
 import org.apache.hop.pipeline.PipelineMeta;
@@ -57,7 +57,7 @@ public class CypherBuilder extends BaseTransform<CypherBuilderMeta, CypherBuilde
     //
     String connectionName = resolve(meta.getConnectionName());
     try {
-      data.connection = metadataProvider.getSerializer(NeoConnection.class).load(connectionName);
+      data.connection = NeoConnectionUtils.loadConnection(metadataProvider, connectionName);
       data.driver = data.connection.getDriver(getLogChannel(), this);
       data.driver.verifyConnectivity();
       data.session = data.connection.getSession(getLogChannel(), data.driver, this);

@@ -36,6 +36,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.hop.core.Const;
 import org.apache.hop.core.exception.HopException;
 import org.apache.hop.core.exception.HopRuntimeException;
+import org.apache.hop.core.graph.GraphDatabaseMeta;
 import org.apache.hop.core.gui.plugin.GuiElementType;
 import org.apache.hop.core.gui.plugin.GuiPlugin;
 import org.apache.hop.core.gui.plugin.GuiWidgetElement;
@@ -80,6 +81,8 @@ import org.apache.hop.neo4j.execution.builder.CypherRelationshipBuilder;
 import org.apache.hop.neo4j.execution.builder.ICypherBuilder;
 import org.apache.hop.neo4j.execution.cache.NeoLocationCache;
 import org.apache.hop.neo4j.shared.NeoConnection;
+import org.apache.hop.neo4j.shared.NeoConnectionSelectionLine;
+import org.apache.hop.neo4j.shared.NeoConnectionUtils;
 import org.apache.hop.ui.core.dialog.EnterTextDialog;
 import org.apache.hop.ui.core.dialog.ErrorDialog;
 import org.apache.hop.ui.core.dialog.MessageBox;
@@ -179,7 +182,8 @@ public class NeoExecutionInfoLocation implements IExecutionInfoLocation {
       order = "010",
       parentId = ExecutionInfoLocation.GUI_PLUGIN_ELEMENT_PARENT_ID,
       type = GuiElementType.METADATA,
-      metadata = NeoConnection.class,
+      metadata = GraphDatabaseMeta.class,
+      metadataSelectionLine = NeoConnectionSelectionLine.class,
       toolTip = "i18n::NeoExecutionInfoLocation.Connection.Tooltip",
       label = "i18n::NeoExecutionInfoLocation.Connection.Label")
   @HopMetadataProperty(key = "connection")
@@ -211,9 +215,7 @@ public class NeoExecutionInfoLocation implements IExecutionInfoLocation {
 
     try {
       NeoConnection connection =
-          metadataProvider
-              .getSerializer(NeoConnection.class)
-              .load(variables.resolve(connectionName));
+          NeoConnectionUtils.loadConnection(metadataProvider, variables.resolve(connectionName));
 
       if (connection == null) {
         throw new HopException("Unable to find Neo4j connection " + connectionName);
@@ -364,16 +366,7 @@ public class NeoExecutionInfoLocation implements IExecutionInfoLocation {
       Neo4jIndex neo4jIndex = new Neo4jIndex("Neo4j Index", null);
 
       String connectionName = ((NeoExecutionInfoLocation) object).getConnectionName();
-      if (StringUtils.isNotEmpty(connectionName)) {
-        // Load the connection
-        //
-        NeoConnection neoConnection =
-            HopGui.getInstance()
-                .getMetadataProvider()
-                .getSerializer(NeoConnection.class)
-                .load(connectionName);
-        neo4jIndex.setConnection(neoConnection);
-      }
+      neo4jIndex.setConnectionName(connectionName);
 
       addIndex(neo4jIndex, "idx_execution_id", EL_EXECUTION, EP_ID);
       addIndex(neo4jIndex, "idx_execution_start_date", EL_EXECUTION, EP_EXECUTION_START_DATE);

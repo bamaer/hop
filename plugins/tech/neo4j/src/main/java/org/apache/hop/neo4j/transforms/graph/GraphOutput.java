@@ -51,15 +51,12 @@ import org.apache.hop.neo4j.model.GraphPropertyType;
 import org.apache.hop.neo4j.model.GraphRelationship;
 import org.apache.hop.neo4j.model.validation.ModelValidator;
 import org.apache.hop.neo4j.model.validation.NodeProperty;
-import org.apache.hop.neo4j.shared.NeoConnection;
 import org.apache.hop.neo4j.shared.NeoConnectionUtils;
 import org.apache.hop.neo4j.transforms.BaseNeoTransform;
 import org.apache.hop.pipeline.Pipeline;
 import org.apache.hop.pipeline.PipelineMeta;
 import org.apache.hop.pipeline.transform.TransformMeta;
 import org.neo4j.driver.Result;
-import org.neo4j.driver.summary.Notification;
-import org.neo4j.driver.summary.ResultSummary;
 
 @SuppressWarnings("java:S1104")
 public class GraphOutput extends BaseNeoTransform<GraphOutputMeta, GraphOutputData> {
@@ -85,9 +82,8 @@ public class GraphOutput extends BaseNeoTransform<GraphOutputMeta, GraphOutputDa
           return false;
         }
 
-        IHopMetadataSerializer<NeoConnection> serializer =
-            metadataProvider.getSerializer(NeoConnection.class);
-        data.neoConnection = serializer.load(meta.getConnectionName());
+        data.neoConnection =
+            NeoConnectionUtils.loadConnection(metadataProvider, meta.getConnectionName());
         if (data.neoConnection == null) {
           logError(
               "Connection '"
@@ -519,7 +515,11 @@ public class GraphOutput extends BaseNeoTransform<GraphOutputMeta, GraphOutputDa
     //
     for (GraphNode node : nodePropertiesMap.keySet()) {
       NeoConnectionUtils.createNodeIndex(
-          getLogChannel(), data.session, node.getLabels(), nodePropertiesMap.get(node));
+          getLogChannel(),
+          data.session,
+          node.getLabels(),
+          nodePropertiesMap.get(node),
+          data.neoConnection.getDialect());
     }
   }
 
@@ -608,23 +608,8 @@ public class GraphOutput extends BaseNeoTransform<GraphOutputMeta, GraphOutputDa
               tx -> {
                 Result result = tx.run(unwindCypher, props);
                 // Consume the result and check for errors
-                ResultSummary summary = result.consume();
-                boolean hasErrors = false;
-                for (Notification notification : summary.notifications()) {
-                  logError(
-                      notification.title()
-                          + " ("
-                          + notification.rawSeverityLevel().orElse("")
-                          + ")");
-                  logError(
-                      notification.code()
-                          + " : "
-                          + notification.description()
-                          + ", position "
-                          + notification.position());
-                  hasErrors = true;
-                }
-                return hasErrors;
+                NeoConnectionUtils.logNotifications(getLogChannel(), result.consume());
+                return false;
               });
 
       errors = statementErrors;
@@ -645,19 +630,8 @@ public class GraphOutput extends BaseNeoTransform<GraphOutputMeta, GraphOutputDa
   }
 
   private boolean processSummary(Result result) {
-    boolean errors = false;
-    ResultSummary summary = result.consume();
-    for (Notification notification : summary.notifications()) {
-      logError(notification.title() + " (" + notification.rawSeverityLevel().orElse("") + ")");
-      logError(
-          notification.code()
-              + " : "
-              + notification.description()
-              + ", position "
-              + notification.position());
-      errors = true;
-    }
-    return errors;
+    NeoConnectionUtils.logNotifications(getLogChannel(), result.consume());
+    return false;
   }
 
   private static class NodeAndPropertyData {

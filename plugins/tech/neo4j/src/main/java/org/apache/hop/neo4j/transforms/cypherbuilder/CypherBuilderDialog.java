@@ -29,7 +29,7 @@ import org.apache.hop.core.variables.IVariables;
 import org.apache.hop.i18n.BaseMessages;
 import org.apache.hop.neo4j.core.data.GraphPropertyDataType;
 import org.apache.hop.neo4j.model.GraphPropertyType;
-import org.apache.hop.neo4j.shared.NeoConnection;
+import org.apache.hop.neo4j.shared.NeoConnectionSelectionLine;
 import org.apache.hop.neo4j.transforms.cypherbuilder.operation.BaseOperation;
 import org.apache.hop.neo4j.transforms.cypherbuilder.operation.CreateOperation;
 import org.apache.hop.neo4j.transforms.cypherbuilder.operation.DeleteOperation;
@@ -53,7 +53,6 @@ import org.apache.hop.ui.core.dialog.MessageDialogWithToggle;
 import org.apache.hop.ui.core.gui.GuiResource;
 import org.apache.hop.ui.core.widget.ColumnInfo;
 import org.apache.hop.ui.core.widget.ComboVar;
-import org.apache.hop.ui.core.widget.MetaSelectionLine;
 import org.apache.hop.ui.core.widget.TableView;
 import org.apache.hop.ui.core.widget.TextVar;
 import org.apache.hop.ui.pipeline.transform.BaseTransformDialog;
@@ -98,7 +97,7 @@ public class CypherBuilderDialog extends BaseTransformDialog {
 
   // The options tab
   //
-  private MetaSelectionLine<NeoConnection> wConnection;
+  private NeoConnectionSelectionLine wConnection;
   private TextVar wBatchSize;
   private TextVar wUnwindAlias;
   private TextVar wRetries;
@@ -175,10 +174,9 @@ public class CypherBuilderDialog extends BaseTransformDialog {
     wOptionsComp.setLayout(new FormLayout());
 
     wConnection =
-        new MetaSelectionLine<>(
+        new NeoConnectionSelectionLine(
             variables,
             metadataProvider,
-            NeoConnection.class,
             wOptionsComp,
             SWT.SINGLE | SWT.LEFT | SWT.BORDER,
             "Neo4j Connection",

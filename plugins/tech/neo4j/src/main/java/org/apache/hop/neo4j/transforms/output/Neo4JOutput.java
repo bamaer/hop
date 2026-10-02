@@ -42,7 +42,6 @@ import org.apache.hop.neo4j.core.data.GraphPropertyData;
 import org.apache.hop.neo4j.core.data.GraphPropertyDataType;
 import org.apache.hop.neo4j.core.data.GraphRelationshipData;
 import org.apache.hop.neo4j.model.GraphPropertyType;
-import org.apache.hop.neo4j.shared.NeoConnection;
 import org.apache.hop.neo4j.shared.NeoConnectionUtils;
 import org.apache.hop.neo4j.transforms.BaseNeoTransform;
 import org.apache.hop.neo4j.transforms.output.fields.LabelField;
@@ -52,8 +51,6 @@ import org.apache.hop.pipeline.Pipeline;
 import org.apache.hop.pipeline.PipelineMeta;
 import org.apache.hop.pipeline.transform.TransformMeta;
 import org.neo4j.driver.Result;
-import org.neo4j.driver.summary.Notification;
-import org.neo4j.driver.summary.ResultSummary;
 
 public class Neo4JOutput extends BaseNeoTransform<Neo4JOutputMeta, Neo4JOutputData> {
 
@@ -843,7 +840,7 @@ public class Neo4JOutput extends BaseNeoTransform<Neo4JOutputMeta, Neo4JOutputDa
 
       try {
         data.neoConnection =
-            metadataProvider.getSerializer(NeoConnection.class).load(resolve(meta.getConnection()));
+            NeoConnectionUtils.loadConnection(metadataProvider, resolve(meta.getConnection()));
         if (data.neoConnection == null) {
           logError(
               "Connection '"
@@ -904,21 +901,7 @@ public class Neo4JOutput extends BaseNeoTransform<Neo4JOutputMeta, Neo4JOutputDa
   }
 
   private void processSummary(Result result) throws HopException {
-    boolean error = false;
-    ResultSummary summary = result.consume();
-    for (Notification notification : summary.notifications()) {
-      logError(notification.title() + " (" + notification.rawSeverityLevel().orElse("") + ")");
-      logError(
-          notification.code()
-              + " : "
-              + notification.description()
-              + ", position "
-              + notification.position());
-      error = true;
-    }
-    if (error) {
-      throw new HopException("Error found while executing cypher statement(s)");
-    }
+    NeoConnectionUtils.logNotifications(getLogChannel(), result.consume());
   }
 
   public List<String> getNodeLabels(
@@ -998,7 +981,11 @@ public class Neo4JOutput extends BaseNeoTransform<Neo4JOutputMeta, Neo4JOutputDa
 
       if (label != null && !primaryProperties.isEmpty()) {
         NeoConnectionUtils.createNodeIndex(
-            getLogChannel(), data.session, Collections.singletonList(label), primaryProperties);
+            getLogChannel(),
+            data.session,
+            Collections.singletonList(label),
+            primaryProperties,
+            data.neoConnection.getDialect());
       }
     }
   }

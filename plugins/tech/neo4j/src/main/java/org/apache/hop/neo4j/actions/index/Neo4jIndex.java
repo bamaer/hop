@@ -26,7 +26,9 @@ import org.apache.hop.core.annotations.Action;
 import org.apache.hop.core.exception.HopException;
 import org.apache.hop.core.exception.HopRuntimeException;
 import org.apache.hop.metadata.api.HopMetadataProperty;
+import org.apache.hop.neo4j.bolt.BoltDialect;
 import org.apache.hop.neo4j.shared.NeoConnection;
+import org.apache.hop.neo4j.shared.NeoConnectionUtils;
 import org.apache.hop.workflow.action.ActionBase;
 import org.apache.hop.workflow.action.IAction;
 import org.neo4j.driver.Driver;
@@ -42,7 +44,10 @@ import org.neo4j.driver.Session;
     documentationUrl = "/workflow/actions/neo4j-index.html")
 public class Neo4jIndex extends ActionBase implements IAction {
 
-  @HopMetadataProperty(key = "connection", storeWithName = true)
+  /** The name of the Neo4j or Bolt graph database connection. */
+  @HopMetadataProperty(key = "connection")
+  private String connectionName;
+
   private NeoConnection connection;
 
   @HopMetadataProperty(groupKey = "updates", key = "update")
@@ -63,6 +68,8 @@ public class Neo4jIndex extends ActionBase implements IAction {
 
   @Override
   public Result execute(Result result, int nr) throws HopException {
+
+    connection = NeoConnectionUtils.loadConnection(getMetadataProvider(), resolve(connectionName));
 
     if (connection == null) {
       result.setResult(false);
@@ -107,6 +114,20 @@ public class Neo4jIndex extends ActionBase implements IAction {
    * @return The generated Cypher statement
    * @throws HopException If configuration is invalid
    */
+  /**
+   * Generate the Cypher to drop an index in the given dialect.
+   *
+   * @throws HopException if the database doesn't support it or information is missing
+   */
+  public static String generateDropIndexCypher(IndexUpdate indexUpdate, BoltDialect dialect)
+      throws HopException {
+    if (dialect == BoltDialect.MEMGRAPH) {
+      return "DROP " + getMemgraphIndexClause(indexUpdate);
+    }
+    validateIndexSupport(indexUpdate, dialect);
+    return generateDropIndexCypher(indexUpdate);
+  }
+
   public static String generateDropIndexCypher(IndexUpdate indexUpdate) throws HopException {
     String cypher = "DROP INDEX ";
 
@@ -123,13 +144,20 @@ public class Neo4jIndex extends ActionBase implements IAction {
   }
 
   private void dropIndex(final IndexUpdate indexUpdate) throws HopException {
-    String cypher = generateDropIndexCypher(indexUpdate);
+    String cypher = generateDropIndexCypher(indexUpdate, connection.getDialect());
 
     // Run this cypher statement...
     //
     final String _cypher = cypher;
     try (Driver driver = connection.getDriver(getLogChannel(), this)) {
       try (Session session = connection.getSession(getLogChannel(), driver, this)) {
+        if (!connection.getDialect().isSupportingSchemaChangesInTransactions()) {
+          // Index and constraint changes have to run in an auto-commit transaction here
+          //
+          logDetailed("Dropping index with cypher: " + _cypher);
+          session.run(_cypher).consume();
+          return;
+        }
         session.executeWrite(
             tx -> {
               try {
@@ -154,6 +182,66 @@ public class Neo4jIndex extends ActionBase implements IAction {
    * @param indexUpdate The index update configuration
    * @return The generated Cypher statement
    */
+  /**
+   * Generate the Cypher to create an index in the given dialect.
+   *
+   * @throws HopException if the database doesn't support it or information is missing
+   */
+  public static String generateCreateIndexCypher(IndexUpdate indexUpdate, BoltDialect dialect)
+      throws HopException {
+    if (dialect == BoltDialect.MEMGRAPH) {
+      return "CREATE " + getMemgraphIndexClause(indexUpdate);
+    }
+    validateIndexSupport(indexUpdate, dialect);
+    return generateCreateIndexCypher(indexUpdate);
+  }
+
+  private static void validateIndexSupport(IndexUpdate indexUpdate, BoltDialect dialect)
+      throws HopException {
+    boolean supported =
+        indexUpdate.getObjectType() == ObjectType.RELATIONSHIP
+            ? dialect.isSupportingRelationshipIndexes()
+            : dialect.isSupportingNodeIndexes();
+    if (!supported) {
+      throw new HopException(
+          "Index updates on "
+              + indexUpdate.getObjectType()
+              + " are not supported by "
+              + dialect
+              + " for index on "
+              + indexUpdate.getObjectName());
+    }
+  }
+
+  /** Memgraph indexes have no name: [EDGE] INDEX ON :Label(property, ...) */
+  private static String getMemgraphIndexClause(IndexUpdate indexUpdate) throws HopException {
+    if (StringUtils.isEmpty(indexUpdate.getObjectName())
+        || StringUtils.isEmpty(indexUpdate.getObjectProperties())) {
+      throw new HopException(
+          "Memgraph indexes are identified by label and properties, please specify both. Index: "
+              + indexUpdate.getIndexName());
+    }
+    String[] properties = indexUpdate.getObjectProperties().split(",");
+    StringBuilder clause = new StringBuilder();
+    if (indexUpdate.getObjectType() == ObjectType.RELATIONSHIP) {
+      if (properties.length > 1) {
+        throw new HopException(
+            "Memgraph edge indexes are on a single property, not on "
+                + indexUpdate.getObjectProperties());
+      }
+      clause.append("EDGE ");
+    }
+    clause.append("INDEX ON :").append(indexUpdate.getObjectName()).append("(");
+    for (int i = 0; i < properties.length; i++) {
+      if (i > 0) {
+        clause.append(", ");
+      }
+      clause.append(Const.trim(properties[i]));
+    }
+    clause.append(")");
+    return clause.toString();
+  }
+
   public static String generateCreateIndexCypher(IndexUpdate indexUpdate) {
     String cypher = "CREATE INDEX ";
 
@@ -191,13 +279,20 @@ public class Neo4jIndex extends ActionBase implements IAction {
   }
 
   private void createIndex(IndexUpdate indexUpdate) throws HopException {
-    String cypher = generateCreateIndexCypher(indexUpdate);
+    String cypher = generateCreateIndexCypher(indexUpdate, connection.getDialect());
 
     // Run this cypher statement...
     //
     final String _cypher = cypher;
     try (Driver driver = connection.getDriver(getLogChannel(), this)) {
       try (Session session = connection.getSession(getLogChannel(), driver, this)) {
+        if (!connection.getDialect().isSupportingSchemaChangesInTransactions()) {
+          // Index and constraint changes have to run in an auto-commit transaction here
+          //
+          logDetailed("Creating index with cypher: " + _cypher);
+          session.run(_cypher).consume();
+          return;
+        }
         session.executeWrite(
             tx -> {
               try {
@@ -227,19 +322,19 @@ public class Neo4jIndex extends ActionBase implements IAction {
   }
 
   /**
-   * Gets connection
+   * Gets the name of the connection
    *
-   * @return value of connection
+   * @return value of connectionName
    */
-  public NeoConnection getConnection() {
-    return connection;
+  public String getConnectionName() {
+    return connectionName;
   }
 
   /**
-   * @param connection The connection to set
+   * @param connectionName The name of the Neo4j or Bolt graph database connection to use
    */
-  public void setConnection(NeoConnection connection) {
-    this.connection = connection;
+  public void setConnectionName(String connectionName) {
+    this.connectionName = connectionName;
   }
 
   /**

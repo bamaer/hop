@@ -17,20 +17,22 @@
 
 package org.apache.hop.neo4j.actions.index;
 
+import java.util.ArrayList;
 import java.util.List;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.hop.core.Const;
 import org.apache.hop.core.util.Utils;
 import org.apache.hop.core.variables.IVariables;
 import org.apache.hop.i18n.BaseMessages;
+import org.apache.hop.neo4j.bolt.BoltDialect;
 import org.apache.hop.neo4j.shared.NeoConnection;
+import org.apache.hop.neo4j.shared.NeoConnectionSelectionLine;
+import org.apache.hop.neo4j.shared.NeoConnectionUtils;
 import org.apache.hop.ui.core.PropsUi;
 import org.apache.hop.ui.core.dialog.BaseDialog;
 import org.apache.hop.ui.core.dialog.EnterTextDialog;
 import org.apache.hop.ui.core.dialog.ErrorDialog;
 import org.apache.hop.ui.core.dialog.MessageBox;
 import org.apache.hop.ui.core.widget.ColumnInfo;
-import org.apache.hop.ui.core.widget.MetaSelectionLine;
 import org.apache.hop.ui.core.widget.TableView;
 import org.apache.hop.ui.workflow.action.ActionDialog;
 import org.apache.hop.workflow.WorkflowMeta;
@@ -51,7 +53,7 @@ public class Neo4jIndexDialog extends ActionDialog implements IActionDialog {
 
   private boolean changed;
 
-  private MetaSelectionLine<NeoConnection> wConnection;
+  private NeoConnectionSelectionLine wConnection;
   private TableView wUpdates;
 
   public Neo4jIndexDialog(
@@ -74,10 +76,9 @@ public class Neo4jIndexDialog extends ActionDialog implements IActionDialog {
     int margin = this.margin;
 
     wConnection =
-        new MetaSelectionLine<>(
+        new NeoConnectionSelectionLine(
             variables,
             getMetadataProvider(),
-            NeoConnection.class,
             shell,
             SWT.SINGLE | SWT.LEFT | SWT.BORDER,
             BaseMessages.getString(PKG, "Neo4jIndexDialog.NeoConnection.Label"),
@@ -126,6 +127,21 @@ public class Neo4jIndexDialog extends ActionDialog implements IActionDialog {
               BaseMessages.getString(PKG, "Neo4jIndexDialog.IndexUpdates.Column.ObjectProperties"),
               ColumnInfo.COLUMN_TYPE_TEXT),
         };
+
+    // Only offer what the database of the selected connection supports
+    //
+    columns[1].setComboValuesSelectionListener(
+        (tableItem, rowNr, colNr) -> {
+          BoltDialect dialect = getSelectedDialect();
+          List<String> objectTypes = new ArrayList<>();
+          if (dialect.isSupportingNodeIndexes()) {
+            objectTypes.add(ObjectType.NODE.name());
+          }
+          if (dialect.isSupportingRelationshipIndexes()) {
+            objectTypes.add(ObjectType.RELATIONSHIP.name());
+          }
+          return objectTypes.toArray(new String[0]);
+        });
 
     wUpdates =
         new TableView(
@@ -185,9 +201,9 @@ public class Neo4jIndexDialog extends ActionDialog implements IActionDialog {
 
         String cypher;
         if (type == UpdateType.CREATE) {
-          cypher = Neo4jIndex.generateCreateIndexCypher(indexUpdate);
+          cypher = Neo4jIndex.generateCreateIndexCypher(indexUpdate, getSelectedDialect());
         } else {
-          cypher = Neo4jIndex.generateDropIndexCypher(indexUpdate);
+          cypher = Neo4jIndex.generateDropIndexCypher(indexUpdate, getSelectedDialect());
         }
 
         cypherPreview.append("-- Index ").append(i + 1).append(Const.CR);
@@ -228,9 +244,7 @@ public class Neo4jIndexDialog extends ActionDialog implements IActionDialog {
 
   private void getData() {
     wName.setText(Const.NVL(meta.getName(), ""));
-    if (meta.getConnection() != null) {
-      wConnection.setText(Const.NVL(meta.getConnection().getName(), ""));
-    }
+    wConnection.setText(Const.NVL(meta.getConnectionName(), ""));
     for (int i = 0; i < meta.getIndexUpdates().size(); i++) {
       TableItem item = wUpdates.table.getItem(i);
       IndexUpdate indexUpdate = meta.getIndexUpdates().get(i);
@@ -261,18 +275,7 @@ public class Neo4jIndexDialog extends ActionDialog implements IActionDialog {
     // Grab the connection
     //
 
-    String connectionName = wConnection.getText();
-    if (StringUtils.isEmpty(connectionName)) {
-      meta.setConnection(null);
-    } else {
-      try {
-        meta.setConnection(
-            metadataProvider.getSerializer(NeoConnection.class).load(connectionName));
-      } catch (Exception e) {
-        new ErrorDialog(shell, "Error", "Error finding connection " + connectionName, e);
-        return;
-      }
-    }
+    meta.setConnectionName(wConnection.getText());
 
     List<TableItem> items = wUpdates.getNonEmptyItems();
     meta.getIndexUpdates().clear();
@@ -287,5 +290,20 @@ public class Neo4jIndexDialog extends ActionDialog implements IActionDialog {
     }
 
     dispose();
+  }
+
+  /** The dialect of the selected connection, Neo4j when it can't be determined. */
+  private BoltDialect getSelectedDialect() {
+    try {
+      NeoConnection connection =
+          NeoConnectionUtils.loadConnection(
+              getMetadataProvider(), variables.resolve(wConnection.getText()));
+      if (connection != null) {
+        return connection.getDialect();
+      }
+    } catch (Exception e) {
+      // Fall back to Neo4j
+    }
+    return BoltDialect.NEO4J;
   }
 }

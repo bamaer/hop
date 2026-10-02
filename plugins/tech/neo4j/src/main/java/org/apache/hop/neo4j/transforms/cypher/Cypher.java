@@ -34,7 +34,7 @@ import org.apache.hop.core.util.Utils;
 import org.apache.hop.neo4j.core.data.GraphData;
 import org.apache.hop.neo4j.core.data.GraphPropertyDataType;
 import org.apache.hop.neo4j.model.GraphPropertyType;
-import org.apache.hop.neo4j.shared.NeoConnection;
+import org.apache.hop.neo4j.shared.NeoConnectionUtils;
 import org.apache.hop.neo4j.shared.NeoHopData;
 import org.apache.hop.pipeline.Pipeline;
 import org.apache.hop.pipeline.PipelineMeta;
@@ -46,8 +46,6 @@ import org.neo4j.driver.Result;
 import org.neo4j.driver.TransactionCallback;
 import org.neo4j.driver.Value;
 import org.neo4j.driver.exceptions.ServiceUnavailableException;
-import org.neo4j.driver.summary.Notification;
-import org.neo4j.driver.summary.ResultSummary;
 
 public class Cypher extends BaseTransform<CypherMeta, CypherData> {
 
@@ -77,9 +75,7 @@ public class Cypher extends BaseTransform<CypherMeta, CypherData> {
     }
     try {
       data.neoConnection =
-          metadataProvider
-              .getSerializer(NeoConnection.class)
-              .load(resolve(meta.getConnectionName()));
+          NeoConnectionUtils.loadConnection(metadataProvider, resolve(meta.getConnectionName()));
       if (data.neoConnection == null) {
         logError(
             "Connection '"
@@ -592,37 +588,8 @@ public class Cypher extends BaseTransform<CypherMeta, CypherData> {
     if (meta.isUsingUnwind()) {
       return false;
     } else {
-      boolean error = false;
-      ResultSummary summary = result.consume();
-      for (Notification notification : summary.notifications()) {
-        if (notification.rawSeverityLevel().filter("WARNING"::equalsIgnoreCase).isPresent()) {
-          // Log it
-          if (isBasic()) {
-            logBasic(
-                notification.rawSeverityLevel().orElse("")
-                    + " : "
-                    + notification.title()
-                    + " : "
-                    + notification.code()
-                    + " : "
-                    + notification.description()
-                    + ", position "
-                    + notification.position());
-          }
-        } else {
-          // This is an error
-          //
-          logError(notification.rawSeverityLevel().orElse("") + " : " + notification.title());
-          logError(
-              notification.code()
-                  + " : "
-                  + notification.description()
-                  + ", position "
-                  + notification.position());
-          error = true;
-        }
-      }
-      return error;
+      NeoConnectionUtils.logNotifications(getLogChannel(), result.consume());
+      return false;
     }
   }
 

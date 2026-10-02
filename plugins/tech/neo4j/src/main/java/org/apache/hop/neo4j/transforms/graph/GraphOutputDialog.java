@@ -40,7 +40,7 @@ import org.apache.hop.neo4j.model.GraphModel;
 import org.apache.hop.neo4j.model.GraphNode;
 import org.apache.hop.neo4j.model.GraphProperty;
 import org.apache.hop.neo4j.model.GraphRelationship;
-import org.apache.hop.neo4j.shared.NeoConnection;
+import org.apache.hop.neo4j.shared.NeoConnectionSelectionLine;
 import org.apache.hop.pipeline.PipelineMeta;
 import org.apache.hop.ui.core.PropsUi;
 import org.apache.hop.ui.core.dialog.BaseDialog;
@@ -72,7 +72,7 @@ public class GraphOutputDialog extends BaseTransformDialog {
   private static final Class<?> PKG =
       GraphOutputMeta.class; // for i18n purposes, needed by Translator2!!
 
-  private MetaSelectionLine<NeoConnection> wConnection;
+  private NeoConnectionSelectionLine wConnection;
   private MetaSelectionLine<GraphModel> wModel;
 
   private Label wlBatchSize;
@@ -120,10 +120,9 @@ public class GraphOutputDialog extends BaseTransformDialog {
     Control lastControl = wSpacer;
 
     wConnection =
-        new MetaSelectionLine<>(
+        new NeoConnectionSelectionLine(
             variables,
             metadataProvider,
-            NeoConnection.class,
             shell,
             SWT.SINGLE | SWT.LEFT | SWT.BORDER,
             "Neo4j Connection",

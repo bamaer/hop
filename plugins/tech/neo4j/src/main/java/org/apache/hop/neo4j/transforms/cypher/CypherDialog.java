@@ -32,6 +32,8 @@ import org.apache.hop.i18n.BaseMessages;
 import org.apache.hop.neo4j.core.data.GraphPropertyDataType;
 import org.apache.hop.neo4j.model.GraphPropertyType;
 import org.apache.hop.neo4j.shared.NeoConnection;
+import org.apache.hop.neo4j.shared.NeoConnectionSelectionLine;
+import org.apache.hop.neo4j.shared.NeoConnectionUtils;
 import org.apache.hop.neo4j.transforms.output.Neo4JOutputDialog;
 import org.apache.hop.pipeline.Pipeline;
 import org.apache.hop.pipeline.PipelineMeta;
@@ -45,7 +47,6 @@ import org.apache.hop.ui.core.dialog.ErrorDialog;
 import org.apache.hop.ui.core.dialog.PreviewRowsDialog;
 import org.apache.hop.ui.core.gui.GuiResource;
 import org.apache.hop.ui.core.widget.ColumnInfo;
-import org.apache.hop.ui.core.widget.MetaSelectionLine;
 import org.apache.hop.ui.core.widget.TableView;
 import org.apache.hop.ui.core.widget.TextVar;
 import org.apache.hop.ui.hopgui.HopGui;
@@ -85,7 +86,7 @@ public class CypherDialog extends BaseTransformDialog {
 
   private CTabFolder wTabFolder;
 
-  private MetaSelectionLine<NeoConnection> wConnection;
+  private NeoConnectionSelectionLine wConnection;
   private TextVar wBatchSize;
   private Button wReadOnly;
   private Button wRetryOnDisconnect;
@@ -156,10 +157,9 @@ public class CypherDialog extends BaseTransformDialog {
     wOptionsComp.setLayout(createFormLayout());
 
     wConnection =
-        new MetaSelectionLine<>(
+        new NeoConnectionSelectionLine(
             variables,
             metadataProvider,
-            NeoConnection.class,
             wOptionsComp,
             SWT.SINGLE | SWT.LEFT | SWT.BORDER,
             "Neo4j Connection",
@@ -745,7 +745,7 @@ public class CypherDialog extends BaseTransformDialog {
 
     try {
       NeoConnection neoConnection =
-          metadataProvider.getSerializer(NeoConnection.class).load(meta.getConnectionName());
+          NeoConnectionUtils.loadConnection(metadataProvider, meta.getConnectionName());
       driver = neoConnection.getDriver(log, variables);
       session = driver.session();
       transaction = session.beginTransaction();

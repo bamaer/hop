@@ -36,9 +36,9 @@ import org.apache.hop.core.logging.LoggingHierarchy;
 import org.apache.hop.core.logging.LoggingRegistry;
 import org.apache.hop.core.variables.IVariables;
 import org.apache.hop.metadata.api.IHopMetadataProvider;
-import org.apache.hop.metadata.api.IHopMetadataSerializer;
 import org.apache.hop.neo4j.logging.Defaults;
 import org.apache.hop.neo4j.shared.NeoConnection;
+import org.apache.hop.neo4j.shared.NeoConnectionUtils;
 import org.eclipse.swt.graphics.Rectangle;
 import org.neo4j.driver.Driver;
 import org.neo4j.driver.Record;
@@ -62,9 +62,7 @@ public class LoggingCore {
     if (StringUtils.isEmpty(connectionName)) {
       return null;
     }
-    IHopMetadataSerializer<NeoConnection> serializer =
-        metadataProvider.getSerializer(NeoConnection.class);
-    return serializer.load(connectionName);
+    return NeoConnectionUtils.loadConnection(metadataProvider, connectionName);
   }
 
   public static final void writeHierarchies(

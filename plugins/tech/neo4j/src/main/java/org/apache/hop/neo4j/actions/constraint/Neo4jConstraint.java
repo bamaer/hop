@@ -20,12 +20,15 @@ package org.apache.hop.neo4j.actions.constraint;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.hop.core.Const;
 import org.apache.hop.core.Result;
 import org.apache.hop.core.annotations.Action;
 import org.apache.hop.core.exception.HopException;
 import org.apache.hop.core.exception.HopRuntimeException;
 import org.apache.hop.metadata.api.HopMetadataProperty;
+import org.apache.hop.neo4j.bolt.BoltDialect;
 import org.apache.hop.neo4j.shared.NeoConnection;
+import org.apache.hop.neo4j.shared.NeoConnectionUtils;
 import org.apache.hop.workflow.action.ActionBase;
 import org.apache.hop.workflow.action.IAction;
 import org.neo4j.driver.Driver;
@@ -41,7 +44,10 @@ import org.neo4j.driver.Session;
     documentationUrl = "/workflow/actions/neo4j-constraint.html")
 public class Neo4jConstraint extends ActionBase implements IAction {
 
-  @HopMetadataProperty(key = "connection", storeWithName = true)
+  /** The name of the Neo4j or Bolt graph database connection. */
+  @HopMetadataProperty(key = "connection")
+  private String connectionName;
+
   private NeoConnection connection;
 
   @HopMetadataProperty(groupKey = "updates", key = "update")
@@ -62,6 +68,8 @@ public class Neo4jConstraint extends ActionBase implements IAction {
 
   @Override
   public Result execute(Result result, int nr) throws HopException {
+
+    connection = NeoConnectionUtils.loadConnection(getMetadataProvider(), resolve(connectionName));
 
     if (connection == null) {
       result.setResult(false);
@@ -106,6 +114,84 @@ public class Neo4jConstraint extends ActionBase implements IAction {
    * @return The generated Cypher statement
    * @throws HopException If constraint name is missing for relationship constraints
    */
+  /**
+   * Generate the Cypher to drop a constraint in the given dialect.
+   *
+   * @throws HopException if the database doesn't support it or information is missing
+   */
+  public static String generateDropConstraintCypher(
+      ConstraintUpdate constraintUpdate, BoltDialect dialect) throws HopException {
+    validateConstraintSupport(constraintUpdate, dialect);
+    if (dialect == BoltDialect.MEMGRAPH) {
+      return "DROP " + getMemgraphConstraintClause(constraintUpdate);
+    }
+    return generateDropConstraintCypher(constraintUpdate);
+  }
+
+  /**
+   * Generate the Cypher to create a constraint in the given dialect.
+   *
+   * @throws HopException if the database doesn't support it or information is missing
+   */
+  public static String generateCreateConstraintCypher(
+      ConstraintUpdate constraintUpdate, BoltDialect dialect) throws HopException {
+    validateConstraintSupport(constraintUpdate, dialect);
+    if (dialect == BoltDialect.MEMGRAPH) {
+      return "CREATE " + getMemgraphConstraintClause(constraintUpdate);
+    }
+    return generateCreateConstraintCypher(constraintUpdate);
+  }
+
+  private static void validateConstraintSupport(
+      ConstraintUpdate constraintUpdate, BoltDialect dialect) throws HopException {
+    java.util.Set<ConstraintType> supported =
+        constraintUpdate.getObjectType() == ObjectType.RELATIONSHIP
+            ? dialect.getRelationshipConstraintTypes()
+            : dialect.getNodeConstraintTypes();
+    if (!supported.contains(constraintUpdate.getConstraintType())) {
+      throw new HopException(
+          constraintUpdate.getConstraintType()
+              + " constraints on "
+              + constraintUpdate.getObjectType()
+              + " are not supported by "
+              + dialect
+              + ", for "
+              + constraintUpdate.getObjectName());
+    }
+  }
+
+  /** Memgraph constraints have no name: CONSTRAINT ON (n:Label) ASSERT ... */
+  private static String getMemgraphConstraintClause(ConstraintUpdate constraintUpdate)
+      throws HopException {
+    if (StringUtils.isEmpty(constraintUpdate.getObjectName())
+        || StringUtils.isEmpty(constraintUpdate.getObjectProperties())) {
+      throw new HopException(
+          "Memgraph constraints are identified by label and properties, please specify both."
+              + " Constraint: "
+              + constraintUpdate.getConstraintName());
+    }
+    String[] properties = constraintUpdate.getObjectProperties().split(",");
+    StringBuilder clause =
+        new StringBuilder("CONSTRAINT ON (n:" + constraintUpdate.getObjectName() + ") ASSERT ");
+    if (constraintUpdate.getConstraintType() == ConstraintType.NOT_NULL) {
+      if (properties.length > 1) {
+        throw new HopException(
+            "Memgraph existence constraints are on a single property, not on "
+                + constraintUpdate.getObjectProperties());
+      }
+      clause.append("EXISTS (n.").append(Const.trim(properties[0])).append(")");
+    } else {
+      for (int i = 0; i < properties.length; i++) {
+        if (i > 0) {
+          clause.append(", ");
+        }
+        clause.append("n.").append(Const.trim(properties[i]));
+      }
+      clause.append(" IS UNIQUE");
+    }
+    return clause.toString();
+  }
+
   public static String generateDropConstraintCypher(ConstraintUpdate constraintUpdate)
       throws HopException {
     String cypher = "DROP CONSTRAINT ";
@@ -124,13 +210,20 @@ public class Neo4jConstraint extends ActionBase implements IAction {
   }
 
   private void dropConstraint(final ConstraintUpdate constraintUpdate) throws HopException {
-    String cypher = generateDropConstraintCypher(constraintUpdate);
+    String cypher = generateDropConstraintCypher(constraintUpdate, connection.getDialect());
 
     // Run this cypher statement...
     //
     final String _cypher = cypher;
     try (Driver driver = connection.getDriver(getLogChannel(), this)) {
       try (Session session = connection.getSession(getLogChannel(), driver, this)) {
+        if (!connection.getDialect().isSupportingSchemaChangesInTransactions()) {
+          // Index and constraint changes have to run in an auto-commit transaction here
+          //
+          logDetailed("Dropping constraint with cypher: " + _cypher);
+          session.run(_cypher).consume();
+          return;
+        }
         session.executeWrite(
             tx -> {
               try {
@@ -235,13 +328,20 @@ public class Neo4jConstraint extends ActionBase implements IAction {
   }
 
   private void createConstraint(ConstraintUpdate constraintUpdate) throws HopException {
-    String cypher = generateCreateConstraintCypher(constraintUpdate);
+    String cypher = generateCreateConstraintCypher(constraintUpdate, connection.getDialect());
 
     // Run this cypher statement...
     //
     final String _cypher = cypher;
     try (Driver driver = connection.getDriver(getLogChannel(), this)) {
       try (Session session = connection.getSession(getLogChannel(), driver, this)) {
+        if (!connection.getDialect().isSupportingSchemaChangesInTransactions()) {
+          // Index and constraint changes have to run in an auto-commit transaction here
+          //
+          logDetailed("Creating constraint with cypher: " + _cypher);
+          session.run(_cypher).consume();
+          return;
+        }
         session.executeWrite(
             tx -> {
               try {
@@ -269,19 +369,19 @@ public class Neo4jConstraint extends ActionBase implements IAction {
   }
 
   /**
-   * Gets connection
+   * Gets the name of the connection
    *
-   * @return value of connection
+   * @return value of connectionName
    */
-  public NeoConnection getConnection() {
-    return connection;
+  public String getConnectionName() {
+    return connectionName;
   }
 
   /**
-   * @param connection The connection to set
+   * @param connectionName The name of the Neo4j or Bolt graph database connection to use
    */
-  public void setConnection(NeoConnection connection) {
-    this.connection = connection;
+  public void setConnectionName(String connectionName) {
+    this.connectionName = connectionName;
   }
 
   /**

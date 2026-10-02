@@ -23,8 +23,8 @@ import org.apache.hop.core.annotations.Action;
 import org.apache.hop.core.exception.HopException;
 import org.apache.hop.metadata.api.HopMetadataProperty;
 import org.apache.hop.metadata.api.HopMetadataPropertyType;
-import org.apache.hop.metadata.api.IHopMetadataSerializer;
 import org.apache.hop.neo4j.shared.NeoConnection;
+import org.apache.hop.neo4j.shared.NeoConnectionUtils;
 import org.apache.hop.workflow.action.ActionBase;
 import org.apache.hop.workflow.action.IAction;
 import org.neo4j.driver.Driver;
@@ -65,9 +65,6 @@ public class CypherScript extends ActionBase implements IAction {
 
   @Override
   public Result execute(Result result, int nr) throws HopException {
-    IHopMetadataSerializer<NeoConnection> serializer =
-        getMetadataProvider().getSerializer(NeoConnection.class);
-
     // Replace variables & parameters
     //
     NeoConnection connection;
@@ -77,7 +74,7 @@ public class CypherScript extends ActionBase implements IAction {
         throw new HopException("The Neo4j connection name is not set");
       }
 
-      connection = serializer.load(realConnectionName);
+      connection = NeoConnectionUtils.loadConnection(getMetadataProvider(), realConnectionName);
       if (connection == null) {
         throw new HopException("Unable to find connection with name '" + realConnectionName + "'");
       }
@@ -136,7 +133,14 @@ public class CypherScript extends ActionBase implements IAction {
 
               return executed;
             };
-        nrExecuted = session.executeWrite(transactionWork);
+        if (connection.getDialect().isSupportingSchemaChangesInTransactions()) {
+          nrExecuted = session.executeWrite(transactionWork);
+        } else {
+          // Index and constraint changes can't run in an explicit transaction here: run each
+          // statement in its own auto-commit transaction.
+          //
+          nrExecuted = executeAutoCommit(session, realScript, result);
+        }
       }
     }
 
@@ -209,5 +213,26 @@ public class CypherScript extends ActionBase implements IAction {
    */
   public void setReplacingVariables(boolean replacingVariables) {
     this.replacingVariables = replacingVariables;
+  }
+
+  private int executeAutoCommit(Session session, String realScript, Result result) {
+    int executed = 0;
+    try {
+      for (String command : realScript.split("\\r?\\n;")) {
+        String cypher = command.replaceFirst("^\\s+", "").replaceFirst("\\s+$", "");
+        if (StringUtils.isNotEmpty(cypher)) {
+          session.run(cypher).consume();
+          executed++;
+          if (isDetailed()) {
+            logDetailed("Executed cypher statement: " + cypher);
+          }
+        }
+      }
+    } catch (Exception e) {
+      logError("Error executing cypher statements...", e);
+      result.increaseErrors(1L);
+      result.setResult(false);
+    }
+    return executed;
   }
 }

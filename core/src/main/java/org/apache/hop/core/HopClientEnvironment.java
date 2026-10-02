@@ -31,6 +31,7 @@ import org.apache.hop.core.encryption.TwoWayPasswordEncoderPluginType;
 import org.apache.hop.core.exception.HopException;
 import org.apache.hop.core.exception.HopPluginException;
 import org.apache.hop.core.extension.ExtensionPointPluginType;
+import org.apache.hop.core.graph.GraphDatabasePluginType;
 import org.apache.hop.core.logging.ConsoleLoggingEventListener;
 import org.apache.hop.core.logging.HopLogStore;
 import org.apache.hop.core.logging.ILoggingPlugin;
@@ -83,6 +84,7 @@ public class HopClientEnvironment {
             ValueMetaPluginType.getInstance(),
             DatabasePluginType.getInstance(),
             DatabaseTypeRulesPluginType.getInstance(),
+            GraphDatabasePluginType.getInstance(),
             ExtensionPointPluginType.getInstance(),
             TwoWayPasswordEncoderPluginType.getInstance(),
             VariableResolverPluginType.getInstance(),
