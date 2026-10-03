@@ -72,7 +72,7 @@ public class WorkflowLoggingExtensionPoint
 
     try {
       final NamedGraphConnection namedConnection =
-          LoggingCore.getConnection(workflow.getMetadataProvider(), workflow);
+          LoggingCore.findConnection(log, workflow.getMetadataProvider(), workflow);
       if (namedConnection == null) {
         return;
       }

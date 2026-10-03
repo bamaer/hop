@@ -30,7 +30,7 @@
   ],
   "input_data_sets": [],
   "name": "neo4j-error-path-7662-validation",
-  "description": "Verifies the error path lookup of the Neo4j perspective runs on Neo4j 5 and finds the deepest error, see issue #7662",
+  "description": "Runs a copy of the error path query of the Graph logging perspective (HopNeo4jPerspective.getErrorPathCypher()) on Neo4j and checks it finds the deepest error, see issue #7662",
   "trans_test_tweaks": [],
   "persist_filename": "",
   "pipeline_filename": "./tests/neo4j-error-path-7662/neo4j-error-path-7662-validation.hpl",

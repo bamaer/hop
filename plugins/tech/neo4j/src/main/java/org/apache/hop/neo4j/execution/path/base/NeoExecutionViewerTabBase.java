@@ -91,7 +91,8 @@ public abstract class NeoExecutionViewerTabBase {
   protected List<List<PathResult>> readPaths(String cypher, Map<String, Object> parameters)
       throws HopException {
     List<List<PathResult>> paths = new ArrayList<>();
-    for (Map<String, Object> row : getConnection().execute(cypher, parameters)) {
+    for (Map<String, Object> row :
+        getConnection().executeRead(transaction -> transaction.execute(cypher, parameters))) {
       if (!(row.get("p") instanceof GraphPathValue path)) {
         continue;
       }

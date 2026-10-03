@@ -340,13 +340,36 @@ public class Cypher extends BaseTransform<CypherMeta, CypherData> {
       return;
     }
 
-    // Statements the database doesn't run in a transaction run on their own, like SHOW INDEX INFO
-    // on Memgraph
+    // Statements the database doesn't run in a transaction, like SHOW INDEX INFO on Memgraph, run
+    // on their own. The statements between them run in transactions, in the same order.
     //
     CypherDialect dialect = data.neoConnection.getDialect();
     if (data.cypherStatements.stream()
-        .allMatch(statement -> dialect.isRequiringAutoCommit(statement.getCypher()))) {
-      runAutoCommitStatements();
+        .anyMatch(statement -> dialect.isRequiringAutoCommit(statement.getCypher()))) {
+      List<CypherStatement> statements = new ArrayList<>(data.cypherStatements);
+      List<CypherStatement> inTransaction = new ArrayList<>();
+      for (CypherStatement statement : statements) {
+        if (dialect.isRequiringAutoCommit(statement.getCypher())) {
+          runStatementsInTransaction(inTransaction);
+          inTransaction.clear();
+          runAutoCommitStatement(statement);
+        } else {
+          inTransaction.add(statement);
+        }
+      }
+      runStatementsInTransaction(inTransaction);
+      data.cypherStatements.clear();
+      return;
+    }
+
+    runStatementsInTransaction(data.cypherStatements);
+    data.cypherStatements.clear();
+  }
+
+  /** Run statements in one transaction, with the configured retries. */
+  private void runStatementsInTransaction(List<CypherStatement> cypherStatements)
+      throws HopException {
+    if (cypherStatements.isEmpty()) {
       return;
     }
 
@@ -354,7 +377,7 @@ public class Cypher extends BaseTransform<CypherMeta, CypherData> {
     //
     TransactionCallback<Integer> transactionWork =
         transaction -> {
-          for (CypherStatement cypherStatement : data.cypherStatements) {
+          for (CypherStatement cypherStatement : cypherStatements) {
             Result result =
                 transaction.run(cypherStatement.getCypher(), cypherStatement.getParameters());
             try {
@@ -366,7 +389,7 @@ public class Cypher extends BaseTransform<CypherMeta, CypherData> {
             }
           }
 
-          return data.cypherStatements.size();
+          return cypherStatements.size();
         };
 
     try {
@@ -375,10 +398,10 @@ public class Cypher extends BaseTransform<CypherMeta, CypherData> {
         try {
           if (meta.isReadOnly()) {
             nrProcessed = data.session.executeRead(transactionWork);
-            setLinesInput(getLinesInput() + data.cypherStatements.size());
+            setLinesInput(getLinesInput() + cypherStatements.size());
           } else {
             nrProcessed = data.session.executeWrite(transactionWork);
-            setLinesOutput(getLinesOutput() + data.cypherStatements.size());
+            setLinesOutput(getLinesOutput() + cypherStatements.size());
           }
           // If all went as expected we can stop retrying...
           //
@@ -396,20 +419,16 @@ public class Cypher extends BaseTransform<CypherMeta, CypherData> {
         logDebug("Processed " + nrProcessed + " statements");
       }
 
-      // Clear out the batch of statements.
-      //
-      data.cypherStatements.clear();
-
     } catch (Exception e) {
       throw new HopException(
-          "Unable to execute batch of cypher statements (" + data.cypherStatements.size() + ")", e);
+          "Unable to execute batch of cypher statements (" + cypherStatements.size() + ")", e);
     }
   }
 
-  /** Run the batch of statements one by one, each in its own auto-commit transaction. */
-  private void runAutoCommitStatements() throws HopException {
-    try {
-      for (CypherStatement cypherStatement : data.cypherStatements) {
+  /** Run a statement on its own in an auto-commit transaction, with the configured retries. */
+  private void runAutoCommitStatement(CypherStatement cypherStatement) throws HopException {
+    for (int attempt = 0; attempt < data.attempts; attempt++) {
+      try {
         Result result =
             data.session.run(cypherStatement.getCypher(), cypherStatement.getParameters());
         getResultRows(result, cypherStatement.getRow(), false);
@@ -418,11 +437,14 @@ public class Cypher extends BaseTransform<CypherMeta, CypherData> {
         } else {
           incrementLinesOutput();
         }
+        return;
+      } catch (Exception e) {
+        if (attempt + 1 >= data.attempts) {
+          throw new HopException(
+              "Unable to execute cypher statement '" + cypherStatement.getCypher() + "'", e);
+        }
+        logBasic("Retrying after attempt #" + (attempt + 1) + " with error : " + e.getMessage());
       }
-      data.cypherStatements.clear();
-    } catch (Exception e) {
-      throw new HopException(
-          "Unable to execute batch of cypher statements (" + data.cypherStatements.size() + ")", e);
     }
   }
 

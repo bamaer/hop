@@ -67,7 +67,7 @@ You connect to them with a xref:metadata-types/graphs/graph-database-connection.
 |xref:technology/gremlin/index.adoc[Gremlin]
 |===
 
-The FalkorDB, Apache AGE and Gremlin plugins are optional plugins: install them with the marketplace or use the full client.
+The graph plugins (Neo4j, which holds the transforms and actions as well as the Bolt connection types, FalkorDB, Apache AGE and Gremlin) are optional plugins: install them with the marketplace or use the full client.
 
 Relational databases with SQL/PGQ, like Oracle 23ai, can expose their tables as a property graph with the xref:workflow/actions/create-property-graph.adoc[Create property graph] action.
 

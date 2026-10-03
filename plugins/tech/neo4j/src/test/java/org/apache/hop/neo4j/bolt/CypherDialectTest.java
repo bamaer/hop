@@ -165,5 +165,8 @@ class CypherDialectTest {
     assertFalse(memgraph.isRequiringAutoCommit("MATCH (n:Showcase) RETURN n"));
     assertFalse(memgraph.isRequiringAutoCommit("CREATE (n:Index {id: 1})"));
     assertFalse(CypherDialect.NEO4J.isRequiringAutoCommit("SHOW INDEXES"));
+    assertTrue(memgraph.isRequiringAutoCommit("// list the indexes\nSHOW INDEX INFO"));
+    assertTrue(memgraph.isRequiringAutoCommit("/* indexes */ CREATE INDEX ON :Person(id)"));
+    assertFalse(memgraph.isRequiringAutoCommit("// SHOW INDEX INFO\nMATCH (n) RETURN n"));
   }
 }

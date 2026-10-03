@@ -108,14 +108,38 @@ public class BoltGraphConnection implements IGraphConnection {
   }
 
   @Override
+  public <T> T executeRead(IGraphTransactionWork<T> work) throws HopException {
+    try {
+      return session.executeRead(
+          tx -> {
+            try {
+              return work.execute(new BoltTransactionContext(tx));
+            } catch (HopException e) {
+              throw new WorkException(e);
+            }
+          });
+    } catch (WorkException e) {
+      throw e.getHopException();
+    } catch (Exception e) {
+      throw new HopException("Error executing a read transaction", e);
+    }
+  }
+
+  @Override
   public List<GraphIndex> getIndexes() throws HopException {
     switch (cypherDialect) {
       case NEO4J:
         try {
           return BoltIndexes.fromNeo4j(execute("SHOW INDEXES", Map.of()));
         } catch (HopException e) {
-          // Neo4j before 4.2
-          return BoltIndexes.fromNeo4j(execute("CALL db.indexes()", Map.of()));
+          // Neo4j before 4.2 doesn't know SHOW INDEXES. If the old procedure fails as well, the
+          // error of SHOW INDEXES is the one which tells what went wrong.
+          try {
+            return BoltIndexes.fromNeo4j(execute("CALL db.indexes()", Map.of()));
+          } catch (HopException fallbackException) {
+            e.addSuppressed(fallbackException);
+            throw new HopException("Unable to list the indexes of the database", e);
+          }
         }
       case MEMGRAPH:
         return BoltIndexes.fromMemgraph(

@@ -69,7 +69,7 @@ As you can see above this transform doesn't require any technical knowledge.
 You can use the "Map fields" button to use a GUI to map the input fields on the left with the various node and relationship properties in your graph model.
 You can also do this manually.
 
-=== Neo4j output : parallel data loading
+=== Cypher output : parallel data loading
 
 The xref:pipeline/transforms/cypher-output.adoc[Cypher output] transform is useful for simple data loading into one node, two nodes and/or a relationship.
 It doesn't require any knowledge of Cypher to use.
@@ -77,7 +77,7 @@ Take a look at workflow `neo4j/neo4j-output-parallel-load.hpl`:
 
 image::tech/neo4j/neo4j-output-parallel-load-pipeline.png[Neo4j output parallel load,width=75%]
 
-In this particular example we simply map the fields into the properties of a single node so we can use the Neo4j output transform instead of Graph Output described above.
+In this particular example we simply map the fields into the properties of a single node so we can use the Cypher output transform instead of Graph output described above.
 The advantage is in this case that we have a simpler mapping and can potentially load data faster.
 
 image::tech/neo4j/neo4j-output-parallel-load-transform.png[Neo4j output parallel load transform,width=75%]

@@ -612,7 +612,7 @@ public class NeoExecutionInfoLocation implements IExecutionInfoLocation {
   public Execution getExecution(String executionId) throws HopException {
     synchronized (this) {
       try {
-        return connection.executeWrite(transaction -> getNeo4jExecution(transaction, executionId));
+        return connection.executeRead(transaction -> getNeo4jExecution(transaction, executionId));
       } catch (Exception e) {
         throw new HopException(CONST_ERROR_GETTING_EXECUTION_FROM_NEO_4_J, e);
       }
@@ -681,7 +681,7 @@ public class NeoExecutionInfoLocation implements IExecutionInfoLocation {
   public List<String> getExecutionIds(boolean includeChildren, int limit) throws HopException {
     synchronized (this) {
       try {
-        return connection.executeWrite(
+        return connection.executeRead(
             transaction -> getNeo4jExecutionIds(transaction, includeChildren, limit));
       } catch (Exception e) {
         throw new HopException(CONST_ERROR_GETTING_EXECUTION_FROM_NEO_4_J, e);
@@ -715,7 +715,7 @@ public class NeoExecutionInfoLocation implements IExecutionInfoLocation {
   public List<String> findExecutionIDs(IExecutionSelector selector) throws HopException {
     synchronized (this) {
       try {
-        return connection.executeWrite(transaction -> findNeo4jExecutionIDs(transaction, selector));
+        return connection.executeRead(transaction -> findNeo4jExecutionIDs(transaction, selector));
       } catch (Exception e) {
         throw new HopException(CONST_ERROR_GETTING_EXECUTION_FROM_NEO_4_J, e);
       }
@@ -896,7 +896,7 @@ public class NeoExecutionInfoLocation implements IExecutionInfoLocation {
       throws HopException {
     synchronized (this) {
       try {
-        return connection.executeWrite(
+        return connection.executeRead(
             transaction -> getNeo4jExecutionState(transaction, executionId, includeLogging));
       } catch (Exception e) {
         throw new HopException(CONST_ERROR_GETTING_EXECUTION_FROM_NEO_4_J, e);
@@ -1011,7 +1011,7 @@ public class NeoExecutionInfoLocation implements IExecutionInfoLocation {
       throws HopException {
     synchronized (this) {
       try {
-        return connection.executeWrite(
+        return connection.executeRead(
             transaction -> getNeo4jExecutionStateLoggingText(transaction, executionId, sizeLimit));
       } catch (Exception e) {
         throw new HopException(CONST_ERROR_GETTING_EXECUTION_FROM_NEO_4_J, e);
@@ -1053,7 +1053,7 @@ public class NeoExecutionInfoLocation implements IExecutionInfoLocation {
   public List<Execution> findExecutions(String parentExecutionId) throws HopException {
     synchronized (this) {
       try {
-        return connection.executeWrite(
+        return connection.executeRead(
             transaction -> findNeo4jExecutions(transaction, parentExecutionId));
       } catch (Exception e) {
         throw new HopException(CONST_ERROR_GETTING_EXECUTION_FROM_NEO_4_J, e);
@@ -1075,7 +1075,7 @@ public class NeoExecutionInfoLocation implements IExecutionInfoLocation {
       throws HopException {
     synchronized (this) {
       try {
-        return connection.executeWrite(
+        return connection.executeRead(
             transaction -> findNeo4jPreviousSuccessfulExecution(transaction, executionType, name));
       } catch (Exception e) {
         throw new HopException("Error find previous successful execution in Neo4j", e);
@@ -1134,7 +1134,7 @@ public class NeoExecutionInfoLocation implements IExecutionInfoLocation {
   public List<Execution> findExecutions(IExecutionMatcher matcher) throws HopException {
     synchronized (this) {
       try {
-        return connection.executeWrite(transaction -> findNeo4jExecutions(transaction, matcher));
+        return connection.executeRead(transaction -> findNeo4jExecutions(transaction, matcher));
       } catch (Exception e) {
         throw new HopException(CONST_ERROR_GETTING_EXECUTION_FROM_NEO_4_J, e);
       }
@@ -1480,7 +1480,7 @@ public class NeoExecutionInfoLocation implements IExecutionInfoLocation {
       throws HopException {
     synchronized (this) {
       try {
-        return connection.executeWrite(
+        return connection.executeRead(
             transaction -> getNeo4jExecutionData(transaction, parentExecutionId, executionId));
       } catch (Exception e) {
         throw new HopException(CONST_ERROR_GETTING_EXECUTION_FROM_NEO_4_J, e);

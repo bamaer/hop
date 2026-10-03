@@ -108,6 +108,26 @@ limitations under the License.
       <to>Abort json</to>
       <enabled>Y</enabled>
     </hop>
+    <hop>
+      <from>count per type</from>
+      <to>count types</to>
+      <enabled>Y</enabled>
+    </hop>
+    <hop>
+      <from>count types</from>
+      <to>check types</to>
+      <enabled>Y</enabled>
+    </hop>
+    <hop>
+      <from>check types</from>
+      <to>Types ok</to>
+      <enabled>Y</enabled>
+    </hop>
+    <hop>
+      <from>check types</from>
+      <to>Abort types</to>
+      <enabled>Y</enabled>
+    </hop>
   </order>
   <transform>
     <name>one row</name>
@@ -579,6 +599,111 @@ limitations under the License.
     <GUI>
       <xloc>256</xloc>
       <yloc>736</yloc>
+    </GUI>
+  </transform>
+  <transform>
+    <name>count types</name>
+    <type>MemoryGroupBy</type>
+    <description/>
+    <distribute>Y</distribute>
+    <custom_distribution/>
+    <copies>1</copies>
+    <partitioning>
+      <method>none</method>
+      <schema_name/>
+    </partitioning>
+    <give_back_row>Y</give_back_row>
+    <group>
+</group>
+    <fields>
+      <field>
+        <aggregate>types</aggregate>
+        <subject>type</subject>
+        <type>COUNT_ALL</type>
+        <valuefield/>
+      </field>
+    </fields>
+    <attributes/>
+    <GUI>
+      <xloc>576</xloc>
+      <yloc>352</yloc>
+    </GUI>
+  </transform>
+  <transform>
+    <name>check types</name>
+    <type>FilterRows</type>
+    <description/>
+    <distribute>Y</distribute>
+    <custom_distribution/>
+    <copies>1</copies>
+    <partitioning>
+      <method>none</method>
+      <schema_name/>
+    </partitioning>
+    <compare>
+<condition>
+<conditions>
+</conditions>
+<function>=</function>
+<leftvalue>types</leftvalue>
+<negated>N</negated>
+<operator>-</operator>
+<value>
+<isnull>N</isnull>
+<length>-1</length>
+<mask/>
+<name>constant</name>
+<precision>-1</precision>
+<text>2</text>
+<type>Integer</type>
+</value>
+</condition>
+    </compare>
+    <send_false_to>Abort types</send_false_to>
+    <send_true_to>Types ok</send_true_to>
+    <attributes/>
+    <GUI>
+      <xloc>736</xloc>
+      <yloc>352</yloc>
+    </GUI>
+  </transform>
+  <transform>
+    <name>Types ok</name>
+    <type>Dummy</type>
+    <description/>
+    <distribute>Y</distribute>
+    <custom_distribution/>
+    <copies>1</copies>
+    <partitioning>
+      <method>none</method>
+      <schema_name/>
+    </partitioning>
+
+    <attributes/>
+    <GUI>
+      <xloc>896</xloc>
+      <yloc>352</yloc>
+    </GUI>
+  </transform>
+  <transform>
+    <name>Abort types</name>
+    <type>Abort</type>
+    <description/>
+    <distribute>Y</distribute>
+    <custom_distribution/>
+    <copies>1</copies>
+    <partitioning>
+      <method>none</method>
+      <schema_name/>
+    </partitioning>
+    <abort_option>ABORT_WITH_ERROR</abort_option>
+    <always_log_rows>Y</always_log_rows>
+    <message/>
+    <row_threshold>0</row_threshold>
+    <attributes/>
+    <GUI>
+      <xloc>736</xloc>
+      <yloc>480</yloc>
     </GUI>
   </transform>
   <transform_error_handling>

@@ -30,6 +30,7 @@ import org.apache.hop.core.variables.Variables;
 import org.apache.hop.i18n.BaseMessages;
 import org.apache.hop.neo4j.core.Neo4jUtil;
 import org.apache.hop.neo4j.model.GraphPropertyType;
+import org.apache.hop.neo4j.shared.CypherConnectionSelectionLine;
 import org.apache.hop.neo4j.shared.NeoConnection;
 import org.apache.hop.neo4j.shared.NeoConnectionSelectionLine;
 import org.apache.hop.neo4j.shared.NeoConnectionUtils;
@@ -147,14 +148,13 @@ public class Neo4JOutputDialog extends BaseTransformDialog {
     Control lastControl = wSpacer;
 
     wConnection =
-        new NeoConnectionSelectionLine(
+        new CypherConnectionSelectionLine(
             variables,
             metadataProvider,
             shell,
             SWT.SINGLE | SWT.LEFT | SWT.BORDER,
             "Graph database connection",
-            "The name of the graph database connection to use",
-            true);
+            "The name of the graph database connection to use");
     PropsUi.setLook(wConnection);
     wConnection.addModifyListener(lsMod);
     FormData fdConnection = new FormData();

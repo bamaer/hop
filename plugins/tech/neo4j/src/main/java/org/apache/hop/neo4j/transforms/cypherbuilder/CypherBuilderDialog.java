@@ -29,6 +29,7 @@ import org.apache.hop.core.variables.IVariables;
 import org.apache.hop.i18n.BaseMessages;
 import org.apache.hop.neo4j.core.data.GraphPropertyDataType;
 import org.apache.hop.neo4j.model.GraphPropertyType;
+import org.apache.hop.neo4j.shared.CypherConnectionSelectionLine;
 import org.apache.hop.neo4j.shared.NeoConnectionSelectionLine;
 import org.apache.hop.neo4j.transforms.cypherbuilder.operation.BaseOperation;
 import org.apache.hop.neo4j.transforms.cypherbuilder.operation.CreateOperation;
@@ -174,14 +175,13 @@ public class CypherBuilderDialog extends BaseTransformDialog {
     wOptionsComp.setLayout(new FormLayout());
 
     wConnection =
-        new NeoConnectionSelectionLine(
+        new CypherConnectionSelectionLine(
             variables,
             metadataProvider,
             wOptionsComp,
             SWT.SINGLE | SWT.LEFT | SWT.BORDER,
             "Graph database connection",
-            "The name of the graph database connection to use",
-            true);
+            "The name of the graph database connection to use");
     PropsUi.setLook(wConnection);
     FormData fdConnection = new FormData();
     fdConnection.left = new FormAttachment(0, 0);

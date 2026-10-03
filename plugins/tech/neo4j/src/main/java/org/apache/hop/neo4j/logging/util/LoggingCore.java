@@ -91,6 +91,22 @@ public class LoggingCore {
     return connection;
   }
 
+  /**
+   * The connection to log to, like {@link #getConnection} but never failing: a connection which
+   * doesn't exist or doesn't speak Cypher gets a warning, as the execution logging always did.
+   *
+   * @return The connection or null if logging is disabled or not possible
+   */
+  public static NamedGraphConnection findConnection(
+      ILogChannel log, IHopMetadataProvider metadataProvider, IVariables variables) {
+    try {
+      return getConnection(metadataProvider, variables);
+    } catch (HopException e) {
+      log.logBasic("Warning! No execution logging: " + e.getMessage());
+      return null;
+    }
+  }
+
   /** Run work in a write transaction. Errors are logged: logging never fails an execution. */
   public static void write(
       ILogChannel log, IGraphConnection connection, IGraphTransactionWork<Object> work) {
@@ -121,7 +137,7 @@ public class LoggingCore {
       Map<String, Object> parameters)
       throws HopException {
     try (IGraphConnection graphConnection = connection.connect(log, variables)) {
-      return graphConnection.execute(cypher, parameters);
+      return graphConnection.executeRead(transaction -> transaction.execute(cypher, parameters));
     }
   }
 

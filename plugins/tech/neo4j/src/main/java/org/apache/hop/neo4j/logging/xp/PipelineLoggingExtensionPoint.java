@@ -78,7 +78,7 @@ public class PipelineLoggingExtensionPoint
     try {
 
       final NamedGraphConnection namedConnection =
-          LoggingCore.getConnection(pipeline.getMetadataProvider(), pipeline);
+          LoggingCore.findConnection(log, pipeline.getMetadataProvider(), pipeline);
       if (namedConnection == null) {
         return;
       }

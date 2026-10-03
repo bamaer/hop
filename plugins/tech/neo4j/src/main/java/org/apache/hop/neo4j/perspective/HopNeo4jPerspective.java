@@ -519,7 +519,9 @@ public class HopNeo4jPerspective implements IHopPerspective {
     loggingCypher.append("AND   e.type = $type ");
     loggingCypher.append("RETURN e.loggingText AS loggingText ");
 
-    for (Map<String, Object> row : graph.execute(loggingCypher.toString(), loggingParameters)) {
+    for (Map<String, Object> row :
+        graph.executeRead(
+            transaction -> transaction.execute(loggingCypher.toString(), loggingParameters))) {
       String loggingText = LoggingCore.getStringValue(row, "loggingText");
       wLogging.setText(
           Const.NVL(
@@ -563,7 +565,8 @@ public class HopNeo4jPerspective implements IHopPerspective {
 
       String errorPathCypher = getErrorPathCypher(dialect);
 
-      for (Map<String, Object> pathRow : graph.execute(errorPathCypher, errorPathParams)) {
+      for (Map<String, Object> pathRow :
+          graph.executeRead(transaction -> transaction.execute(errorPathCypher, errorPathParams))) {
         if (!(pathRow.get("p") instanceof GraphPathValue path)) {
           continue;
         }
@@ -794,8 +797,9 @@ public class HopNeo4jPerspective implements IHopPerspective {
   }
 
   /** The logging connection, null if logging is disabled. */
-  private NamedGraphConnection findLoggingConnection() throws HopException {
-    return LoggingCore.getConnection(hopGui.getMetadataProvider(), hopGui.getVariables());
+  private NamedGraphConnection findLoggingConnection() {
+    return LoggingCore.findConnection(
+        hopGui.getLog(), hopGui.getMetadataProvider(), hopGui.getVariables());
   }
 
   private void refreshResults() {
@@ -841,7 +845,9 @@ public class HopNeo4jPerspective implements IHopPerspective {
 
       wResults.clearAll(false);
       try (IGraphConnection graph = connection.connect(log, hopGui.getVariables())) {
-        for (Map<String, Object> row : graph.execute(resultsCypher.toString(), resultsParameters)) {
+        for (Map<String, Object> row :
+            graph.executeRead(
+                transaction -> transaction.execute(resultsCypher.toString(), resultsParameters))) {
           TableItem item = new TableItem(wResults.table, SWT.NONE);
 
           // Column 0 of the table holds the row number, the values start at column 1.
@@ -877,7 +883,8 @@ public class HopNeo4jPerspective implements IHopPerspective {
             "MATCH (e:Execution) WHERE e.type IN ['PIPELINE', 'WORKFLOW'] "
                 + "RETURN DISTINCT e.name AS name ORDER BY name";
         List<String> list = new ArrayList<>();
-        for (Map<String, Object> row : graph.execute(execCypher, Map.of())) {
+        for (Map<String, Object> row :
+            graph.executeRead(transaction -> transaction.execute(execCypher, Map.of()))) {
           String executionName = LoggingCore.getStringValue(row, "name");
           if (executionName != null) {
             list.add(executionName);
@@ -979,7 +986,8 @@ public class HopNeo4jPerspective implements IHopPerspective {
     cypher.append("-[:TRANSFORM_OF_PIPELINE]->(p:Pipeline) ");
     cypher.append("RETURN p.filename AS filename, t.name AS name ");
 
-    List<Map<String, Object>> rows = session.execute(cypher.toString(), params);
+    List<Map<String, Object>> rows =
+        session.executeRead(transaction -> transaction.execute(cypher.toString(), params));
     if (rows.isEmpty()) {
       return false; // No file found
     }
@@ -1036,7 +1044,8 @@ public class HopNeo4jPerspective implements IHopPerspective {
     cypher.append("-[:ACTION_OF_WORKFLOW]->(w:Workflow) "); // Workflow
     cypher.append("RETURN w.filename AS filename, a.name AS name ");
 
-    List<Map<String, Object>> rows = session.execute(cypher.toString(), params);
+    List<Map<String, Object>> rows =
+        session.executeRead(transaction -> transaction.execute(cypher.toString(), params));
     if (rows.isEmpty()) {
       return false; // No file found
     }
@@ -1092,7 +1101,8 @@ public class HopNeo4jPerspective implements IHopPerspective {
     cypher.append("MATCH(ex)-[:" + relationship + "]->(tr) ");
     cypher.append("RETURN tr.filename AS filename ");
 
-    List<Map<String, Object>> rows = session.execute(cypher.toString(), params);
+    List<Map<String, Object>> rows =
+        session.executeRead(transaction -> transaction.execute(cypher.toString(), params));
     String filename = rows.isEmpty() ? null : LoggingCore.getStringValue(rows.get(0), "filename");
 
     if (StringUtils.isEmpty(filename)) {

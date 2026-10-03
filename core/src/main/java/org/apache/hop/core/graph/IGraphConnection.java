@@ -50,6 +50,14 @@ public interface IGraphConnection extends AutoCloseable {
   <T> T executeWrite(IGraphTransactionWork<T> work) throws HopException;
 
   /**
+   * Run work which only reads, in a read transaction where the database has those: on a cluster
+   * they can go to a replica. By default the same as {@link #executeWrite}.
+   */
+  default <T> T executeRead(IGraphTransactionWork<T> work) throws HopException {
+    return executeWrite(work);
+  }
+
+  /**
    * @return The Cypher dialect of the database, for example NEO4J or MEMGRAPH. The plugins
    *     generating statements use it to decide which syntax to use.
    */

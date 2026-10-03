@@ -33,6 +33,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.hop.core.Const;
 import org.apache.hop.core.exception.HopException;
 import org.apache.hop.core.exception.HopValueException;
+import org.apache.hop.core.graph.GraphIndex;
 import org.apache.hop.core.graph.GraphUpsertNode;
 import org.apache.hop.core.graph.GraphUpsertRelationship;
 import org.apache.hop.core.row.IRowMeta;
@@ -133,8 +134,19 @@ public class GraphOutput extends BaseNeoTransform<GraphOutputMeta, GraphOutputDa
         //
         List<NodeProperty> usedNodeProperties = findUsedNodeProperties();
         data.modelValidator = new ModelValidator(data.graphModel, usedNodeProperties);
-        int nrErrors =
-            data.modelValidator.validateBeforeLoad(getLogChannel(), data.connection.getIndexes());
+        // Without a connection (when only returning a graph) only the use of the model is validated
+        List<GraphIndex> indexes;
+        try {
+          indexes = data.connection == null ? null : data.connection.getIndexes();
+        } catch (HopException e) {
+          logError(
+              "Unable to list the indexes of graph database connection '"
+                  + meta.getConnectionName()
+                  + "' to validate against the graph model",
+              e);
+          return false;
+        }
+        int nrErrors = data.modelValidator.validateBeforeLoad(getLogChannel(), indexes);
         if (nrErrors > 0) {
           // There were validation errors, we can stop here...
           logError(
@@ -150,7 +162,7 @@ public class GraphOutput extends BaseNeoTransform<GraphOutputMeta, GraphOutputDa
         }
       }
     } catch (HopException e) {
-      logError("Could not find Neo4j connection'" + meta.getConnectionName() + "'", e);
+      logError("Error preparing graph database connection '" + meta.getConnectionName() + "'", e);
       return false;
     }
 

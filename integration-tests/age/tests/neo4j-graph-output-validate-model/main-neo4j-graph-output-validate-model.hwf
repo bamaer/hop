@@ -18,7 +18,7 @@ limitations under the License.
 
 -->
 <workflow>
-  <name>main-neo4j-gencsv-plain-headers</name>
+  <name>main-neo4j-graph-output-validate-model</name>
   <name_sync_with_filename>Y</name_sync_with_filename>
   <description/>
   <extended_description/>
@@ -30,7 +30,7 @@ limitations under the License.
   <parameters>
     <parameter>
       <name>TEST_FOLDER</name>
-      <default_value>neo4j-gencsv-plain-headers</default_value>
+      <default_value>neo4j-graph-output-validate-model</default_value>
       <description/>
     </parameter>
   </parameters>
@@ -83,11 +83,11 @@ limitations under the License.
       <attributes_hac/>
     </action>
     <action>
-      <name>neo4j-gencsv-plain-headers.hpl</name>
+      <name>load without index</name>
       <description/>
       <type>PIPELINE</type>
       <attributes/>
-      <filename>${PROJECT_HOME}/tests/neo4j-gencsv-plain-headers/neo4j-gencsv-plain-headers.hpl</filename>
+      <filename>${PROJECT_HOME}/tests/neo4j-graph-output-validate-model/neo4j-graph-output-validate-model.hpl</filename>
       <params_from_previous>N</params_from_previous>
       <exec_per_row>N</exec_per_row>
       <clear_rows>N</clear_rows>
@@ -112,11 +112,23 @@ limitations under the License.
       <attributes_hac/>
     </action>
     <action>
-      <name>neo4j-gencsv-plain-headers-check.hpl</name>
+      <name>loaded without index</name>
+      <description/>
+      <type>ABORT</type>
+      <attributes/>
+      <always_log_rows>N</always_log_rows>
+      <message>The validation should fail without an index on VPerson.id</message>
+      <parallel>N</parallel>
+      <xloc>560</xloc>
+      <yloc>304</yloc>
+      <attributes_hac/>
+    </action>
+    <action>
+      <name>load with index</name>
       <description/>
       <type>PIPELINE</type>
       <attributes/>
-      <filename>${PROJECT_HOME}/tests/neo4j-gencsv-plain-headers/neo4j-gencsv-plain-headers-check.hpl</filename>
+      <filename>${PROJECT_HOME}/tests/neo4j-graph-output-validate-model/neo4j-graph-output-validate-model.hpl</filename>
       <params_from_previous>N</params_from_previous>
       <exec_per_row>N</exec_per_row>
       <clear_rows>N</clear_rows>
@@ -136,25 +148,56 @@ limitations under the License.
         <pass_all_parameters>Y</pass_all_parameters>
       </parameters>
       <parallel>N</parallel>
-      <xloc>784</xloc>
-      <yloc>128</yloc>
+      <xloc>1232</xloc>
+      <yloc>240</yloc>
       <attributes_hac/>
     </action>
     <action>
-      <name>delete output</name>
+      <name>drop index</name>
       <description/>
-      <type>DELETE_FOLDERS</type>
+      <type>SQL</type>
       <attributes/>
-      <arg_from_previous>N</arg_from_previous>
-      <success_condition>success_if_no_errors</success_condition>
-      <limit_folders>10</limit_folders>
-      <fields>
-        <field>
-          <name>${java.io.tmpdir}/hop-gencsv-plain</name>
-        </field>
-      </fields>
+      <sql>DROP INDEX IF EXISTS hop_it.vperson_id</sql>
+      <useVariableSubstitution>F</useVariableSubstitution>
+      <sqlfromfile>F</sqlfromfile>
+      <sqlfilename/>
+      <sendOneStatement>T</sendOneStatement>
+      <connection>age-sql</connection>
       <parallel>N</parallel>
-      <xloc>256</xloc>
+      <xloc>336</xloc>
+      <yloc>240</yloc>
+      <attributes_hac/>
+    </action>
+    <action>
+      <name>create label</name>
+      <description>The label table of VPerson needs to exist to put an index on it</description>
+      <type>NEO4J_CYPHER_SCRIPT</type>
+      <attributes/>
+      <connection>Test</connection>
+      <replace_variables>N</replace_variables>
+      <script>CREATE (:VPerson {id: -1})
+;
+MATCH (n:VPerson {id: -1}) DELETE n
+;
+</script>
+      <parallel>N</parallel>
+      <xloc>784</xloc>
+      <yloc>240</yloc>
+      <attributes_hac/>
+    </action>
+    <action>
+      <name>create index</name>
+      <description/>
+      <type>SQL</type>
+      <attributes/>
+      <sql>CREATE INDEX IF NOT EXISTS vperson_id ON hop_it."VPerson" (ag_catalog.agtype_access_operator(VARIADIC ARRAY[properties, '"id"'::ag_catalog.agtype]))</sql>
+      <useVariableSubstitution>F</useVariableSubstitution>
+      <sqlfromfile>F</sqlfromfile>
+      <sqlfilename/>
+      <sendOneStatement>T</sendOneStatement>
+      <connection>age-sql</connection>
+      <parallel>N</parallel>
+      <xloc>1008</xloc>
       <yloc>240</yloc>
       <attributes_hac/>
     </action>
@@ -162,28 +205,49 @@ limitations under the License.
   <hops>
     <hop>
       <from>Start</from>
-      <to>delete output</to>
+      <to>cleanup-database.hwf</to>
       <enabled>Y</enabled>
       <evaluation>Y</evaluation>
       <unconditional>Y</unconditional>
     </hop>
     <hop>
-      <from>delete output</from>
-      <to>cleanup-database.hwf</to>
-      <enabled>Y</enabled>
-      <evaluation>Y</evaluation>
-      <unconditional>N</unconditional>
-    </hop>
-    <hop>
       <from>cleanup-database.hwf</from>
-      <to>neo4j-gencsv-plain-headers.hpl</to>
+      <to>drop index</to>
       <enabled>Y</enabled>
       <evaluation>Y</evaluation>
       <unconditional>N</unconditional>
     </hop>
     <hop>
-      <from>neo4j-gencsv-plain-headers.hpl</from>
-      <to>neo4j-gencsv-plain-headers-check.hpl</to>
+      <from>drop index</from>
+      <to>load without index</to>
+      <enabled>Y</enabled>
+      <evaluation>Y</evaluation>
+      <unconditional>N</unconditional>
+    </hop>
+    <hop>
+      <from>load without index</from>
+      <to>loaded without index</to>
+      <enabled>Y</enabled>
+      <evaluation>Y</evaluation>
+      <unconditional>N</unconditional>
+    </hop>
+    <hop>
+      <from>load without index</from>
+      <to>create label</to>
+      <enabled>Y</enabled>
+      <evaluation>N</evaluation>
+      <unconditional>N</unconditional>
+    </hop>
+    <hop>
+      <from>create label</from>
+      <to>create index</to>
+      <enabled>Y</enabled>
+      <evaluation>Y</evaluation>
+      <unconditional>N</unconditional>
+    </hop>
+    <hop>
+      <from>create index</from>
+      <to>load with index</to>
       <enabled>Y</enabled>
       <evaluation>Y</evaluation>
       <unconditional>N</unconditional>

@@ -116,7 +116,23 @@ public enum CypherDialect {
   public boolean isRequiringAutoCommit(String statement) {
     return this == MEMGRAPH
         && statement != null
-        && MEMGRAPH_AUTO_COMMIT_STATEMENT.matcher(statement).find();
+        && MEMGRAPH_AUTO_COMMIT_STATEMENT.matcher(stripLeadingComments(statement)).find();
+  }
+
+  /** The statement without the whitespace and comments it starts with. */
+  static String stripLeadingComments(String statement) {
+    String rest = statement.stripLeading();
+    while (true) {
+      if (rest.startsWith("//")) {
+        int newline = rest.indexOf('\n');
+        rest = newline < 0 ? "" : rest.substring(newline + 1).stripLeading();
+      } else if (rest.startsWith("/*")) {
+        int end = rest.indexOf("*/");
+        rest = end < 0 ? "" : rest.substring(end + 2).stripLeading();
+      } else {
+        return rest;
+      }
+    }
   }
 
   public boolean isCypher() {

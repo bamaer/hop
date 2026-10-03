@@ -61,6 +61,13 @@ public class CypherBuilder extends BaseTransform<CypherBuilderMeta, CypherBuilde
     try {
       NamedGraphConnection graphConnection =
           NeoConnectionUtils.findGraphConnection(metadataProvider, connectionName);
+      if (graphConnection != null && !graphConnection.getDialect().isCypher()) {
+        logError(
+            "The Cypher builder generates Cypher, which connection '"
+                + connectionName
+                + "' doesn't speak. Use Graph query or Graph output instead.");
+        return false;
+      }
       if (graphConnection != null && !NeoConnectionUtils.isBolt(graphConnection)) {
         // Not Bolt: work through the generic graph connection
         //
