@@ -26,7 +26,7 @@ import org.apache.hop.neo4j.shared.CypherDialect;
     id = "NEPTUNE",
     name = "i18n::NeptuneGraphDatabase.name",
     description = "i18n::NeptuneGraphDatabase.description",
-    documentationUrl = "/metadata-types/graph-database-connection.html")
+    documentationUrl = "/metadata-types/graphs/graph-database-connection.html")
 @GuiPlugin
 public class NeptuneGraphDatabase extends BoltGraphDatabase {
   public NeptuneGraphDatabase() {

@@ -27,6 +27,8 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.hop.core.graph.GraphNodeValue;
+import org.apache.hop.core.graph.GraphRelationshipValue;
 import org.junit.jupiter.api.Test;
 
 class FalkorDbCypherTest {
@@ -97,13 +99,13 @@ class FalkorDbCypherTest {
             List.of("Cached execution: 0"));
     List<Map<String, Object>> rows = FalkorDbCypher.toRows(new ArrayList<>(reply), NAMES);
     assertEquals(1, rows.size());
-    Map<?, ?> n = (Map<?, ?>) rows.get(0).get("n");
-    assertEquals(3L, n.get("id"));
-    assertEquals(List.of("Person"), n.get("labels"));
-    assertEquals(Map.of("name", "Ann", "id", 1L), n.get("properties"));
-    Map<?, ?> r = (Map<?, ?>) rows.get(0).get("r");
-    assertEquals("KNOWS", r.get("type"));
-    assertEquals(Map.of("since", 2020L), r.get("properties"));
+    GraphNodeValue n = (GraphNodeValue) rows.get(0).get("n");
+    assertEquals("3", n.id());
+    assertEquals(List.of("Person"), n.labels());
+    assertEquals(Map.of("name", "Ann", "id", 1L), n.properties());
+    GraphRelationshipValue r = (GraphRelationshipValue) rows.get(0).get("r");
+    assertEquals("KNOWS", r.type());
+    assertEquals(Map.of("since", 2020L), r.properties());
     assertEquals(List.of("Person", 2L), rows.get(0).get("l"));
     assertEquals(Map.of("k", 1.5d), rows.get(0).get("m"));
     assertEquals(LocalDate.of(2024, 1, 2), rows.get(0).get("d"));

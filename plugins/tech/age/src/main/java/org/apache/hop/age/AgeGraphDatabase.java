@@ -23,6 +23,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import lombok.Getter;
@@ -48,7 +49,7 @@ import org.apache.hop.metadata.api.HopMetadataProperty;
     id = "AGE",
     name = "i18n::AgeGraphDatabase.name",
     description = "i18n::AgeGraphDatabase.description",
-    documentationUrl = "/metadata-types/graph-database-connection.html")
+    documentationUrl = "/metadata-types/graphs/graph-database-connection.html")
 @GuiPlugin
 @Getter
 @Setter
@@ -162,6 +163,34 @@ public class AgeGraphDatabase extends BaseGraphDatabase {
         + variables.resolve(port)
         + "/"
         + variables.resolve(databaseName);
+  }
+
+  /**
+   * A PostgreSQL index on the label's table: AGE stores the nodes of each label in a table of the
+   * graph's schema, their properties in an agtype column. The label needs to exist: it does once a
+   * node with it was created.
+   */
+  @Override
+  public String getCreateNodeIndexStatement(
+      IVariables variables, String indexName, String label, List<String> properties) {
+    StringBuilder sql = new StringBuilder("CREATE INDEX IF NOT EXISTS ");
+    sql.append(quoteIdentifier(indexName))
+        .append(" ON ")
+        .append(quoteIdentifier(variables.resolve(graphName)))
+        .append('.')
+        .append(quoteIdentifier(label))
+        .append(" (");
+    for (int i = 0; i < properties.size(); i++) {
+      sql.append(i > 0 ? ", " : "")
+          .append("ag_catalog.agtype_access_operator(VARIADIC ARRAY[properties, '\"")
+          .append(properties.get(i).replace("'", "''").replace("\"", "\\\""))
+          .append("\"'::ag_catalog.agtype])");
+    }
+    return sql.append(')').toString();
+  }
+
+  private static String quoteIdentifier(String identifier) {
+    return '"' + identifier.replace("\"", "\"\"") + '"';
   }
 
   @Override

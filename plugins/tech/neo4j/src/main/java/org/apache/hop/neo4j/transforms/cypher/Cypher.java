@@ -34,6 +34,7 @@ import org.apache.hop.core.util.Utils;
 import org.apache.hop.neo4j.core.data.GraphData;
 import org.apache.hop.neo4j.core.data.GraphPropertyDataType;
 import org.apache.hop.neo4j.model.GraphPropertyType;
+import org.apache.hop.neo4j.shared.CypherDialect;
 import org.apache.hop.neo4j.shared.NamedGraphConnection;
 import org.apache.hop.neo4j.shared.NeoConnectionUtils;
 import org.apache.hop.neo4j.shared.NeoHopData;
@@ -81,11 +82,6 @@ public class Cypher extends BaseTransform<CypherMeta, CypherData> {
       if (graphConnection != null && !NeoConnectionUtils.isBolt(graphConnection)) {
         // Not Bolt: work through the generic graph connection
         //
-        if (meta.isReturningGraph()) {
-          logError(
-              "Returning a graph is only supported on Neo4j, Memgraph and Neptune connections");
-          return false;
-        }
         data.batchSize = Const.toLongExpanded(resolve(meta.getBatchSize()), 1);
         data.attempts = 1 + Math.max(0, Const.toInt(resolve(meta.getNrRetriesOnError()), 0));
         data.graphConnection = graphConnection.connect(getLogChannel(), this);
@@ -344,6 +340,16 @@ public class Cypher extends BaseTransform<CypherMeta, CypherData> {
       return;
     }
 
+    // Statements the database doesn't run in a transaction run on their own, like SHOW INDEX INFO
+    // on Memgraph
+    //
+    CypherDialect dialect = data.neoConnection.getDialect();
+    if (data.cypherStatements.stream()
+        .allMatch(statement -> dialect.isRequiringAutoCommit(statement.getCypher()))) {
+      runAutoCommitStatements();
+      return;
+    }
+
     // Execute all the statements in there in one transaction...
     //
     TransactionCallback<Integer> transactionWork =
@@ -394,6 +400,26 @@ public class Cypher extends BaseTransform<CypherMeta, CypherData> {
       //
       data.cypherStatements.clear();
 
+    } catch (Exception e) {
+      throw new HopException(
+          "Unable to execute batch of cypher statements (" + data.cypherStatements.size() + ")", e);
+    }
+  }
+
+  /** Run the batch of statements one by one, each in its own auto-commit transaction. */
+  private void runAutoCommitStatements() throws HopException {
+    try {
+      for (CypherStatement cypherStatement : data.cypherStatements) {
+        Result result =
+            data.session.run(cypherStatement.getCypher(), cypherStatement.getParameters());
+        getResultRows(result, cypherStatement.getRow(), false);
+        if (meta.isReadOnly()) {
+          incrementLinesInput();
+        } else {
+          incrementLinesOutput();
+        }
+      }
+      data.cypherStatements.clear();
     } catch (Exception e) {
       throw new HopException(
           "Unable to execute batch of cypher statements (" + data.cypherStatements.size() + ")", e);
@@ -533,6 +559,21 @@ public class Cypher extends BaseTransform<CypherMeta, CypherData> {
    */
   private void getGenericResultRows(List<Map<String, Object>> rows, Object[] row, boolean unwind)
       throws HopException {
+    if (meta.isReturningGraph()) {
+      // One row with the graph of all the nodes, relationships and paths in the results
+      GraphData graphData = GraphData.fromRows(rows);
+      graphData.setSourcePipelineName(getPipelineMeta().getName());
+      graphData.setSourceTransformName(getTransformName());
+      Object[] outputRow;
+      if (unwind) {
+        outputRow = RowDataUtil.allocateRowData(data.outputRowMeta.size());
+      } else {
+        outputRow = RowDataUtil.createResizedCopy(row, data.outputRowMeta.size());
+      }
+      outputRow[data.hasInput && !unwind ? getInputRowMeta().size() : 0] = graphData;
+      putRow(data.outputRowMeta, outputRow);
+      return;
+    }
     if (meta.getReturnValues().isEmpty()) {
       if (!unwind) {
         putRow(data.outputRowMeta, row);

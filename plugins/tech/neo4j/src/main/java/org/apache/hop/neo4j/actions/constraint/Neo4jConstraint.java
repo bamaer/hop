@@ -33,12 +33,12 @@ import org.apache.hop.workflow.action.IAction;
 
 @Action(
     id = "NEO4J_CONSTRAINT",
-    name = "Neo4j constraint",
-    description = "Create or delete constraints in a Neo4j database",
-    image = "neo4j_constraint.svg",
+    name = "Graph constraint",
+    description = "Create or delete constraints in a graph database",
+    image = "graph_constraint.svg",
     categoryDescription = "i18n:org.apache.hop.workflow:ActionCategory.Category.Scripting",
     keywords = "i18n::Neo4jConstraint.keyword",
-    documentationUrl = "/workflow/actions/neo4j-constraint.html")
+    documentationUrl = "/workflow/actions/graph-constraint.html")
 public class Neo4jConstraint extends ActionBase implements IAction {
 
   /** The name of the Neo4j or Bolt graph database connection. */
@@ -65,6 +65,8 @@ public class Neo4jConstraint extends ActionBase implements IAction {
 
   @Override
   public Result execute(Result result, int nr) throws HopException {
+    // Success unless something goes wrong, whatever the result of the previous action
+    result.setResult(true);
 
     connection =
         NeoConnectionUtils.findGraphConnection(getMetadataProvider(), resolve(connectionName));

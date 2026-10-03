@@ -33,12 +33,12 @@ import org.apache.hop.workflow.action.IAction;
 
 @Action(
     id = "NEO4J_CHECK_CONNECTIONS",
-    name = "Check Neo4j connections",
-    description = "Check to see if we can connect to the listed Neo4j databases",
-    image = "neo4j_check.svg",
+    name = "Check graph database connections",
+    description = "Check to see if we can connect to the listed graph databases",
+    image = "graph_check.svg",
     categoryDescription = "i18n:org.apache.hop.workflow:ActionCategory.Category.Conditions",
     keywords = "i18n::CheckConnections.keyword",
-    documentationUrl = "/workflow/actions/neo4j-checkconnections.html",
+    documentationUrl = "/workflow/actions/check-graph-database-connections.html",
     actionTransformTypes = {ActionTransformType.ENV_CHECK, ActionTransformType.GRAPH})
 public class CheckConnections extends ActionBase implements IAction {
 
@@ -65,6 +65,8 @@ public class CheckConnections extends ActionBase implements IAction {
 
   @Override
   public Result execute(Result result, int nr) throws HopException {
+    // Success unless something goes wrong, whatever the result of the previous action
+    result.setResult(true);
 
     // Replace variables & parameters
     //

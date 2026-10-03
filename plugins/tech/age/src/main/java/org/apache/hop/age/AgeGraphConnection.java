@@ -27,6 +27,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.hop.core.exception.HopException;
+import org.apache.hop.core.graph.GraphIndex;
 import org.apache.hop.core.graph.IGraphConnection;
 import org.apache.hop.core.graph.IGraphTransaction;
 import org.apache.hop.core.graph.IGraphTransactionWork;
@@ -136,6 +137,43 @@ public class AgeGraphConnection implements IGraphConnection {
     } finally {
       transaction.close();
     }
+  }
+
+  /**
+   * The indexes on the properties of the graph's labels: PostgreSQL indexes on the label tables. An
+   * index on an expression of a property covers that property, a GIN index on all properties covers
+   * them all.
+   */
+  @Override
+  public List<GraphIndex> getIndexes() throws HopException {
+    String sql =
+        "SELECT l.name, l.kind, i.relname, ix.indisunique, pg_get_indexdef(ix.indexrelid) "
+            + "FROM ag_catalog.ag_label l "
+            + "JOIN ag_catalog.ag_graph g ON g.graphid = l.graph "
+            + "JOIN pg_index ix ON ix.indrelid = l.relation "
+            + "JOIN pg_class i ON i.oid = ix.indexrelid "
+            + "WHERE g.name = ? AND l.name NOT LIKE '\\_ag\\_label\\_%'";
+    List<GraphIndex> indexes = new ArrayList<>();
+    try (PreparedStatement ps = connection.prepareStatement(sql)) {
+      ps.setString(1, graphName);
+      try (ResultSet resultSet = ps.executeQuery()) {
+        while (resultSet.next()) {
+          List<String> properties = AgeCypher.getIndexedProperties(resultSet.getString(5));
+          if (!properties.isEmpty()) {
+            indexes.add(
+                new GraphIndex(
+                    resultSet.getString(3),
+                    "e".equals(resultSet.getString(2)),
+                    List.of(resultSet.getString(1)),
+                    properties,
+                    resultSet.getBoolean(4)));
+          }
+        }
+      }
+    } catch (SQLException e) {
+      throw new HopException("Unable to list the indexes of Apache AGE graph " + graphName, e);
+    }
+    return indexes;
   }
 
   @Override

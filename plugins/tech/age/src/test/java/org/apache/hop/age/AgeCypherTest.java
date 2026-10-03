@@ -25,6 +25,10 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.hop.core.exception.HopException;
+import org.apache.hop.core.graph.GraphIndex;
+import org.apache.hop.core.graph.GraphNodeValue;
+import org.apache.hop.core.graph.GraphPathValue;
+import org.apache.hop.core.graph.GraphRelationshipValue;
 import org.junit.jupiter.api.Test;
 
 class AgeCypherTest {
@@ -81,18 +85,57 @@ class AgeCypherTest {
     assertEquals(1L, AgeCypher.toValue("1"));
     assertEquals(1.5d, AgeCypher.toValue("1.5"));
     assertEquals("x::y", AgeCypher.toValue("\"x::y\""));
-    Map<?, ?> vertex =
-        (Map<?, ?>)
+    GraphNodeValue vertex =
+        (GraphNodeValue)
             AgeCypher.toValue(
                 "{\"id\": 844424930131969, \"label\": \"Person\", \"properties\": {\"name\": \"A::B\"}}::vertex");
-    assertEquals("Person", vertex.get("label"));
-    assertEquals(Map.of("name", "A::B"), vertex.get("properties"));
-    List<?> path =
-        (List<?>)
+    assertEquals("844424930131969", vertex.id());
+    assertEquals(List.of("Person"), vertex.labels());
+    assertEquals(Map.of("name", "A::B"), vertex.properties());
+    GraphPathValue path =
+        (GraphPathValue)
             AgeCypher.toValue(
                 "[{\"id\": 1, \"label\": \"A\", \"properties\": {}}::vertex, "
-                    + "{\"id\": 2, \"label\": \"R\", \"end_id\": 3, \"start_id\": 1, \"properties\": {}}::edge, "
+                    + "{\"id\": 2, \"label\": \"R\", \"end_id\": 3, \"start_id\": 1, \"properties\": {\"w\": 1.5}}::edge, "
                     + "{\"id\": 3, \"label\": \"A\", \"properties\": {}}::vertex]::path");
-    assertEquals(3, path.size());
+    assertEquals(2, path.nodes().size());
+    GraphRelationshipValue edge = path.relationships().get(0);
+    assertEquals("R", edge.type());
+    assertEquals("1", edge.startNodeId());
+    assertEquals("3", edge.endNodeId());
+    assertEquals(Map.of("w", 1.5d), edge.properties());
+    // A map like a vertex without the suffix stays a map, a list of vertices stays a list
+    assertEquals(
+        Map.of("id", 1L, "label", "A", "properties", Map.of()),
+        AgeCypher.toValue("{\"id\": 1, \"label\": \"A\", \"properties\": {}}"));
+    List<?> list =
+        (List<?>)
+            AgeCypher.toValue(
+                "[{\"id\": 1, \"label\": \"A\", \"properties\": {}}::vertex, {\"k\": 2::numeric}]");
+    assertEquals(GraphNodeValue.class, list.get(0).getClass());
+    assertEquals(Map.of("k", 2L), list.get(1));
+  }
+
+  @Test
+  void testIndexedProperties() {
+    assertEquals(
+        List.of("k"),
+        AgeCypher.getIndexedProperties(
+            "CREATE UNIQUE INDEX vtest_k ON vtest.\"VTest\" USING btree"
+                + " (agtype_access_operator(VARIADIC ARRAY[properties, '\"k\"'::agtype]))"));
+    assertEquals(
+        List.of("a", "b c"),
+        AgeCypher.getIndexedProperties(
+            "CREATE INDEX vtest_ab ON vtest.\"VTest\" USING btree"
+                + " (agtype_access_operator(VARIADIC ARRAY[properties, '\"a\"'::agtype]),"
+                + " agtype_access_operator(VARIADIC ARRAY[properties, '\"b c\"'::agtype]))"));
+    assertEquals(
+        GraphIndex.ALL_PROPERTIES,
+        AgeCypher.getIndexedProperties(
+            "CREATE INDEX vtest_gin ON vtest.\"VTest\" USING gin (properties)"));
+    assertEquals(
+        List.of(),
+        AgeCypher.getIndexedProperties(
+            "CREATE UNIQUE INDEX \"VTest_pkey\" ON vtest.\"VTest\" USING btree (id)"));
   }
 }

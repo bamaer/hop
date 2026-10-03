@@ -41,7 +41,6 @@ import org.apache.hop.core.row.RowDataUtil;
 import org.apache.hop.core.util.Utils;
 import org.apache.hop.core.variables.IVariables;
 import org.apache.hop.metadata.api.IHopMetadataSerializer;
-import org.apache.hop.neo4j.bolt.BoltGraphConnection;
 import org.apache.hop.neo4j.core.GraphUsage;
 import org.apache.hop.neo4j.core.data.GraphData;
 import org.apache.hop.neo4j.core.data.GraphNodeData;
@@ -134,12 +133,8 @@ public class GraphOutput extends BaseNeoTransform<GraphOutputMeta, GraphOutputDa
         //
         List<NodeProperty> usedNodeProperties = findUsedNodeProperties();
         data.modelValidator = new ModelValidator(data.graphModel, usedNodeProperties);
-        if (!(data.connection instanceof BoltGraphConnection boltConnection)) {
-          logError("Validating against the graph model is only supported on Neo4j");
-          return false;
-        }
         int nrErrors =
-            data.modelValidator.validateBeforeLoad(getLogChannel(), boltConnection.getSession());
+            data.modelValidator.validateBeforeLoad(getLogChannel(), data.connection.getIndexes());
         if (nrErrors > 0) {
           // There were validation errors, we can stop here...
           logError(

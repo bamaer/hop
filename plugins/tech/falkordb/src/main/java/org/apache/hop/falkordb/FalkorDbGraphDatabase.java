@@ -44,7 +44,7 @@ import org.apache.hop.metadata.api.HopMetadataProperty;
     id = "FALKORDB",
     name = "i18n::FalkorDbGraphDatabase.name",
     description = "i18n::FalkorDbGraphDatabase.description",
-    documentationUrl = "/metadata-types/graph-database-connection.html")
+    documentationUrl = "/metadata-types/graphs/graph-database-connection.html")
 @GuiPlugin
 @Getter
 @Setter

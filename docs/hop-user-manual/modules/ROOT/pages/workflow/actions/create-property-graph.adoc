@@ -23,7 +23,7 @@ under the License.
 
 == Description
 
-The `Create property graph` action turns a xref:metadata-types/neo4j/neo4j-graphmodel.adoc[graph model] into a SQL/PGQ (SQL:2023) property graph in a relational database.
+The `Create property graph` action turns a xref:metadata-types/graphs/graph-model.adoc[graph model] into a SQL/PGQ (SQL:2023) property graph in a relational database.
 
 In SQL/PGQ a property graph is defined on top of ordinary tables: one table per node and one table per relationship.
 The action creates the tables which don't exist yet and the `CREATE PROPERTY GRAPH` statement on top of them.

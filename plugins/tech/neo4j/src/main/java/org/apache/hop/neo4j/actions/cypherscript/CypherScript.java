@@ -35,12 +35,12 @@ import org.apache.hop.workflow.action.IAction;
 
 @Action(
     id = "NEO4J_CYPHER_SCRIPT",
-    name = "Neo4j Cypher script",
-    description = "Execute a Neo4j Cypher script",
-    image = "neo4j_cypher.svg",
+    name = "Graph script",
+    description = "Execute a script of Cypher statements or Gremlin traversals on a graph database",
+    image = "graph_script.svg",
     categoryDescription = "i18n:org.apache.hop.workflow:ActionCategory.Category.Scripting",
     keywords = "i18n::CypherScript.keyword",
-    documentationUrl = "/workflow/actions/neo4j-cypherscript.html")
+    documentationUrl = "/workflow/actions/graph-script.html")
 public class CypherScript extends ActionBase implements IAction {
   @HopMetadataProperty(
       key = "connection",
@@ -67,6 +67,8 @@ public class CypherScript extends ActionBase implements IAction {
 
   @Override
   public Result execute(Result result, int nr) throws HopException {
+    // Success unless something goes wrong, whatever the result of the previous action
+    result.setResult(true);
     // Replace variables & parameters
     //
     NamedGraphConnection graphConnection;

@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.apache.hop.core.exception.HopException;
+import org.apache.hop.core.graph.GraphIndex;
 import org.apache.hop.core.graph.IGraphConnection;
 import org.apache.hop.core.graph.IGraphTransaction;
 import org.apache.hop.core.graph.IGraphTransactionWork;
@@ -167,6 +168,50 @@ public class FalkorDbGraphConnection implements IGraphConnection {
   @Override
   public <T> T executeWrite(IGraphTransactionWork<T> work) throws HopException {
     return work.execute(beginTransaction());
+  }
+
+  /**
+   * The indexes from CALL db.indexes(), one row per label or relationship type with all its indexed
+   * properties, and the unique constraints from CALL db.constraints().
+   */
+  @Override
+  public List<GraphIndex> getIndexes() throws HopException {
+    List<GraphIndex> indexes = new ArrayList<>();
+    for (Map<String, Object> row : execute("CALL db.indexes()", Map.of())) {
+      indexes.add(
+          new GraphIndex(
+              "",
+              isRelationship(row),
+              toStrings(row.get("label")),
+              toStrings(row.get("properties")),
+              false));
+    }
+    for (Map<String, Object> row : execute("CALL db.constraints()", Map.of())) {
+      if ("UNIQUE".equalsIgnoreCase(String.valueOf(row.get("type")))) {
+        indexes.add(
+            new GraphIndex(
+                "",
+                isRelationship(row),
+                toStrings(row.get("label")),
+                toStrings(row.get("properties")),
+                true));
+      }
+    }
+    return indexes;
+  }
+
+  private static boolean isRelationship(Map<String, Object> row) {
+    return "RELATIONSHIP".equalsIgnoreCase(String.valueOf(row.get("entitytype")));
+  }
+
+  private static List<String> toStrings(Object value) {
+    List<String> strings = new ArrayList<>();
+    if (value instanceof Iterable<?> iterable) {
+      iterable.forEach(element -> strings.add(String.valueOf(element)));
+    } else if (value != null) {
+      strings.add(value.toString());
+    }
+    return strings;
   }
 
   @Override

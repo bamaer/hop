@@ -19,6 +19,7 @@ package org.apache.hop.neo4j.shared;
 
 import java.util.EnumSet;
 import java.util.Set;
+import java.util.regex.Pattern;
 import org.apache.hop.neo4j.actions.constraint.ConstraintType;
 
 /**
@@ -98,6 +99,26 @@ public enum CypherDialect {
   /**
    * @return False for databases which don't speak Cypher, like Gremlin servers
    */
+  /**
+   * The statements Memgraph doesn't run in an explicit transaction: information queries like SHOW
+   * INDEX INFO, index and constraint changes, and a few administrative statements.
+   */
+  private static final Pattern MEMGRAPH_AUTO_COMMIT_STATEMENT =
+      Pattern.compile(
+          "^\\s*(SHOW\\b|DROP\\s+ALL\\b|ANALYZE\\s+GRAPH\\b|FREE\\s+MEMORY\\b|STORAGE\\s+MODE\\b"
+              + "|(CREATE|DROP)\\s+(\\w+\\s+)?(INDEX|CONSTRAINT)\\b)",
+          Pattern.CASE_INSENSITIVE);
+
+  /**
+   * @return True if the database refuses to run this statement in an explicit transaction, so it
+   *     has to run on its own in an auto-commit transaction
+   */
+  public boolean isRequiringAutoCommit(String statement) {
+    return this == MEMGRAPH
+        && statement != null
+        && MEMGRAPH_AUTO_COMMIT_STATEMENT.matcher(statement).find();
+  }
+
   public boolean isCypher() {
     return this != GREMLIN;
   }

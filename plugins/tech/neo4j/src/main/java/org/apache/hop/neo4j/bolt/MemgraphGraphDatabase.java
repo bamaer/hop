@@ -29,7 +29,7 @@ import org.apache.hop.neo4j.shared.CypherDialect;
     id = "MEMGRAPH",
     name = "i18n::MemgraphGraphDatabase.name",
     description = "i18n::MemgraphGraphDatabase.description",
-    documentationUrl = "/metadata-types/graph-database-connection.html")
+    documentationUrl = "/metadata-types/graphs/graph-database-connection.html")
 @GuiPlugin
 public class MemgraphGraphDatabase extends BoltGraphDatabase {
   public MemgraphGraphDatabase() {

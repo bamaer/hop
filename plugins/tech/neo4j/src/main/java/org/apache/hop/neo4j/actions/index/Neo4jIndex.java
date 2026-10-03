@@ -33,12 +33,12 @@ import org.apache.hop.workflow.action.IAction;
 
 @Action(
     id = "NEO4J_INDEX",
-    name = "Neo4j index",
-    description = "Create or delete indexes in a Neo4j database",
-    image = "neo4j_index.svg",
+    name = "Graph index",
+    description = "Create or delete indexes in a graph database",
+    image = "graph_index.svg",
     categoryDescription = "i18n:org.apache.hop.workflow:ActionCategory.Category.Scripting",
     keywords = "i18n::Neo4jIndex.keyword",
-    documentationUrl = "/workflow/actions/neo4j-index.html")
+    documentationUrl = "/workflow/actions/graph-index.html")
 public class Neo4jIndex extends ActionBase implements IAction {
 
   /** The name of the Neo4j or Bolt graph database connection. */
@@ -65,6 +65,8 @@ public class Neo4jIndex extends ActionBase implements IAction {
 
   @Override
   public Result execute(Result result, int nr) throws HopException {
+    // Success unless something goes wrong, whatever the result of the previous action
+    result.setResult(true);
 
     connection =
         NeoConnectionUtils.findGraphConnection(getMetadataProvider(), resolve(connectionName));

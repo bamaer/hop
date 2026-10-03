@@ -20,6 +20,7 @@ package org.apache.hop.neo4j.transforms.cypherbuilder;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hop.core.Const;
@@ -28,6 +29,7 @@ import org.apache.hop.core.row.IValueMeta;
 import org.apache.hop.core.row.RowDataUtil;
 import org.apache.hop.neo4j.core.data.GraphPropertyDataType;
 import org.apache.hop.neo4j.model.GraphPropertyType;
+import org.apache.hop.neo4j.shared.NamedGraphConnection;
 import org.apache.hop.neo4j.shared.NeoConnectionUtils;
 import org.apache.hop.neo4j.shared.NeoHopData;
 import org.apache.hop.pipeline.Pipeline;
@@ -57,13 +59,21 @@ public class CypherBuilder extends BaseTransform<CypherBuilderMeta, CypherBuilde
     //
     String connectionName = resolve(meta.getConnectionName());
     try {
+      NamedGraphConnection graphConnection =
+          NeoConnectionUtils.findGraphConnection(metadataProvider, connectionName);
+      if (graphConnection != null && !NeoConnectionUtils.isBolt(graphConnection)) {
+        // Not Bolt: work through the generic graph connection
+        //
+        data.graphConnection = graphConnection.connect(getLogChannel(), this);
+        return super.init();
+      }
       data.connection = NeoConnectionUtils.loadConnection(metadataProvider, connectionName);
       data.driver = data.connection.getDriver(getLogChannel(), this);
       data.driver.verifyConnectivity();
       data.session = data.connection.getSession(getLogChannel(), data.driver, this);
     } catch (Exception e) {
       setErrors(1);
-      logError("Error connecting to Neo4j", e);
+      logError("Error connecting to graph database '" + connectionName + "'", e);
       return false;
     }
 
@@ -73,6 +83,10 @@ public class CypherBuilder extends BaseTransform<CypherBuilderMeta, CypherBuilde
   @Override
   public void dispose() {
     try {
+      if (data.graphConnection != null) {
+        data.graphConnection.close();
+        data.graphConnection = null;
+      }
       if (data.session != null) {
         data.session.close();
       }
@@ -80,7 +94,7 @@ public class CypherBuilder extends BaseTransform<CypherBuilderMeta, CypherBuilde
         data.driver.close();
       }
     } catch (Exception e) {
-      logError("Error closing Neo4j connection", e);
+      logError("Error closing the graph database connection", e);
     }
 
     super.dispose();
@@ -197,8 +211,17 @@ public class CypherBuilder extends BaseTransform<CypherBuilderMeta, CypherBuilde
   }
 
   private void emptyRowParametersList() throws HopException {
-    if (data.rowParametersList.isEmpty()) {
+    if (data.rowParametersList == null || data.rowParametersList.isEmpty()) {
       // Nothing to do here.
+      return;
+    }
+    if (data.graphConnection != null) {
+      try {
+        emptyGenericRowParametersList();
+      } finally {
+        data.rowParametersList.clear();
+        data.inputRowsList.clear();
+      }
       return;
     }
     try {
@@ -245,6 +268,63 @@ public class CypherBuilder extends BaseTransform<CypherBuilderMeta, CypherBuilde
       throw new HopException("Error writing batch of rows to Neo4j", e);
     } finally {
       data.rowParametersList.clear();
+      data.inputRowsList.clear();
+    }
+  }
+
+  /**
+   * Execute the batch over a graph connection which isn't Bolt. The result rows are passed on after
+   * the batch succeeded, so a retry doesn't send rows twice.
+   */
+  private void emptyGenericRowParametersList() throws HopException {
+    for (int attempt = 0; attempt < data.attempts; attempt++) {
+      try {
+        List<Object[]> outputRows =
+            data.graphConnection.executeWrite(
+                transaction -> {
+                  List<Object[]> rows = new ArrayList<>();
+                  if (StringUtils.isEmpty(data.unwindAlias)) {
+                    for (int i = 0; i < data.inputRowsList.size(); i++) {
+                      addGenericResultRows(
+                          rows,
+                          data.inputRowsList.get(i),
+                          transaction.execute(data.cypher, data.rowParametersList.get(i)));
+                    }
+                  } else {
+                    Map<String, Object> parameters = new HashMap<>();
+                    parameters.put(
+                        CypherBuilderMeta.ROWS_UNWIND_MAP_ENTRY,
+                        new ArrayList<>(data.rowParametersList));
+                    addGenericResultRows(
+                        rows, new Object[0], transaction.execute(data.cypher, parameters));
+                  }
+                  return rows;
+                });
+        for (Object[] outputRow : outputRows) {
+          putRow(data.outputRowMeta, outputRow);
+        }
+        return;
+      } catch (HopException e) {
+        if (attempt + 1 >= data.attempts) {
+          throw new HopException("Failed transaction after " + data.attempts + " attempts", e);
+        }
+        logDetailed("Retrying after error: " + e.getMessage());
+      }
+    }
+  }
+
+  private void addGenericResultRows(
+      List<Object[]> outputRows, Object[] inputRowData, List<Map<String, Object>> results)
+      throws HopException {
+    for (Map<String, Object> result : results) {
+      Object[] outputRow = RowDataUtil.createResizedCopy(inputRowData, data.outputRowMeta.size());
+      for (int i = 0; i < data.outputIndexes.size(); i++) {
+        IValueMeta valueMeta = data.outputValues.get(i);
+        outputRow[data.outputIndexes.get(i)] =
+            NeoHopData.convertToHopValue(
+                valueMeta.getName(), result.get(valueMeta.getName()), valueMeta);
+      }
+      outputRows.add(outputRow);
     }
   }
 

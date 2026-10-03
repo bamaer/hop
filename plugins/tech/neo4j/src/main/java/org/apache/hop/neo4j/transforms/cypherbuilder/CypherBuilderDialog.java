@@ -179,8 +179,9 @@ public class CypherBuilderDialog extends BaseTransformDialog {
             metadataProvider,
             wOptionsComp,
             SWT.SINGLE | SWT.LEFT | SWT.BORDER,
-            "Neo4j Connection",
-            "The name of the Neo4j connection to use");
+            "Graph database connection",
+            "The name of the graph database connection to use",
+            true);
     PropsUi.setLook(wConnection);
     FormData fdConnection = new FormData();
     fdConnection.left = new FormAttachment(0, 0);
@@ -283,7 +284,7 @@ public class CypherBuilderDialog extends BaseTransformDialog {
           new ColumnInfo("Parameter", ColumnInfo.COLUMN_TYPE_TEXT, false),
           new ColumnInfo("Input field", ColumnInfo.COLUMN_TYPE_CCOMBO, fieldNames, false),
           new ColumnInfo(
-              "Neo4j Type", ColumnInfo.COLUMN_TYPE_CCOMBO, GraphPropertyType.getNames(), false),
+              "Graph type", ColumnInfo.COLUMN_TYPE_CCOMBO, GraphPropertyType.getNames(), false),
         };
 
     Label wlParameters = new Label(wParametersComp, SWT.LEFT);

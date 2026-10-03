@@ -26,7 +26,7 @@ import org.apache.hop.neo4j.shared.CypherDialect;
     id = "NEO4J",
     name = "i18n::Neo4jGraphDatabase.name",
     description = "i18n::Neo4jGraphDatabase.description",
-    documentationUrl = "/metadata-types/graph-database-connection.html")
+    documentationUrl = "/metadata-types/graphs/graph-database-connection.html")
 @GuiPlugin
 public class Neo4jGraphDatabase extends BoltGraphDatabase {
   @Override

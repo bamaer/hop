@@ -25,6 +25,9 @@ import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.Date;
 import org.apache.hop.core.exception.HopException;
+import org.apache.hop.core.graph.GraphNodeValue;
+import org.apache.hop.core.graph.GraphPathValue;
+import org.apache.hop.core.graph.GraphRelationshipValue;
 import org.apache.hop.core.row.IValueMeta;
 import org.apache.hop.neo4j.core.data.GraphData;
 import org.apache.hop.neo4j.core.data.GraphPropertyDataType;
@@ -46,10 +49,16 @@ public class NeoHopData {
     try {
       switch (targetValueMeta.getType()) {
         case IValueMeta.TYPE_STRING:
+          if (isGraphValue(value)) {
+            // The same JSON as a Neo4j node or path converted to String
+            return toGraphData(value).toJson().toJSONString();
+          }
           if (value instanceof java.util.Map || value instanceof java.util.List) {
-            return JSONValue.toJSONString(value);
+            return JSONValue.toJSONString(toJsonValue(value));
           }
           return value.toString();
+        case ValueMetaGraph.TYPE_GRAPH:
+          return toGraphData(value);
         case IValueMeta.TYPE_INTEGER:
           return value instanceof Number number
               ? number.longValue()
@@ -94,6 +103,40 @@ public class NeoHopData {
       throw new HopException(
           "Unable to convert value '" + name + "' to type : " + targetValueMeta.getTypeDesc(), e);
     }
+  }
+
+  private static boolean isGraphValue(Object value) {
+    return value instanceof GraphNodeValue
+        || value instanceof GraphRelationshipValue
+        || value instanceof GraphPathValue;
+  }
+
+  /** The nodes, relationships and paths in a value as graph data. */
+  private static GraphData toGraphData(Object value) {
+    GraphData graphData = new GraphData();
+    graphData.updateFromValue(value);
+    return graphData;
+  }
+
+  /** A value which JSON can hold: graph values become their JSON, dates and times text. */
+  private static Object toJsonValue(Object value) {
+    if (isGraphValue(value)) {
+      return toGraphData(value).toJson();
+    }
+    if (value instanceof java.util.Map<?, ?> map) {
+      java.util.Map<String, Object> json = new java.util.LinkedHashMap<>();
+      map.forEach((key, element) -> json.put(String.valueOf(key), toJsonValue(element)));
+      return json;
+    }
+    if (value instanceof java.util.List<?> list) {
+      java.util.List<Object> json = new java.util.ArrayList<>();
+      list.forEach(element -> json.add(toJsonValue(element)));
+      return json;
+    }
+    if (value instanceof java.time.temporal.Temporal || value instanceof Date) {
+      return value instanceof Date date ? date.toInstant().toString() : value.toString();
+    }
+    return value;
   }
 
   public static Object convertNeoToHopValue(

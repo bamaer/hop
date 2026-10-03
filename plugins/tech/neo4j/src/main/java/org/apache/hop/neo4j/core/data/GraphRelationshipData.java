@@ -20,6 +20,7 @@ package org.apache.hop.neo4j.core.data;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.hop.core.graph.GraphRelationshipValue;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.neo4j.driver.Value;
@@ -91,6 +92,22 @@ public class GraphRelationshipData {
     }
     setProperties(properties);
     setPropertySetId(graphRelationship.getPropertySetId());
+  }
+
+  /** A relationship from the results of a graph database connection. */
+  public GraphRelationshipData(GraphRelationshipValue relationship) {
+    this();
+    setId(relationship.id());
+    setSourceNodeId(relationship.startNodeId());
+    setTargetNodeId(relationship.endNodeId());
+    setLabel(relationship.type());
+    relationship
+        .properties()
+        .forEach(
+            (key, value) ->
+                properties.add(
+                    new GraphPropertyData(
+                        key, value, GraphPropertyDataType.getTypeFromValue(value), false)));
   }
 
   public GraphRelationshipData(Relationship relationship) {

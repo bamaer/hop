@@ -151,4 +151,19 @@ class CypherDialectTest {
     assertTrue(CypherDialect.NEO4J.isSupportingSchemaChangesInTransactions());
     assertFalse(CypherDialect.MEMGRAPH.isSupportingSchemaChangesInTransactions());
   }
+
+  @Test
+  void testMemgraphAutoCommitStatements() {
+    CypherDialect memgraph = CypherDialect.MEMGRAPH;
+    assertTrue(memgraph.isRequiringAutoCommit("SHOW INDEX INFO"));
+    assertTrue(memgraph.isRequiringAutoCommit("  show constraint info"));
+    assertTrue(memgraph.isRequiringAutoCommit("CREATE INDEX ON :Person(id)"));
+    assertTrue(memgraph.isRequiringAutoCommit("CREATE EDGE INDEX ON :KNOWS(since)"));
+    assertTrue(
+        memgraph.isRequiringAutoCommit("DROP CONSTRAINT ON (n:Person) ASSERT n.id IS UNIQUE"));
+    assertTrue(memgraph.isRequiringAutoCommit("DROP ALL INDEXES"));
+    assertFalse(memgraph.isRequiringAutoCommit("MATCH (n:Showcase) RETURN n"));
+    assertFalse(memgraph.isRequiringAutoCommit("CREATE (n:Index {id: 1})"));
+    assertFalse(CypherDialect.NEO4J.isRequiringAutoCommit("SHOW INDEXES"));
+  }
 }

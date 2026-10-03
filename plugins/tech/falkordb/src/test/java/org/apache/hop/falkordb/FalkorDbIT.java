@@ -28,6 +28,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.hop.core.HopClientEnvironment;
+import org.apache.hop.core.graph.GraphNodeValue;
+import org.apache.hop.core.graph.GraphPathValue;
+import org.apache.hop.core.graph.GraphRelationshipValue;
 import org.apache.hop.core.graph.IGraphConnection;
 import org.apache.hop.core.logging.LogChannel;
 import org.apache.hop.core.variables.IVariables;
@@ -112,12 +115,13 @@ class FalkorDbIT {
 
       List<Map<String, Object>> graph =
           connection.execute("MATCH (a)-[r:KNOWS]->(b) RETURN a, r, b", Map.of());
-      Map<?, ?> a = (Map<?, ?>) graph.get(0).get("a");
-      assertEquals(List.of("Person"), a.get("labels"));
-      assertEquals("Person's 1", ((Map<?, ?>) a.get("properties")).get("name"));
-      Map<?, ?> r = (Map<?, ?>) graph.get(0).get("r");
-      assertEquals("KNOWS", r.get("type"));
-      assertEquals(2020L, ((Map<?, ?>) r.get("properties")).get("since"));
+      GraphNodeValue a = (GraphNodeValue) graph.get(0).get("a");
+      assertEquals(List.of("Person"), a.labels());
+      assertEquals("Person's 1", a.properties().get("name"));
+      GraphRelationshipValue r = (GraphRelationshipValue) graph.get(0).get("r");
+      assertEquals("KNOWS", r.type());
+      assertEquals(2020L, r.properties().get("since"));
+      assertEquals(a.id(), r.startNodeId());
 
       // Typed values: lists stay lists, doubles doubles, dates dates
       Map<String, Object> typed =
@@ -130,7 +134,9 @@ class FalkorDbIT {
       assertEquals(List.of("Person"), typed.get("labels"));
       assertEquals(1.5d, typed.get("score"));
       assertEquals(java.time.LocalDate.of(2024, 1, 2), typed.get("d"));
-      assertEquals(2, ((List<?>) ((Map<?, ?>) typed.get("p")).get("nodes")).size());
+      GraphPathValue path = (GraphPathValue) typed.get("p");
+      assertEquals(2, path.nodes().size());
+      assertEquals(1, path.relationships().size());
     }
   }
 }

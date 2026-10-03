@@ -17,6 +17,7 @@
 
 package org.apache.hop.core.graph;
 
+import java.util.List;
 import org.apache.hop.core.exception.HopException;
 import org.apache.hop.core.logging.ILogChannel;
 import org.apache.hop.core.variables.IVariables;
@@ -46,6 +47,21 @@ public interface IGraphDatabase extends Cloneable {
    */
   default String getDialect() {
     return "NEO4J";
+  }
+
+  /**
+   * The statement which creates an index on properties of the nodes with a label, for the databases
+   * whose indexes are created outside of Cypher, like Apache AGE with SQL.
+   *
+   * @param variables The variables to resolve the settings with
+   * @param indexName The name of the index
+   * @param label The node label
+   * @param properties The indexed properties
+   * @return The statement, or null to use the Cypher syntax of the database's dialect
+   */
+  default String getCreateNodeIndexStatement(
+      IVariables variables, String indexName, String label, List<String> properties) {
+    return null;
   }
 
   /**

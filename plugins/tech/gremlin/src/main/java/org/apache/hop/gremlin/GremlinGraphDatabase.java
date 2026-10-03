@@ -60,7 +60,7 @@ import org.janusgraph.graphdb.tinkerpop.JanusGraphIoRegistry;
     id = "GREMLIN",
     name = "i18n::GremlinGraphDatabase.name",
     description = "i18n::GremlinGraphDatabase.description",
-    documentationUrl = "/metadata-types/graph-database-connection.html")
+    documentationUrl = "/metadata-types/graphs/graph-database-connection.html")
 @GuiPlugin
 @Getter
 @Setter

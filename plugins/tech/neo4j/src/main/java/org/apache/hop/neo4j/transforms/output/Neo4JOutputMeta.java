@@ -44,12 +44,12 @@ import org.apache.hop.pipeline.transform.TransformMeta;
 
 @Transform(
     id = "Neo4JOutput",
-    image = "neo4j_output.svg",
+    image = "cypher_output.svg",
     name = "i18n::Neo4JOutput.Transform.Name",
     description = "i18n::Neo4JOutput.Transform.Description",
     categoryDescription = "i18n::Neo4JOutput.Transform.Category",
     keywords = "i18n::Neo4JOutputMeta.keyword",
-    documentationUrl = "/pipeline/transforms/neo4j-output.html",
+    documentationUrl = "/pipeline/transforms/cypher-output.html",
     actionTransformTypes = {ActionTransformType.OUTPUT, ActionTransformType.GRAPH})
 @Getter
 @Setter

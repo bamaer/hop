@@ -210,6 +210,24 @@ public class NeoConnectionUtils {
   }
 
   /**
+   * The sorted names of all Neo4j connections and graph database connections of a database which
+   * speaks Cypher, for the features built on Cypher statements.
+   */
+  public static List<String> getCypherConnectionNames(IHopMetadataProvider metadataProvider)
+      throws HopException {
+    Set<String> names =
+        new TreeSet<>(metadataProvider.getSerializer(NeoConnection.class).listObjectNames());
+    for (GraphDatabaseMeta graphDatabaseMeta :
+        metadataProvider.getSerializer(GraphDatabaseMeta.class).loadAll()) {
+      if (graphDatabaseMeta.getGraphDatabase() == null
+          || CypherDialect.fromId(graphDatabaseMeta.getGraphDatabase().getDialect()).isCypher()) {
+        names.add(graphDatabaseMeta.getName());
+      }
+    }
+    return new ArrayList<>(names);
+  }
+
+  /**
    * Create a unique constraint (one key property) or an index (several key properties) on the first
    * label, through a graph connection in its dialect.
    */

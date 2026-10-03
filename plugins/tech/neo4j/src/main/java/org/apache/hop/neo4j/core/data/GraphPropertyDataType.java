@@ -90,6 +90,36 @@ public enum GraphPropertyDataType {
     return names;
   }
 
+  /**
+   * The type of a plain Java value as graph connections return them. Unlike {@link
+   * #getTypeFromNeo4jValue(Object)} this never fails: lists, maps and other dates and times have a
+   * type too, anything else is a String.
+   */
+  public static GraphPropertyDataType getTypeFromValue(Object object) {
+    if (object instanceof java.util.List) {
+      return List;
+    }
+    if (object instanceof java.util.Map) {
+      return Map;
+    }
+    if (object instanceof java.time.ZonedDateTime
+        || object instanceof java.time.OffsetDateTime
+        || object instanceof java.util.Date) {
+      return DateTime;
+    }
+    if (object instanceof java.time.OffsetTime) {
+      return Time;
+    }
+    if (object instanceof byte[]) {
+      return ByteArray;
+    }
+    try {
+      return getTypeFromNeo4jValue(object);
+    } catch (HopRuntimeException e) {
+      return String;
+    }
+  }
+
   public static GraphPropertyDataType getTypeFromNeo4jValue(Object object) {
     if (object == null) {
       return null;

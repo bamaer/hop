@@ -21,14 +21,22 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigInteger;
 import java.time.temporal.Temporal;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Date;
+import java.util.Deque;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.apache.hop.core.exception.HopException;
+import org.apache.hop.core.graph.GraphIndex;
+import org.apache.hop.core.graph.GraphNodeValue;
+import org.apache.hop.core.graph.GraphPathValue;
+import org.apache.hop.core.graph.GraphRelationshipValue;
 
 /**
  * Runs Cypher on Apache AGE: the statement goes into the {@code cypher()} function of a SQL query,
@@ -300,9 +308,36 @@ public final class AgeCypher {
     return parts;
   }
 
+  private static final Pattern INDEXED_PROPERTY =
+      Pattern.compile("properties, '\"((?:[^\"\\\\]|\\\\.)*)\"'::agtype");
+
+  /**
+   * The properties a PostgreSQL index on a label table covers, from its definition: the properties
+   * accessed in its expressions, or all properties ({@link GraphIndex#ALL_PROPERTIES}) for an index
+   * on the properties column itself, like a GIN index. Empty if it isn't on properties, like the
+   * index on the id.
+   */
+  public static List<String> getIndexedProperties(String indexDefinition) {
+    List<String> properties = new ArrayList<>();
+    Matcher matcher = INDEXED_PROPERTY.matcher(indexDefinition);
+    while (matcher.find()) {
+      properties.add(matcher.group(1).replace("\\\"", "\""));
+    }
+    if (properties.isEmpty() && indexDefinition.matches("(?s).*\\(properties\\)\\s*$")) {
+      return GraphIndex.ALL_PROPERTIES;
+    }
+    return properties;
+  }
+
+  /** The key marking a vertex or edge in the JSON of an agtype value, and the path marker. */
+  private static final String TYPE_KEY = "\u0000agtype";
+
+  private static final String PATH_MARKER = "\u0000agtype:path";
+
   /**
    * An agtype value as a Java value: maps, lists, strings, longs, doubles and booleans. Vertices,
-   * edges and paths become maps and lists: their type suffixes are dropped.
+   * edges and paths become {@link GraphNodeValue}, {@link GraphRelationshipValue} and {@link
+   * GraphPathValue}.
    */
   public static Object toValue(String agtype) throws HopException {
     if (agtype == null) {
@@ -310,7 +345,7 @@ public final class AgeCypher {
     }
     try {
       return normalize(MAPPER.readValue(stripTypeSuffixes(agtype), Object.class));
-    } catch (JsonProcessingException e) {
+    } catch (JsonProcessingException | RuntimeException e) {
       throw new HopException("Unable to read Apache AGE value " + agtype, e);
     }
   }
@@ -327,9 +362,38 @@ public final class AgeCypher {
       for (Map.Entry<?, ?> entry : map.entrySet()) {
         normalized.put(String.valueOf(entry.getKey()), normalize(entry.getValue()));
       }
+      Object type = normalized.remove(TYPE_KEY);
+      if ("vertex".equals(type)) {
+        return new GraphNodeValue(
+            String.valueOf(normalized.get("id")),
+            List.of(String.valueOf(normalized.get("label"))),
+            toProperties(normalized.get("properties")));
+      }
+      if ("edge".equals(type)) {
+        return new GraphRelationshipValue(
+            String.valueOf(normalized.get("id")),
+            String.valueOf(normalized.get("label")),
+            String.valueOf(normalized.get("start_id")),
+            String.valueOf(normalized.get("end_id")),
+            toProperties(normalized.get("properties")));
+      }
       return normalized;
     }
     if (value instanceof List<?> list) {
+      if (!list.isEmpty() && PATH_MARKER.equals(list.get(0))) {
+        // A path: vertices and edges alternate
+        List<GraphNodeValue> nodes = new ArrayList<>();
+        List<GraphRelationshipValue> relationships = new ArrayList<>();
+        for (Object element : list.subList(1, list.size())) {
+          Object normalizedElement = normalize(element);
+          if (normalizedElement instanceof GraphNodeValue node) {
+            nodes.add(node);
+          } else if (normalizedElement instanceof GraphRelationshipValue relationship) {
+            relationships.add(relationship);
+          }
+        }
+        return new GraphPathValue(nodes, relationships);
+      }
       List<Object> normalized = new ArrayList<>();
       for (Object element : list) {
         normalized.add(normalize(element));
@@ -339,9 +403,20 @@ public final class AgeCypher {
     return value;
   }
 
-  /** Remove the ::vertex, ::edge, ::path and ::numeric suffixes outside of strings. */
+  @SuppressWarnings("unchecked")
+  private static Map<String, Object> toProperties(Object properties) {
+    return properties instanceof Map<?, ?> map ? (Map<String, Object>) map : new LinkedHashMap<>();
+  }
+
+  /**
+   * Turn agtype text into JSON: remove the ::numeric suffixes outside of strings and replace the
+   * ::vertex, ::edge and ::path suffixes by markers inside the object or array they follow.
+   */
   static String stripTypeSuffixes(String agtype) {
     StringBuilder json = new StringBuilder();
+    // The positions in the JSON of the objects and arrays which are open
+    Deque<Integer> open = new ArrayDeque<>();
+    int lastClosed = -1;
     int i = 0;
     while (i < agtype.length()) {
       char c = agtype.charAt(i);
@@ -356,11 +431,25 @@ public final class AgeCypher {
         continue;
       }
       if (c == ':' && i + 1 < agtype.length() && agtype.charAt(i + 1) == ':') {
-        i += 2;
+        int start = i + 2;
+        i = start;
         while (i < agtype.length() && Character.isLetter(agtype.charAt(i))) {
           i++;
         }
+        String type = agtype.substring(start, i);
+        if (lastClosed >= 0) {
+          if (("vertex".equals(type) || "edge".equals(type)) && json.charAt(lastClosed) == '{') {
+            json.insert(lastClosed + 1, "\"\\u0000agtype\":\"" + type + "\",");
+          } else if ("path".equals(type) && json.charAt(lastClosed) == '[') {
+            json.insert(lastClosed + 1, "\"\\u0000agtype:path\",");
+          }
+        }
         continue;
+      }
+      if (c == '{' || c == '[') {
+        open.push(json.length());
+      } else if ((c == '}' || c == ']') && !open.isEmpty()) {
+        lastClosed = open.pop();
       }
       json.append(c);
       i++;

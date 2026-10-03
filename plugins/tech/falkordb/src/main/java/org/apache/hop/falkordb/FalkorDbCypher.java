@@ -32,6 +32,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
+import org.apache.hop.core.graph.GraphNodeValue;
+import org.apache.hop.core.graph.GraphPathValue;
+import org.apache.hop.core.graph.GraphRelationshipValue;
 
 /**
  * Parameters and results of FalkorDB queries. FalkorDB takes query parameters as Cypher literals in
@@ -187,34 +190,37 @@ public final class FalkorDbCypher {
       case 7: // edge: [id, type id, source id, destination id, properties]
         {
           List<?> edge = (List<?>) value;
-          Map<String, Object> map = new LinkedHashMap<>();
-          map.put("id", toLong(edge.get(0)));
-          map.put("type", names.relationshipType(toInt(edge.get(1))));
-          map.put("src_node", toLong(edge.get(2)));
-          map.put("dest_node", toLong(edge.get(3)));
-          map.put("properties", toProperties((List<?>) edge.get(4), names));
-          return map;
+          return new GraphRelationshipValue(
+              String.valueOf(toLong(edge.get(0))),
+              names.relationshipType(toInt(edge.get(1))),
+              String.valueOf(toLong(edge.get(2))),
+              String.valueOf(toLong(edge.get(3))),
+              toProperties((List<?>) edge.get(4), names));
         }
       case 8: // node: [id, [label ids], properties]
         {
           List<?> node = (List<?>) value;
-          Map<String, Object> map = new LinkedHashMap<>();
-          map.put("id", toLong(node.get(0)));
           List<String> labels = new ArrayList<>();
           for (Object labelId : (List<?>) node.get(1)) {
             labels.add(names.label(toInt(labelId)));
           }
-          map.put("labels", labels);
-          map.put("properties", toProperties((List<?>) node.get(2), names));
-          return map;
+          return new GraphNodeValue(
+              String.valueOf(toLong(node.get(0))),
+              labels,
+              toProperties((List<?>) node.get(2), names));
         }
       case 9: // path: [typed array of nodes, typed array of edges]
         {
           List<?> path = (List<?>) value;
-          Map<String, Object> map = new LinkedHashMap<>();
-          map.put("nodes", toValue((List<?>) path.get(0), names));
-          map.put("edges", toValue((List<?>) path.get(1), names));
-          return map;
+          List<GraphNodeValue> nodes = new ArrayList<>();
+          for (Object node : (List<?>) toValue((List<?>) path.get(0), names)) {
+            nodes.add((GraphNodeValue) node);
+          }
+          List<GraphRelationshipValue> relationships = new ArrayList<>();
+          for (Object edge : (List<?>) toValue((List<?>) path.get(1), names)) {
+            relationships.add((GraphRelationshipValue) edge);
+          }
+          return new GraphPathValue(nodes, relationships);
         }
       case 10: // map: [key, typed value, key, typed value, ...]
         {

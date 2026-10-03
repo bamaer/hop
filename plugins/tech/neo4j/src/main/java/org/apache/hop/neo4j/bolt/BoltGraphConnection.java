@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import lombok.Getter;
 import org.apache.hop.core.exception.HopException;
+import org.apache.hop.core.graph.GraphIndex;
 import org.apache.hop.core.graph.IGraphConnection;
 import org.apache.hop.core.graph.IGraphTransaction;
 import org.apache.hop.core.graph.IGraphTransactionWork;
@@ -53,11 +54,13 @@ public class BoltGraphConnection implements IGraphConnection {
     this.log = log;
   }
 
-  /** Consume a result: the rows as maps, logging the notifications. */
+  /**
+   * Consume a result: the rows as maps of plain values and graph values, logging the notifications.
+   */
   private List<Map<String, Object>> consume(Result result) {
     List<Map<String, Object>> rows = new ArrayList<>();
     while (result.hasNext()) {
-      rows.add(result.next().asMap());
+      rows.add(BoltValues.toRow(result.next().asMap()));
     }
     if (log != null) {
       NeoConnectionUtils.logNotifications(log, result.consume());
@@ -101,6 +104,25 @@ public class BoltGraphConnection implements IGraphConnection {
       throw e.getHopException();
     } catch (Exception e) {
       throw new HopException("Error executing a write transaction", e);
+    }
+  }
+
+  @Override
+  public List<GraphIndex> getIndexes() throws HopException {
+    switch (cypherDialect) {
+      case NEO4J:
+        try {
+          return BoltIndexes.fromNeo4j(execute("SHOW INDEXES", Map.of()));
+        } catch (HopException e) {
+          // Neo4j before 4.2
+          return BoltIndexes.fromNeo4j(execute("CALL db.indexes()", Map.of()));
+        }
+      case MEMGRAPH:
+        return BoltIndexes.fromMemgraph(
+            execute("SHOW INDEX INFO", Map.of()), execute("SHOW CONSTRAINT INFO", Map.of()));
+      default:
+        // Neptune has no indexes to list
+        return null;
     }
   }
 

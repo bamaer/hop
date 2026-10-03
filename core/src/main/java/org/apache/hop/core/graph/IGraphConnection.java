@@ -29,7 +29,9 @@ public interface IGraphConnection extends AutoCloseable {
    *
    * @param statement The statement in the query language of the database
    * @param parameters The statement parameters, may be empty
-   * @return The result rows, column name to value
+   * @return The result rows, column name to value. Values are plain Java values: strings, numbers,
+   *     booleans, java.time values, lists and maps, with nodes, relationships and paths as {@link
+   *     GraphNodeValue}, {@link GraphRelationshipValue} and {@link GraphPathValue}.
    * @throws HopException In case the statement failed
    */
   List<Map<String, Object>> execute(String statement, Map<String, Object> parameters)
@@ -80,6 +82,16 @@ public interface IGraphConnection extends AutoCloseable {
   default void upsert(List<GraphUpsertNode> nodes, List<GraphUpsertRelationship> relationships)
       throws HopException {
     throw new HopException("This graph database connection doesn't support upserts");
+  }
+
+  /**
+   * List the indexes and unique constraints, for example to validate a graph model against the
+   * database.
+   *
+   * @return The indexes, or null if this database can't tell which indexes it has
+   */
+  default List<GraphIndex> getIndexes() throws HopException {
+    return null;
   }
 
   @Override

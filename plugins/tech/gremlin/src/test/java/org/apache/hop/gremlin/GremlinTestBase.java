@@ -30,6 +30,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.hop.core.HopClientEnvironment;
+import org.apache.hop.core.graph.GraphPathValue;
+import org.apache.hop.core.graph.GraphRelationshipValue;
 import org.apache.hop.core.graph.GraphUpsertNode;
 import org.apache.hop.core.graph.GraphUpsertRelationship;
 import org.apache.hop.core.graph.IGraphConnection;
@@ -137,11 +139,21 @@ abstract class GremlinTestBase {
           List.of(Map.of("result", 2021L)),
           connection.execute("g.E().hasLabel('KNOWS').values('since')", Map.of()));
 
-      // Whole elements come back as maps with id, label and properties
-      Map<?, ?> edge =
-          (Map<?, ?>) connection.execute("g.E().hasLabel('KNOWS')", Map.of()).get(0).get("result");
-      assertEquals("KNOWS", edge.get("label"));
-      assertEquals(2021L, ((Map<?, ?>) edge.get("properties")).get("since"));
+      // Whole elements come back as graph values
+      GraphRelationshipValue edge =
+          (GraphRelationshipValue)
+              connection.execute("g.E().hasLabel('KNOWS')", Map.of()).get(0).get("result");
+      assertEquals("KNOWS", edge.type());
+      assertEquals(2021L, edge.properties().get("since"));
+      GraphPathValue path =
+          (GraphPathValue)
+              connection
+                  .execute("g.V().has('Person', 'pid', 1L).outE('KNOWS').inV().path()", Map.of())
+                  .get(0)
+                  .get("result");
+      assertEquals(2, path.nodes().size());
+      assertEquals(edge.id(), path.relationships().get(0).id());
+      assertEquals(path.nodes().get(0).id(), edge.startNodeId());
     }
   }
 }

@@ -152,8 +152,8 @@ public class Neo4JOutputDialog extends BaseTransformDialog {
             metadataProvider,
             shell,
             SWT.SINGLE | SWT.LEFT | SWT.BORDER,
-            "Neo4j Connection",
-            "The name of the Neo4j connection to use",
+            "Graph database connection",
+            "The name of the graph database connection to use",
             true);
     PropsUi.setLook(wConnection);
     wConnection.addModifyListener(lsMod);

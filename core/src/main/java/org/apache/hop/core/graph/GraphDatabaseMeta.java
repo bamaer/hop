@@ -41,7 +41,7 @@ import org.apache.hop.metadata.api.IHopMetadataProvider;
     description = "i18n::GraphDatabaseMeta.description",
     image = "ui/images/graph-database.svg",
     category = HopMetadataCategory.CONNECTIONS,
-    documentationUrl = "/metadata-types/graph-database-connection.html",
+    documentationUrl = "/metadata-types/graphs/graph-database-connection.html",
     hopMetadataPropertyType = HopMetadataPropertyType.GRAPH_CONNECTION)
 @Getter
 @Setter

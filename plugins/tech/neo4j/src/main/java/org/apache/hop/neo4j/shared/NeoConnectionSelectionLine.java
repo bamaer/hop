@@ -81,12 +81,16 @@ public class NeoConnectionSelectionLine extends MetaSelectionLine<GraphDatabaseM
     if (getMetadataProvider() == null) {
       return;
     }
-    List<String> names =
-        listingAllTypes
-            ? NeoConnectionUtils.getAllConnectionNames(getMetadataProvider())
-            : NeoConnectionUtils.getConnectionNames(getMetadataProvider());
+    List<String> names = getConnectionNames();
     setItems(names.toArray(new String[0]));
     setText(Const.NVL(previous, ""));
+  }
+
+  /** The names of the connections to list. */
+  protected List<String> getConnectionNames() throws HopException {
+    return listingAllTypes
+        ? NeoConnectionUtils.getAllConnectionNames(getMetadataProvider())
+        : NeoConnectionUtils.getConnectionNames(getMetadataProvider());
   }
 
   @Override

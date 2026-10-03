@@ -20,9 +20,13 @@ package org.apache.hop.age;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.abort;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.Statement;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -30,6 +34,9 @@ import java.util.List;
 import java.util.Map;
 import org.apache.hop.core.HopClientEnvironment;
 import org.apache.hop.core.exception.HopException;
+import org.apache.hop.core.graph.GraphIndex;
+import org.apache.hop.core.graph.GraphNodeValue;
+import org.apache.hop.core.graph.GraphRelationshipValue;
 import org.apache.hop.core.graph.IGraphConnection;
 import org.apache.hop.core.graph.IGraphTransaction;
 import org.apache.hop.core.logging.LogChannel;
@@ -120,9 +127,11 @@ class AgeIT {
           connection
               .execute("MATCH (a)-[r:KNOWS]->(b) RETURN a, r, labels(a) AS l", Map.of())
               .get(0);
-      assertEquals("Person", ((Map<?, ?>) graph.get("a")).get("label"));
-      assertEquals(
-          2020L, ((Map<?, ?>) ((Map<?, ?>) graph.get("r")).get("properties")).get("since"));
+      GraphNodeValue a = (GraphNodeValue) graph.get("a");
+      assertEquals(List.of("Person"), a.labels());
+      GraphRelationshipValue r = (GraphRelationshipValue) graph.get("r");
+      assertEquals(2020L, r.properties().get("since"));
+      assertEquals(a.id(), r.startNodeId());
       assertEquals(List.of("Person"), graph.get("l"));
     }
   }
@@ -148,6 +157,40 @@ class AgeIT {
       assertEquals(
           0L,
           connection.execute("MATCH (n:Rollback) RETURN count(n) AS c", Map.of()).get(0).get("c"));
+    }
+  }
+
+  /** Property indexes are PostgreSQL indexes on the label tables. */
+  @Test
+  void testIndexes() throws Exception {
+    try (IGraphConnection connection = graphDatabase.connect(LogChannel.GENERAL, variables, "it")) {
+      connection.execute(
+          "CREATE (:Indexed {k: 1, a: 2})-[:INDEXED_REL {w: 3}]->(:Indexed {k: 2})", Map.of());
+      String url = "jdbc:postgresql://" + age.getHost() + ":" + age.getMappedPort(5432) + "/hop";
+      try (Connection jdbc = DriverManager.getConnection(url, "hop", "hop");
+          Statement statement = jdbc.createStatement()) {
+        statement.execute(
+            "CREATE UNIQUE INDEX indexed_k ON hop_it.\"Indexed\" (ag_catalog.agtype_access_operator("
+                + "VARIADIC ARRAY[properties, '\"k\"'::ag_catalog.agtype]))");
+        statement.execute(
+            "CREATE INDEX indexed_rel_all ON hop_it.\"INDEXED_REL\" USING gin (properties)");
+      }
+      List<GraphIndex> indexes = connection.getIndexes();
+      GraphIndex unique =
+          indexes.stream().filter(i -> i.name().equals("indexed_k")).findFirst().orElseThrow();
+      assertEquals(List.of("Indexed"), unique.labelsOrTypes());
+      assertEquals(List.of("k"), unique.properties());
+      assertTrue(unique.unique());
+      assertFalse(unique.relationship());
+      GraphIndex all =
+          indexes.stream()
+              .filter(i -> i.name().equals("indexed_rel_all"))
+              .findFirst()
+              .orElseThrow();
+      assertTrue(all.relationship());
+      assertTrue(all.covers("INDEXED_REL", "w"));
+      // Only property indexes: not the indexes on ids which AGE creates
+      assertTrue(indexes.stream().noneMatch(i -> i.name().endsWith("_pkey")));
     }
   }
 }

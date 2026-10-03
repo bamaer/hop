@@ -125,8 +125,8 @@ public class GraphOutputDialog extends BaseTransformDialog {
             metadataProvider,
             shell,
             SWT.SINGLE | SWT.LEFT | SWT.BORDER,
-            "Neo4j Connection",
-            "The name of the Neo4j connection to use",
+            "Graph database connection",
+            "The name of the graph database connection to use",
             true);
     PropsUi.setLook(wConnection);
     FormData fdConnection = new FormData();
@@ -149,7 +149,7 @@ public class GraphOutputDialog extends BaseTransformDialog {
             shell,
             SWT.SINGLE | SWT.LEFT | SWT.BORDER,
             "Graph model",
-            "The name of the Neo4j logical Graph Model to use");
+            "The name of the logical graph model to use");
     PropsUi.setLook(wModel);
     FormData fdModel = new FormData();
     fdModel.left = new FormAttachment(0, 0);

@@ -59,7 +59,7 @@ import org.neo4j.driver.Value;
     description = "i18n::NeoConnection.description",
     image = "neo4j_logo.svg",
     category = HopMetadataCategory.CONNECTIONS,
-    documentationUrl = "/metadata-types/neo4j/neo4j-connection.html",
+    documentationUrl = "/metadata-types/graphs/neo4j-connection.html",
     hopMetadataPropertyType = HopMetadataPropertyType.GRAPH_CONNECTION)
 public class NeoConnection extends HopMetadataBase implements IHopMetadata {
 

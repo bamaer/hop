@@ -29,6 +29,9 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.hop.core.graph.GraphNodeValue;
+import org.apache.hop.core.graph.GraphPathValue;
+import org.apache.hop.core.graph.GraphRelationshipValue;
 import org.apache.tinkerpop.gremlin.process.traversal.Path;
 import org.apache.tinkerpop.gremlin.structure.Edge;
 import org.apache.tinkerpop.gremlin.structure.Property;
@@ -57,43 +60,50 @@ public final class GremlinValues {
   }
 
   /**
-   * A Gremlin result value as maps, lists and plain values. Vertices and edges become maps with
-   * their id, label and properties.
+   * A Gremlin result value as maps, lists and plain values. Vertices, edges and paths of elements
+   * become {@link GraphNodeValue}, {@link GraphRelationshipValue} and {@link GraphPathValue}.
    */
   public static Object toValue(Object value) {
     if (value instanceof Vertex vertex) {
-      Map<String, Object> map = new LinkedHashMap<>();
-      map.put("id", toValue(vertex.id()));
-      map.put("label", vertex.label());
       Map<String, Object> properties = new LinkedHashMap<>();
       Iterator<VertexProperty<Object>> iterator = vertex.properties();
       while (iterator.hasNext()) {
         VertexProperty<Object> property = iterator.next();
         properties.put(property.key(), toValue(property.value()));
       }
-      map.put("properties", properties);
-      return map;
+      return new GraphNodeValue(idOf(vertex.id()), List.of(vertex.label()), properties);
     }
     if (value instanceof Edge edge) {
-      Map<String, Object> map = new LinkedHashMap<>();
-      map.put("id", toValue(edge.id()));
-      map.put("label", edge.label());
-      map.put("outV", toValue(edge.outVertex().id()));
-      map.put("inV", toValue(edge.inVertex().id()));
       Map<String, Object> properties = new LinkedHashMap<>();
       Iterator<Property<Object>> iterator = edge.properties();
       while (iterator.hasNext()) {
         Property<Object> property = iterator.next();
         properties.put(property.key(), toValue(property.value()));
       }
-      map.put("properties", properties);
-      return map;
+      return new GraphRelationshipValue(
+          idOf(edge.id()),
+          edge.label(),
+          idOf(edge.outVertex().id()),
+          idOf(edge.inVertex().id()),
+          properties);
     }
     if (value instanceof Path path) {
       List<Object> list = new ArrayList<>();
+      List<GraphNodeValue> nodes = new ArrayList<>();
+      List<GraphRelationshipValue> relationships = new ArrayList<>();
       for (Object object : path.objects()) {
-        list.add(toValue(object));
+        Object converted = toValue(object);
+        list.add(converted);
+        if (converted instanceof GraphNodeValue node) {
+          nodes.add(node);
+        } else if (converted instanceof GraphRelationshipValue relationship) {
+          relationships.add(relationship);
+        }
       }
+      if (nodes.size() + relationships.size() == list.size()) {
+        return new GraphPathValue(nodes, relationships);
+      }
+      // A path of values, as from by() modulators: a list
       return list;
     }
     if (value instanceof Map<?, ?> map) {
@@ -126,6 +136,11 @@ public final class GremlinValues {
       return f.doubleValue();
     }
     return value;
+  }
+
+  /** An element id as text: numbers, strings and the ids of JanusGraph alike. */
+  private static String idOf(Object id) {
+    return String.valueOf(toValue(id));
   }
 
   /**
