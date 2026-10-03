@@ -56,6 +56,8 @@ Because of this you can consider using a Sort transform to force uniqueness befo
 * neo4j-admin import: `id:ID,name:string,...,:LABEL` for nodes and `:START_ID,...,:END_ID,:TYPE` for relationships.
 * Plain column names: `id,name,...,label` for nodes and `start_id,...,end_id,type` for relationships.
 
+A `Vector` property is written with `;` between its numbers, as a `float[]` column in the neo4j-admin import header.
+
 The rows are the same with both.
 
 |Filename field|filename|field that contains the filename for the CSV files to be generated

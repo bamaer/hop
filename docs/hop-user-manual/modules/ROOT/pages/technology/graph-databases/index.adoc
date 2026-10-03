@@ -95,6 +95,45 @@ Hop can keep the history of your executions in a graph database which speaks Cyp
 Query the history with the xref:hop-gui/perspective-graph-logging.adoc[Graph logging perspective].
 * Store execution information in a xref:metadata-types/graphs/graph-database-location.adoc[graph database location], to view it in the execution information perspective.
 
+[[vectors]]
+== Vectors and embeddings
+
+Embeddings, for example from the xref:pipeline/transforms/embedtext.adoc[Embed text] transform, travel through a pipeline as fields of the Vector value type.
+The graph transforms store them as a list of numbers:
+
+* In a xref:metadata-types/graphs/graph-model.adoc[graph model], give the property the type `Vector`.
+xref:pipeline/transforms/graph-output.adoc[Graph output] then writes the field as a vector.
+* In xref:pipeline/transforms/graph-query.adoc[Graph query], pick `Vector` as the graph data type of a parameter to pass a vector to a statement, for example to a vector search.
+Give a return value the Hop type `Vector` to read a stored vector back into a Vector field.
+* A text field holding `[0.1,0.2,0.3]`, as Embed text writes it with output format `STRING`, is converted too.
+* xref:pipeline/transforms/generate-graph-csvs.adoc[Generate graph CSVs] writes a vector as a `float[]` column, with `;` between the elements.
+
+How each database stores the list:
+
+[options="header"]
+|===
+|Database |Stored as
+
+|Neo4j, Memgraph
+|A list of floats, which their vector indexes use.
+
+|FalkorDB
+|A vector: Graph output wraps the value in `vecf32()`, which the FalkorDB vector index needs.
+In a Graph query statement, write `vecf32($param)` yourself.
+Cypher output and Cypher builder don't add `vecf32()`: use Graph output or Graph query to write vectors to FalkorDB.
+
+|Apache AGE
+|An agtype array.
+AGE has no vector index; keep the embeddings in a pgvector table next to the graph when you need vector search.
+
+|Amazon Neptune, Gremlin servers
+|A list, if the database accepts list properties.
+This is not covered by the integration tests.
+|===
+
+Create vector indexes with a xref:workflow/actions/graph-script.adoc[Graph script], in the syntax of the database.
+The Graph index action doesn't create vector indexes yet.
+
 == Upgrading from Hop 2.20 or earlier
 
 The graph functionality of Hop used to be Neo4j specific.

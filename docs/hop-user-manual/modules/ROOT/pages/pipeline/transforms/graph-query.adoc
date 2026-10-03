@@ -66,6 +66,7 @@ The `customers` parameter comes from the name of the unwind map.
 
 |Parameters
 |You can pick any valid parameter name (without spaces and so on), the field to use and the graph data type to convert to.
+Pick `Vector` to pass an embedding, see xref:technology/graph-databases/index.adoc#vectors[Vectors and embeddings].
 
 |Return graph
 |Return the nodes, relationships and paths in the results of a statement as one value of the Graph data type, for example to split it with the xref:pipeline/transforms/split-graph.adoc[Split graph] transform.
@@ -76,6 +77,7 @@ This works with every graph database.
 You can specify the return values here.
 For every input row you can then have 0, 1 or more output rows.
 If you do not specify any return values the output will simply be the same as the input.
+Give a return value the type `Vector` to read a stored embedding into a Vector field.
 On Gremlin servers a traversal returns a row per result: maps, from `project()` or `elementMap()` for example, are rows of their own, anything else is a value called `result`.
 
 |===

@@ -169,4 +169,16 @@ class CypherDialectTest {
     assertTrue(memgraph.isRequiringAutoCommit("/* indexes */ CREATE INDEX ON :Person(id)"));
     assertFalse(memgraph.isRequiringAutoCommit("// SHOW INDEX INFO\nMATCH (n) RETURN n"));
   }
+
+  /** FalkorDB only indexes vectors created with vecf32(). */
+  @Test
+  void testVectorValue() {
+    assertEquals("vecf32($p)", CypherDialect.FALKORDB.vectorValue("$p"));
+    assertEquals("vecf32(pr.p)", CypherDialect.FALKORDB.vectorValue("pr.p"));
+    for (CypherDialect dialect : CypherDialect.values()) {
+      if (dialect != CypherDialect.FALKORDB) {
+        assertEquals("$p", dialect.vectorValue("$p"));
+      }
+    }
+  }
 }

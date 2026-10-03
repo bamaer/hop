@@ -139,6 +139,16 @@ public enum CypherDialect {
     return this != GREMLIN;
   }
 
+  /**
+   * The Cypher expression that stores a vector parameter in a property. FalkorDB only indexes
+   * vectors created with {@code vecf32()}; the other databases store the list of numbers as is.
+   *
+   * @param parameterExpression The parameter holding the vector, like {@code $param1}
+   */
+  public String vectorValue(String parameterExpression) {
+    return this == FALKORDB ? "vecf32(" + parameterExpression + ")" : parameterExpression;
+  }
+
   /** The dialect with the given name, Neo4j for anything unknown. */
   public static CypherDialect fromId(String id) {
     for (CypherDialect dialect : values()) {

@@ -43,7 +43,9 @@ public enum GraphPropertyDataType {
   Map("Map"),
   Node("Node"),
   Relationship("Relationship"),
-  Path("Path");
+  Path("Path"),
+  /** An embedding: the Hop Vector value type. Imports as a float array. */
+  Vector("float[]");
 
   private String importType;
 
@@ -178,6 +180,7 @@ public enum GraphPropertyDataType {
       case LocalDateTime ->
           valueMeta.getDate(valueData).toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
       case ByteArray -> valueMeta.getBinary(valueData);
+      case Vector -> GraphVectors.toList(valueMeta, valueData);
       default ->
           throw new HopValueException(
               "Data conversion to Neo4j type '"
@@ -199,6 +202,7 @@ public enum GraphPropertyDataType {
       case Integer -> IValueMeta.TYPE_INTEGER;
       case Date, LocalDateTime -> IValueMeta.TYPE_DATE;
       case ByteArray -> IValueMeta.TYPE_BINARY;
+      case Vector -> IValueMeta.TYPE_VECTOR;
       default ->
           throw new HopValueException(
               "Data conversion to Neo4j type '" + name() + "' is not supported yet");
@@ -215,6 +219,7 @@ public enum GraphPropertyDataType {
       case IValueMeta.TYPE_BINARY -> GraphPropertyDataType.ByteArray;
       case IValueMeta.TYPE_BIGNUMBER -> GraphPropertyDataType.String;
       case IValueMeta.TYPE_INTEGER -> GraphPropertyDataType.Integer;
+      case IValueMeta.TYPE_VECTOR -> GraphPropertyDataType.Vector;
       default -> GraphPropertyDataType.String;
     };
   }

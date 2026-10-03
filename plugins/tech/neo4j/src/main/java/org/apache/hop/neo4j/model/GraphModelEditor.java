@@ -879,6 +879,7 @@ public class GraphModelEditor extends MetadataEditor<GraphModel> {
                 case IValueMeta.TYPE_BOOLEAN -> GraphPropertyType.Boolean;
                 case IValueMeta.TYPE_TIMESTAMP -> GraphPropertyType.LocalDateTime;
                 case IValueMeta.TYPE_BINARY -> GraphPropertyType.ByteArray;
+                case IValueMeta.TYPE_VECTOR -> GraphPropertyType.Vector;
                 default -> GraphPropertyType.String;
               };
 

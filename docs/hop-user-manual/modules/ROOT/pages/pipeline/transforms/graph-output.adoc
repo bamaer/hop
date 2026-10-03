@@ -42,6 +42,7 @@ These will not merge on these nodes, nor will it create or update relationships 
 * Keep your models as simple as possible.
 * Make sure that every defined node has a primary key field
 * Limit yourself to one primary key field per node
+* Give embedding properties the type `Vector` in the graph model, see xref:technology/graph-databases/index.adoc#vectors[Vectors and embeddings]
 
 == Execution tips
 

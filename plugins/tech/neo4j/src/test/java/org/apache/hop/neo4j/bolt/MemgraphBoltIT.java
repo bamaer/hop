@@ -17,6 +17,7 @@
 
 package org.apache.hop.neo4j.bolt;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.abort;
@@ -32,6 +33,8 @@ import org.apache.hop.core.graph.GraphDatabasePluginType;
 import org.apache.hop.core.graph.IGraphConnection;
 import org.apache.hop.core.logging.LogChannel;
 import org.apache.hop.core.plugins.PluginRegistry;
+import org.apache.hop.core.row.IValueMeta;
+import org.apache.hop.core.row.value.ValueMetaBase;
 import org.apache.hop.core.variables.IVariables;
 import org.apache.hop.core.variables.Variables;
 import org.apache.hop.neo4j.actions.constraint.ConstraintType;
@@ -41,8 +44,10 @@ import org.apache.hop.neo4j.actions.index.IndexUpdate;
 import org.apache.hop.neo4j.actions.index.Neo4jIndex;
 import org.apache.hop.neo4j.actions.index.ObjectType;
 import org.apache.hop.neo4j.actions.index.UpdateType;
+import org.apache.hop.neo4j.model.GraphPropertyType;
 import org.apache.hop.neo4j.shared.CypherDialect;
 import org.apache.hop.neo4j.shared.NeoConnection;
+import org.apache.hop.neo4j.shared.NeoHopData;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -193,6 +198,48 @@ class MemgraphBoltIT {
       }
       List<Map<String, Object>> constraints = connection.execute("SHOW CONSTRAINT INFO", Map.of());
       assertEquals(1, constraints.size(), constraints.toString());
+    }
+  }
+
+  /**
+   * The whole path of a Vector field: converted for the graph database, stored, found through a
+   * Memgraph vector index, and read back into the float[] of a Vector field.
+   */
+  @Test
+  void testVectorWriteSearchAndRead() throws Exception {
+    IValueMeta vector = new ValueMetaBase("embedding", IValueMeta.TYPE_VECTOR) {};
+    try (IGraphConnection connection = graphDatabaseMeta.connect(LogChannel.GENERAL, variables)) {
+      connection.execute(
+          "CREATE VECTOR INDEX bolt_it_docs ON :BoltITDoc(embedding)"
+              + " WITH CONFIG {\"dimension\": 3, \"capacity\": 100, \"metric\": \"cos\"}",
+          Map.of());
+      float[][] embeddings = {{1f, 0f, 0f}, {0f, 1f, 0f}};
+      for (int i = 0; i < embeddings.length; i++) {
+        Object value = GraphPropertyType.Vector.convertFromHop(vector, embeddings[i]);
+        connection.execute(
+            "MERGE (d:BoltITDoc {id: $id}) SET d.embedding = "
+                + CypherDialect.MEMGRAPH.vectorValue("$e"),
+            Map.of("id", (long) i + 1, "e", value));
+      }
+
+      List<Map<String, Object>> nearest =
+          connection.execute(
+              "CALL vector_search.search('bolt_it_docs', 1, $q) YIELD node, similarity"
+                  + " RETURN node.id AS id",
+              Map.of(
+                  "q",
+                  GraphPropertyType.Vector.convertFromHop(vector, new float[] {0.9f, 0.1f, 0f})));
+      assertEquals(1L, nearest.get(0).get("id"));
+
+      Object stored =
+          connection
+              .execute("MATCH (d:BoltITDoc {id: 2}) RETURN d.embedding AS e", Map.of())
+              .get(0)
+              .get("e");
+      assertArrayEquals(
+          new float[] {0f, 1f, 0f},
+          (float[]) NeoHopData.convertToHopValue("e", stored, vector),
+          0f);
     }
   }
 }

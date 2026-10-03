@@ -31,6 +31,7 @@ import org.apache.hop.core.graph.GraphRelationshipValue;
 import org.apache.hop.core.row.IValueMeta;
 import org.apache.hop.neo4j.core.data.GraphData;
 import org.apache.hop.neo4j.core.data.GraphPropertyDataType;
+import org.apache.hop.neo4j.core.data.GraphVectors;
 import org.apache.hop.neo4j.core.value.ValueMetaGraph;
 import org.json.simple.JSONValue;
 import org.neo4j.driver.Value;
@@ -59,6 +60,8 @@ public class NeoHopData {
           return value.toString();
         case ValueMetaGraph.TYPE_GRAPH:
           return toGraphData(value);
+        case IValueMeta.TYPE_VECTOR:
+          return GraphVectors.toFloatArray(value);
         case IValueMeta.TYPE_INTEGER:
           return value instanceof Number number
               ? number.longValue()
@@ -155,6 +158,8 @@ public class NeoHopData {
         case ValueMetaGraph.TYPE_GRAPH:
           // This is for Node, Path and Relationship
           return convertToGraphData(recordValue, neoType);
+        case IValueMeta.TYPE_VECTOR:
+          return GraphVectors.toFloatArray(recordValue.asList());
         case IValueMeta.TYPE_INTEGER:
           return recordValue.asLong();
         case IValueMeta.TYPE_NUMBER:

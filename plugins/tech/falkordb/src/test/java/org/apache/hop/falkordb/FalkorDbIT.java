@@ -139,4 +139,42 @@ class FalkorDbIT {
       assertEquals(1, path.relationships().size());
     }
   }
+
+  /**
+   * A Vector property arrives as a list of numbers. FalkorDB stores it as a vector, and indexes it,
+   * only when the statement wraps it in vecf32(), which Graph output does for this dialect.
+   */
+  @Test
+  void testVectorWriteSearchAndRead() throws Exception {
+    try (IGraphConnection connection = graphDatabase.connect(LogChannel.GENERAL, variables, "it")) {
+      connection.execute(
+          "CREATE VECTOR INDEX FOR (d:Doc) ON (d.embedding) OPTIONS {dimension: 3, similarityFunction: 'cosine'}",
+          Map.of());
+      connection.execute(
+          "MERGE (d:Doc {id: $id}) SET d.embedding = vecf32($e)",
+          Map.of("id", 1L, "e", List.of(1.0, 0.0, 0.0)));
+      connection.execute(
+          "MERGE (d:Doc {id: $id}) SET d.embedding = vecf32($e)",
+          Map.of("id", 2L, "e", List.of(0.0, 1.0, 0.0)));
+      // Without vecf32() the list is stored as a plain array and stays out of the index
+      connection.execute(
+          "MERGE (d:Doc {id: $id}) SET d.embedding = $e",
+          Map.of("id", 3L, "e", List.of(0.9, 0.1, 0.0)));
+
+      List<Map<String, Object>> nearest =
+          connection.execute(
+              "CALL db.idx.vector.queryNodes('Doc', 'embedding', 3, vecf32($q)) YIELD node, score"
+                  + " RETURN node.id AS id ORDER BY score",
+              Map.of("q", List.of(0.9, 0.1, 0.0)));
+      assertEquals(2, nearest.size(), nearest.toString());
+      assertEquals(1L, nearest.get(0).get("id"));
+
+      Object stored =
+          connection
+              .execute("MATCH (d:Doc {id: 1}) RETURN d.embedding AS e", Map.of())
+              .get(0)
+              .get("e");
+      assertEquals(List.of(1.0, 0.0, 0.0), stored);
+    }
+  }
 }

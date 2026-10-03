@@ -876,7 +876,7 @@ public class GraphOutput extends BaseNeoTransform<GraphOutputMeta, GraphOutputDa
                 Object neoValue =
                     relProp.getType().convertFromHop(sourceFieldMeta, sourceFieldValue);
                 parameters.put(parameterName, neoValue);
-                cypher.append(buildParameterClause(parameterName));
+                cypher.append(buildValueClause(parameterName, relProp.getType()));
 
                 TargetParameter targetParameter =
                     new TargetParameter(
@@ -1326,7 +1326,9 @@ public class GraphOutput extends BaseNeoTransform<GraphOutputMeta, GraphOutputDa
           if (isNull) {
             matchCypher.append("NULL ");
           } else {
-            matchCypher.append(buildParameterClause(parameterName)).append(" ");
+            matchCypher
+                .append(buildValueClause(parameterName, napd.property.getType()))
+                .append(" ");
           }
 
           if (isDebug()) {
@@ -1378,6 +1380,15 @@ public class GraphOutput extends BaseNeoTransform<GraphOutputMeta, GraphOutputDa
     if (!matchCypher.isEmpty()) {
       cypher.append(matchCypher).append(Const.CR);
     }
+  }
+
+  /** The parameter clause for a property value, wrapped the way the database stores vectors. */
+  private String buildValueClause(String parameterName, GraphPropertyType type) {
+    String clause = buildParameterClause(parameterName);
+    if (type == GraphPropertyType.Vector) {
+      return data.graphConnection.getDialect().vectorValue(clause);
+    }
+    return clause;
   }
 
   private String buildParameterClause(String parameterName) {

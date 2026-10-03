@@ -193,4 +193,23 @@ class AgeIT {
       assertTrue(indexes.stream().noneMatch(i -> i.name().endsWith("_pkey")));
     }
   }
+
+  /** A Vector property arrives as a list of numbers; AGE stores it as an agtype array. */
+  @Test
+  void testVectorWriteAndRead() throws Exception {
+    try (IGraphConnection connection = graphDatabase.connect(LogChannel.GENERAL, variables, "it")) {
+      connection.execute(
+          "MERGE (d:Doc {id: $id}) SET d.embedding = $e RETURN d.id AS id",
+          Map.of("id", 1L, "e", List.of(0.5, -1.0, 2.25)));
+      Object stored =
+          connection
+              .execute("MATCH (d:Doc {id: 1}) RETURN d.embedding AS e", Map.of())
+              .get(0)
+              .get("e");
+      assertTrue(stored instanceof List<?>, String.valueOf(stored));
+      List<?> list = (List<?>) stored;
+      assertEquals(3, list.size());
+      assertEquals(-1.0, ((Number) list.get(1)).doubleValue());
+    }
+  }
 }

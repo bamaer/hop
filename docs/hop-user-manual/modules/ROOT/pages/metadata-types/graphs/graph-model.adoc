@@ -26,3 +26,6 @@ under the License.
 A graph model describes (part of) a graph by allowing you to define nodes with their properties, and the relationships that connect these nodes.
 You can then use such a Graph Model to map input fields to properties in the xref:pipeline/transforms/graph-output.adoc[Graph output] transform, for any graph database.
 
+Every property has a type.
+Use `Vector` for embeddings, for example the output of the xref:pipeline/transforms/embedtext.adoc[Embed text] transform, see xref:technology/graph-databases/index.adoc#vectors[Vectors and embeddings].
+
